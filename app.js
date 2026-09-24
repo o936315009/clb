@@ -164,9 +164,36 @@ function saveClubsRegistry(clubs) {
   }
 }
 
+function getClubIdFromUrl() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const param = urlParams.get('club') || urlParams.get('clb') || urlParams.get('c');
+    if (param) return param.trim();
+
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const hashClub = hashParams.get('club') || hashParams.get('clb');
+      if (hashClub) return hashClub.trim();
+      if (hash.startsWith('club=')) return hash.replace('club=', '').trim();
+      if (hash.startsWith('clb=')) return hash.replace('clb=', '').trim();
+    }
+  } catch (e) {}
+  return null;
+}
+
 function getActiveClubId() {
-  let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
   const registry = getClubsRegistry();
+  const urlClub = getClubIdFromUrl();
+  if (urlClub) {
+    const matched = registry.find(c => c.id === urlClub || (c.shortName && c.shortName.toLowerCase() === urlClub.toLowerCase()));
+    if (matched) {
+      localStorage.setItem(ACTIVE_CLUB_ID_KEY, matched.id);
+      return matched.id;
+    }
+  }
+
+  let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
   if (!activeId || !registry.some(c => c.id === activeId)) {
     activeId = registry[0]?.id || 'club_smash';
     localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
@@ -176,6 +203,23 @@ function getActiveClubId() {
 
 function setActiveClubId(clubId) {
   localStorage.setItem(ACTIVE_CLUB_ID_KEY, clubId);
+}
+
+function getClubDirectUrl(clubOrId) {
+  const registry = getClubsRegistry();
+  const club = typeof clubOrId === 'string' ? registry.find(c => c.id === clubOrId) : clubOrId;
+  const clubId = club ? club.id : 'club_smash';
+
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  return `${baseUrl}?club=${encodeURIComponent(clubId)}`;
+}
+
+function updateClubUrlParam(clubId) {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('club', clubId);
+    window.history.replaceState({}, '', url.toString());
+  } catch (e) {}
 }
 
 function getActiveClub() {
@@ -6051,6 +6095,10 @@ function renderClubSwitcher() {
           ${optionsHtml}
         </select>
       </div>
+      <button type="button" onclick="openClubShortcutGuideModal()" class="px-2 py-1 bg-white hover:bg-slate-50 text-purple-900 border border-purple-200 font-bold text-xs rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0" title="Tạo lối tắt ra màn hình chính & Lấy link CLB này">
+        <span>📱</span>
+        <span class="hidden xl:inline">Lối tắt</span>
+      </button>
       <button type="button" onclick="openCreateClubModal()" class="px-2 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0" title="Tạo tài khoản Câu Lạc Bộ mới">
         <span>➕</span>
         <span class="hidden md:inline">Tạo CLB</span>
@@ -6070,8 +6118,9 @@ function switchActiveClub(clubId) {
   // 1. Lưu lại trạng thái CLB hiện tại
   saveData();
 
-  // 2. Chuyển đổi mã CLB tích cực
+  // 2. Chuyển đổi mã CLB tích cực & cập nhật URL
   setActiveClubId(clubId);
+  updateClubUrlParam(clubId);
   STORAGE_KEY = targetClub.storageKey;
 
   // 3. Tải dữ liệu của CLB đích
@@ -6552,6 +6601,45 @@ function renderMultiClubSettingsSection() {
           </div>
         </div>
 
+        <!-- Khối Link Riêng & Phím Tắt Màn Hình Chính -->
+        <div class="pt-2.5 border-t ${isActive ? 'border-emerald-200/80' : 'border-slate-100'} space-y-2 text-xs">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-extrabold text-slate-700 flex items-center gap-1.5">
+              <span>🔗</span>
+              <span>Link sử dụng riêng:</span>
+            </span>
+            <span class="font-mono text-[10px] text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md font-extrabold border border-emerald-300">
+              ?club=${club.id}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <div class="relative flex-1">
+              <input type="text" readonly value="${getClubDirectUrl(club.id)}" onclick="this.select()" class="w-full pl-2.5 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono text-slate-700 truncate select-all focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs" title="Đường dẫn truy cập trực tiếp CLB này" />
+              <button type="button" onclick="copyClubDirectLink('${club.id}')" class="absolute right-1 top-1 bottom-1 px-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition cursor-pointer" title="Sao chép liên kết này">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <button type="button" onclick="openClubDirectLink('${club.id}')" class="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl transition cursor-pointer shrink-0 shadow-2xs" title="Mở link trong tab mới">
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- 2 Phím tắt nhanh: Desktop & Điện thoại -->
+          <div class="grid grid-cols-2 gap-2 pt-0.5">
+            <button type="button" onclick="downloadClubDesktopShortcut('${club.id}')" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs" title="Tải file .url về máy tính và kéo ra màn hình Desktop">
+              <span>💻</span>
+              <span>Lối Tắt Desktop</span>
+            </button>
+
+            <button type="button" onclick="openClubShortcutGuideModal('${club.id}')" class="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs" title="Hướng dẫn tạo phím tắt màn hình chính iOS/Android & mã QR">
+              <span>📱</span>
+              <span>Lối Tắt MH Chính / QR</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Details & Actions -->
         <div class="flex items-center justify-between pt-1 text-[11px] text-slate-500">
           <span class="truncate max-w-[200px]" title="${club.bankInfo || ''}">
@@ -6573,6 +6661,128 @@ function renderMultiClubSettingsSection() {
   }).join('');
 
   lucide.createIcons();
+}
+
+// ==========================================
+// TIỆN ÍCH LINK RIÊNG & TẠO PHÍM TẮT MÀN HÌNH CHÍNH (SHORTCUT & DEEP LINKS)
+// ==========================================
+
+let currentModalShortcutClubId = null;
+
+function copyClubDirectLink(clubId) {
+  const targetId = clubId || getActiveClubId();
+  const registry = getClubsRegistry();
+  const club = registry.find(c => c.id === targetId);
+  const directUrl = getClubDirectUrl(targetId);
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(directUrl).then(() => {
+      showToast(`✓ Đã sao chép link riêng CLB: ${club?.name || targetId}!`, 'success');
+    }).catch(() => {
+      fallbackCopyText(directUrl, club?.name);
+    });
+  } else {
+    fallbackCopyText(directUrl, club?.name);
+  }
+}
+
+function fallbackCopyText(text, clubName) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    showToast(`✓ Đã sao chép link riêng CLB: ${clubName || ''}!`, 'success');
+  } catch (err) {
+    prompt('Sao chép đường dẫn này:', text);
+  }
+  document.body.removeChild(textArea);
+}
+
+function openClubDirectLink(clubId) {
+  const targetId = clubId || getActiveClubId();
+  const directUrl = getClubDirectUrl(targetId);
+  window.open(directUrl, '_blank');
+}
+
+function downloadClubDesktopShortcut(clubId) {
+  const targetId = clubId || getActiveClubId();
+  const registry = getClubsRegistry();
+  const club = registry.find(c => c.id === targetId) || getActiveClub();
+  if (!club) return;
+
+  const directUrl = getClubDirectUrl(targetId);
+  
+  // Chuẩn định dạng file .url của Windows Internet Shortcut
+  const shortcutContent = `[InternetShortcut]\r\nURL=${directUrl}\r\nIconIndex=0\r\nHotKey=0\r\n[{000214A0-0000-0000-C000-000000000046}]\r\nProp3=19,0\r\n`;
+  
+  const blob = new Blob([shortcutContent], { type: 'application/internet-shortcut;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  
+  const safeName = (club.name || 'CLB_Cau_Long').replace(/[/\\?%*:|"<>]/g, '_');
+  a.download = `${safeName}.url`;
+  
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+
+  showToast(`🎉 Đã tải file lối tắt Desktop cho "${club.name}"! Kéo file này ra màn hình chính để dùng ngay.`, 'success');
+}
+
+function openClubShortcutGuideModal(clubId) {
+  const targetId = clubId || getActiveClubId();
+  const registry = getClubsRegistry();
+  const club = registry.find(c => c.id === targetId) || getActiveClub();
+  if (!club) return;
+
+  currentModalShortcutClubId = club.id;
+
+  const modal = document.getElementById('modalClubShortcutGuide');
+  if (!modal) return;
+
+  const nameEl = document.getElementById('shortcutModalClubName');
+  const badgeEl = document.getElementById('shortcutModalClubBadge');
+  const iconEl = document.getElementById('shortcutModalClubIcon');
+  const urlInput = document.getElementById('shortcutModalUrlInput');
+  const qrImg = document.getElementById('shortcutModalQrImg');
+
+  const directUrl = getClubDirectUrl(club.id);
+
+  if (nameEl) nameEl.textContent = club.name;
+  if (badgeEl) badgeEl.textContent = club.shortName || 'CLB';
+  if (iconEl) iconEl.textContent = club.logoIcon || '🏸';
+  if (urlInput) urlInput.value = directUrl;
+
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(directUrl)}`;
+  }
+
+  modal.classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function copyModalClubDirectLink() {
+  if (currentModalShortcutClubId) {
+    copyClubDirectLink(currentModalShortcutClubId);
+  }
+}
+
+function openModalClubDirectLink() {
+  if (currentModalShortcutClubId) {
+    openClubDirectLink(currentModalShortcutClubId);
+  }
+}
+
+function downloadModalClubDesktopShortcut() {
+  if (currentModalShortcutClubId) {
+    downloadClubDesktopShortcut(currentModalShortcutClubId);
+  }
 }
 
 // ==========================================
@@ -11043,6 +11253,15 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleLeadershipCollapse();
     } else if (rawHash === 'multi-club-settings') {
       switchTab('settings');
+      setTimeout(() => {
+        const el = document.getElementById('multiClubListContainer');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    } else if (rawHash === 'club-shortcut-modal') {
+      switchTab('settings');
+      setTimeout(() => {
+        openClubShortcutGuideModal();
+      }, 300);
     } else if (rawHash === 'user-access-modal') {
       switchTab('settings');
       setTimeout(() => {
