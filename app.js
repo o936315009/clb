@@ -333,6 +333,7 @@ let STORAGE_KEY = getCurrentClubStorageKey();
 // 0. ĐỊNH NGHĨA VAI TRÒ & PHÂN QUYỀN HỆ THỐNG (USER ACCESS & PERMISSIONS)
 // ==========================================
 const ROLE_DEFINITIONS = {
+  DEV_ADMIN: { label: 'Admin Nhà Phát Triển', icon: '🚀', color: 'purple', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300' },
   ADMIN: { label: 'Chủ nhiệm', icon: '👑', color: 'amber', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300' },
   VICE_ADMIN: { label: 'Phó nhóm', icon: '🛡️', color: 'blue', badgeClass: 'bg-blue-100 text-blue-900 border-blue-300' },
   TREASURER: { label: 'Thủ quỹ', icon: '💰', color: 'emerald', badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
@@ -340,6 +341,8 @@ const ROLE_DEFINITIONS = {
   MEMBER: { label: 'Thành viên', icon: '👤', color: 'slate', badgeClass: 'bg-slate-100 text-slate-800 border-slate-300' },
   CUSTOM: { label: 'Tùy biến', icon: '⚙️', color: 'indigo', badgeClass: 'bg-indigo-100 text-indigo-900 border-indigo-300' }
 };
+
+const DEV_ADMIN_SESSION_KEY = 'CLB_DEV_ADMIN_LOGGED_IN_V1';
 
 const PERMISSION_KEYS = ['attendance', 'finance', 'member', 'tournament', 'referee', 'config'];
 
@@ -354,17 +357,19 @@ const PERMISSION_DEFINITIONS = {
 
 function getRoleDefaultPermissions(role) {
   switch (role) {
+    case 'DEV_ADMIN':
+      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: true };
     case 'ADMIN':
-      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true };
+      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: false };
     case 'VICE_ADMIN':
-      return { attendance: true, finance: false, member: true, tournament: true, referee: true, config: false };
+      return { attendance: true, finance: false, member: true, tournament: true, referee: true, config: false, createClub: false };
     case 'TREASURER':
-      return { attendance: true, finance: true, member: false, tournament: false, referee: false, config: false };
+      return { attendance: true, finance: true, member: false, tournament: false, referee: false, config: false, createClub: false };
     case 'REFEREE':
-      return { attendance: false, finance: false, member: false, tournament: true, referee: true, config: false };
+      return { attendance: false, finance: false, member: false, tournament: true, referee: true, config: false, createClub: false };
     case 'MEMBER':
     default:
-      return { attendance: false, finance: false, member: false, tournament: false, referee: false, config: false };
+      return { attendance: false, finance: false, member: false, tournament: false, referee: false, config: false, createClub: false };
   }
 }
 
@@ -6548,7 +6553,177 @@ function setClubInputError(el) {
   el.style.setProperty('background-color', '#fff1f2', 'important');
 }
 
-function openCreateClubModal() {
+// ==========================================
+// 15.6 QUẢN TRỊ VIÊN NHÀ PHÁT TRIỂN & BẢO VỆ TẠO CLB (DEV SUPER ADMIN GUARD)
+// ==========================================
+
+function isDeveloperAdmin() {
+  try {
+    const sessionActive = localStorage.getItem(DEV_ADMIN_SESSION_KEY) === 'true';
+    const isDevRole = AppState?.auth?.isLoggedIn && AppState?.auth?.user?.role === 'DEV_ADMIN';
+    return sessionActive || isDevRole;
+  } catch (e) {
+    return false;
+  }
+}
+
+function verifyDevAdminCredentials(username, password) {
+  const u = (username || '').trim().toLowerCase();
+  const p = (password || '').trim();
+  // Tài khoản Admin Nhà phát triển cấp cao: admin / admin123 hoặc dev / dev123
+  return (u === 'admin' || u === 'dev' || u === 'developer') &&
+         (p === 'admin123' || p === 'dev123' || p === '123456' || p === '123');
+}
+
+function loginAsDeveloperAdmin(username, password) {
+  if (!verifyDevAdminCredentials(username, password)) {
+    return false;
+  }
+  try {
+    localStorage.setItem(DEV_ADMIN_SESSION_KEY, 'true');
+    const u = (username || 'admin').trim();
+    if (!AppState.auth) AppState.auth = {};
+    AppState.auth.isLoggedIn = true;
+    AppState.auth.user = {
+      id: 'DEV_001',
+      username: u,
+      role: 'DEV_ADMIN',
+      name: 'Admin Nhà Phát Triển (Super Admin)',
+      permissions: getRoleDefaultPermissions('DEV_ADMIN')
+    };
+    saveData();
+  } catch (e) {}
+  updateDevAdminUI();
+  renderAuthBadge();
+  return true;
+}
+
+function logoutDeveloperAdmin() {
+  try {
+    localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
+    if (AppState?.auth?.user?.role === 'DEV_ADMIN') {
+      const activeClub = getActiveClub();
+      const adminMem = AppState.members?.find(m => m.role === 'ADMIN') || AppState.members?.[0];
+      const adminName = adminMem ? adminMem.name : (activeClub?.adminName || 'Chủ nhiệm');
+      AppState.auth = {
+        isLoggedIn: true,
+        user: {
+          id: adminMem ? adminMem.id : 'M001',
+          username: adminMem ? adminMem.username : 'admin',
+          role: 'ADMIN',
+          name: `${adminName} (Chủ nhiệm)`,
+          permissions: getRoleDefaultPermissions('ADMIN')
+        }
+      };
+      saveData();
+    }
+  } catch (e) {}
+  updateDevAdminUI();
+  renderAuthBadge();
+  showToast('Đã đăng xuất phiên Admin Nhà phát triển.', 'info');
+}
+
+function openDevAdminAuthModal() {
+  const errBox = document.getElementById('devAdminAuthError');
+  if (errBox) {
+    errBox.textContent = '';
+    errBox.classList.add('hidden');
+  }
+  openModal('modalDevAdminAuth');
+  setTimeout(() => {
+    const passInput = document.getElementById('devAdminAuthPass');
+    if (passInput) passInput.focus();
+  }, 100);
+}
+
+function fillSampleDevAdminCreds() {
+  const u = document.getElementById('devAdminAuthUser');
+  const p = document.getElementById('devAdminAuthPass');
+  if (u) u.value = 'admin';
+  if (p) p.value = 'admin123';
+}
+
+function fillQuickLogin(username, password) {
+  const u = document.getElementById('loginUsername');
+  const p = document.getElementById('loginPassword');
+  if (u) u.value = username;
+  if (p) p.value = password;
+}
+
+function handleDevAdminAuthSubmit(e) {
+  if (e) e.preventDefault();
+  const uInput = document.getElementById('devAdminAuthUser');
+  const pInput = document.getElementById('devAdminAuthPass');
+  const errBox = document.getElementById('devAdminAuthError');
+
+  const u = uInput?.value.trim() || '';
+  const p = pInput?.value.trim() || '';
+
+  if (loginAsDeveloperAdmin(u, p)) {
+    closeModal('modalDevAdminAuth');
+    showToast('✓ Xác thực Admin Nhà phát triển thành công! Đã mở quyền tạo CLB.', 'success');
+    openCreateClubModal(true);
+  } else {
+    if (errBox) {
+      errBox.textContent = '❌ Tên đăng nhập hoặc mật khẩu Admin Nhà phát triển không đúng! (Mặc định: admin / admin123)';
+      errBox.classList.remove('hidden');
+    } else {
+      showToast('Tên đăng nhập hoặc mật khẩu Admin Nhà phát triển không đúng!', 'error');
+    }
+  }
+}
+
+function updateDevAdminUI() {
+  const isDev = isDeveloperAdmin();
+
+  // 1. Badge trạng thái trong Settings
+  const badge = document.getElementById('badgeDevAdminStatus');
+  if (badge) {
+    if (isDev) {
+      badge.className = 'px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-xs rounded-full flex items-center gap-1 shadow-2xs';
+      badge.innerHTML = `<span>🚀</span><span>Admin Nhà Phát Triển (Đang bật)</span>`;
+    } else {
+      badge.className = 'px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs rounded-full flex items-center gap-1';
+      badge.innerHTML = `<span>🔒</span><span>Chưa cấp quyền Admin Dev</span>`;
+    }
+  }
+
+  // 2. Nút chuyển phiên Dev Admin trong Settings
+  const btnToggle = document.getElementById('btnToggleDevAdminSession');
+  if (btnToggle) {
+    if (isDev) {
+      btnToggle.className = 'px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
+      btnToggle.onclick = logoutDeveloperAdmin;
+      btnToggle.innerHTML = `<span>🔒</span><span>Khóa quyền Admin Dev</span>`;
+    } else {
+      btnToggle.className = 'px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
+      btnToggle.onclick = openDevAdminAuthModal;
+      btnToggle.innerHTML = `<span>🚀</span><span>Đăng nhập Admin Nhà Phát Triển</span>`;
+    }
+  }
+
+  // 3. Nút Tạo CLB Mới trong Settings
+  const btnCreate = document.getElementById('btnCreateClubInSettings');
+  if (btnCreate) {
+    if (isDev) {
+      btnCreate.className = 'px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+      btnCreate.title = 'Khởi tạo CLB mới vào hệ thống';
+      btnCreate.innerHTML = `<span>➕</span><span>Tạo Câu Lạc Bộ Mới</span>`;
+    } else {
+      btnCreate.className = 'px-3.5 py-1.5 bg-slate-100 hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+      btnCreate.title = 'Yêu cầu đăng nhập tài khoản Admin Nhà phát triển';
+      btnCreate.innerHTML = `<span>🔒</span><span>Tạo CLB Mới (Cần quyền Admin Dev)</span>`;
+    }
+  }
+}
+
+function openCreateClubModal(skipGuard) {
+  if (!skipGuard && !isDeveloperAdmin()) {
+    showToast('⚠️ Bạn cần đăng nhập tài khoản Admin Nhà phát triển để tạo CLB mới!', 'warning');
+    openDevAdminAuthModal();
+    return;
+  }
+
   const modal = document.getElementById('modalCreateNewClub');
   if (!modal) return;
 
@@ -6645,6 +6820,12 @@ function updateNewClubSlugPreview(slug) {
 
 function handleCreateNewClubSubmit(event) {
   if (event) event.preventDefault();
+
+  if (!isDeveloperAdmin()) {
+    showToast('⛔ Quyền bị từ chối: Chỉ Admin Nhà phát triển mới có quyền khởi tạo CLB!', 'error');
+    openDevAdminAuthModal();
+    return;
+  }
 
   const modal = document.getElementById('modalCreateNewClub');
   const modalBody = modal ? modal.querySelector('.overflow-y-auto') : null;
@@ -7179,6 +7360,7 @@ function renderMultiClubSettingsSection() {
   }).join('');
 
   lucide.createIcons();
+  updateDevAdminUI();
 }
 
 // ==========================================
@@ -10941,24 +11123,24 @@ function renderAuthBadge() {
     const user = AppState.auth.user;
     const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.MEMBER;
     badgeContainer.innerHTML = `
-      <div class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full border border-slate-200 text-xs transition">
-        <div class="w-6 h-6 rounded-full bg-purple-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-          ${user.name.charAt(0).toUpperCase()}
+      <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1 rounded-full border border-slate-200 text-xs transition shadow-2xs">
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-inner">
+          ${user.role === 'DEV_ADMIN' ? '🚀' : (user.name ? user.name.charAt(0).toUpperCase() : '👤')}
         </div>
-        <span class="font-bold text-slate-800 hidden sm:inline">${user.name}</span>
-        <span class="px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass}">
-          ${roleDef.icon} ${roleDef.label}
+        <span class="font-bold text-slate-800 text-xs truncate max-w-[70px] sm:max-w-[130px] hidden xs:inline">${user.name}</span>
+        <span class="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass}">
+          ${roleDef.icon} ${user.role === 'DEV_ADMIN' ? 'Admin Dev' : roleDef.label}
         </span>
-        <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-600 ml-1 cursor-pointer" title="Đăng xuất">
+        <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer p-0.5" title="Đăng xuất">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
         </button>
       </div>
     `;
   } else {
     badgeContainer.innerHTML = `
-      <button onclick="openLoginModal()" class="inline-flex items-center px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-full transition shadow-sm cursor-pointer">
-        <i data-lucide="lock" class="w-3.5 h-3.5 mr-1.5"></i>
-        Đăng nhập
+      <button onclick="openLoginModal()" class="inline-flex items-center px-2.5 sm:px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-full transition shadow-xs cursor-pointer">
+        <i data-lucide="lock" class="w-3.5 h-3.5 mr-1"></i>
+        <span>Đăng nhập</span>
       </button>
     `;
   }
@@ -10975,35 +11157,28 @@ function handleLogin(e) {
   const u = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value.trim();
 
-  if (u === 'admin' && (p === 'admin123' || p === '123456' || p === '123')) {
-    const activeClub = getActiveClub();
-    const adminMem = AppState.members.find(m => m.role === 'ADMIN') || AppState.members[0];
-    const adminDisplayName = adminMem ? adminMem.name : (activeClub?.adminName || 'Chủ nhiệm');
-    AppState.auth = {
-      isLoggedIn: true,
-      user: {
-        id: adminMem ? adminMem.id : 'M001',
-        username: 'admin',
-        role: 'ADMIN',
-        name: `${adminDisplayName} (Chủ nhiệm)`,
-        permissions: getRoleDefaultPermissions('ADMIN')
-      }
-    };
-    saveData();
+  // 1. Kiểm tra tài khoản Admin Nhà Phát Triển (Super Admin)
+  if (verifyDevAdminCredentials(u, p)) {
+    loginAsDeveloperAdmin(u, p);
     closeModal('loginModal');
-    renderAuthBadge();
     renderAttendanceRoleBanner();
     renderUserAccessTable();
-    showToast('✓ Đăng nhập thành công với quyền Chủ nhiệm!', 'success');
+    showToast('✓ Đăng nhập thành công với quyền Admin Nhà Phát Triển (Toàn quyền tạo CLB & hệ thống)!', 'success');
     return;
   }
 
+  // 2. Kiểm tra tài khoản Chủ nhiệm CLB hoặc Hội viên trong danh sách CLB hiện tại
   const member = AppState.members.find(m => m.username && m.username.toLowerCase() === u.toLowerCase() && m.password === p);
   if (member) {
     if (member.status === 'LOCKED') {
       showToast(`⚠️ Tài khoản ${member.name} đang bị tạm khóa. Vui lòng liên hệ Ban quản trị!`, 'error');
       return;
     }
+    // Đăng nhập hội viên / chủ nhiệm CLB (không có quyền Dev Admin)
+    try {
+      localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
+    } catch (e) {}
+
     AppState.auth = {
       isLoggedIn: true,
       user: {
@@ -11016,6 +11191,7 @@ function handleLogin(e) {
     };
     saveData();
     closeModal('loginModal');
+    updateDevAdminUI();
     renderAuthBadge();
     renderAttendanceRoleBanner();
     renderUserAccessTable();
@@ -11024,12 +11200,16 @@ function handleLogin(e) {
     return;
   }
 
-  showToast('Tài khoản hoặc mật khẩu không chính xác! (Mặc định: 123456)', 'error');
+  showToast('Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123 hoặc chinh / 123)', 'error');
 }
 
 function handleLogout() {
+  try {
+    localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
+  } catch (e) {}
   AppState.auth = { isLoggedIn: false, user: null };
   saveData();
+  updateDevAdminUI();
   renderAuthBadge();
   renderAttendanceRoleBanner();
   renderUserAccessTable();
@@ -11866,6 +12046,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDashboard();
   renderClubSwitcher();
   updateDevDemoToggleUI();
+  updateDevAdminUI();
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();

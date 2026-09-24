@@ -18,7 +18,7 @@ git add .
 
 echo.
 echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Toi uu giao dien dien thoai di dong, an header thua va them thanh dieu huong day"
+git commit -m "Them quyen Admin Nha Phat Trien va bao ve chuc nang tao CLB"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...
