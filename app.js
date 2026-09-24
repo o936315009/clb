@@ -6100,9 +6100,26 @@ function switchActiveClub(clubId) {
   showToast(`✓ Đã chuyển sang Câu Lạc Bộ: ${targetClub.name}`, 'success');
 }
 
+function clearClubInputError(el) {
+  if (!el) return;
+  el.style.removeProperty('border');
+  el.style.removeProperty('box-shadow');
+  el.style.removeProperty('background-color');
+}
+
+function setClubInputError(el) {
+  if (!el) return;
+  el.style.setProperty('border', '2px solid #f43f5e', 'important');
+  el.style.setProperty('box-shadow', '0 0 0 4px rgba(244, 63, 94, 0.25)', 'important');
+  el.style.setProperty('background-color', '#fff1f2', 'important');
+}
+
 function openCreateClubModal() {
   const modal = document.getElementById('modalCreateNewClub');
   if (!modal) return;
+
+  const modalBody = modal.querySelector('.overflow-y-auto');
+  if (modalBody) modalBody.scrollTop = 0;
 
   const nameInput = document.getElementById('newClubName');
   const shortInput = document.getElementById('newClubShortName');
@@ -6114,6 +6131,8 @@ function openCreateClubModal() {
   const adminPassInput = document.getElementById('newClubAdminPassword');
   const fundInput = document.getElementById('newClubInitialFund');
   const bankInput = document.getElementById('newClubBankInfo');
+
+  [nameInput, shortInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
 
   if (nameInput) nameInput.value = '';
   if (shortInput) shortInput.value = '';
@@ -6144,14 +6163,17 @@ function selectClubModalIcon(icon) {
   }
 }
 
+function getSuggestedClubShortName(fullName) {
+  if (!fullName) return '';
+  let clean = fullName.replace(/^(clb\s+cầu\s+lông|câu\s+lạc\s+bộ\s+cầu\s+lông|clb|cầu\s+lông)\s*/i, '').trim();
+  if (!clean) clean = fullName;
+  return clean.toUpperCase();
+}
+
 function autoSuggestClubShortName(fullName) {
   const shortInput = document.getElementById('newClubShortName');
   if (!shortInput || !fullName) return;
-
-  let clean = fullName.replace(/^(clb\s+cầu\s+lông|câu\s+lạc\s+bộ\s+cầu\s+lông|clb|cầu\s+lông)\s*/i, '').trim();
-  if (!clean) clean = fullName;
-
-  shortInput.value = clean.toUpperCase();
+  shortInput.value = getSuggestedClubShortName(fullName);
 }
 
 function autoSuggestClubAdminUsername(name) {
@@ -6164,26 +6186,80 @@ function autoSuggestClubAdminUsername(name) {
 function handleCreateNewClubSubmit(event) {
   if (event) event.preventDefault();
 
-  const name = document.getElementById('newClubName')?.value.trim();
-  const shortName = document.getElementById('newClubShortName')?.value.trim();
-  const logoIcon = document.getElementById('newClubLogoIcon')?.value || '🏸';
-  const themeColor = document.getElementById('newClubThemeColor')?.value || 'emerald';
-  const adminName = document.getElementById('newClubAdminName')?.value.trim();
-  const adminPhone = document.getElementById('newClubAdminPhone')?.value.trim() || '';
-  const adminUsername = document.getElementById('newClubAdminUsername')?.value.trim();
-  const adminPassword = document.getElementById('newClubAdminPassword')?.value.trim() || '123456';
-  const initialFund = Number(document.getElementById('newClubInitialFund')?.value) || 0;
-  const bankInfo = document.getElementById('newClubBankInfo')?.value.trim() || '';
+  const modal = document.getElementById('modalCreateNewClub');
+  const modalBody = modal ? modal.querySelector('.overflow-y-auto') : null;
+
+  const nameInput = document.getElementById('newClubName');
+  const shortInput = document.getElementById('newClubShortName');
+  const logoInput = document.getElementById('newClubLogoIcon');
+  const themeInput = document.getElementById('newClubThemeColor');
+  const adminNameInput = document.getElementById('newClubAdminName');
+  const adminPhoneInput = document.getElementById('newClubAdminPhone');
+  const adminUserInput = document.getElementById('newClubAdminUsername');
+  const adminPassInput = document.getElementById('newClubAdminPassword');
+  const fundInput = document.getElementById('newClubInitialFund');
+  const bankInput = document.getElementById('newClubBankInfo');
+
+  // Reset highlight lỗi trước đó
+  [nameInput, shortInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
+
+  let name = nameInput?.value.trim() || '';
+  let shortName = shortInput?.value.trim() || '';
+  const logoIcon = logoInput?.value || '🏸';
+  const themeColor = themeInput?.value || 'emerald';
+  let adminName = adminNameInput?.value.trim() || '';
+  const adminPhone = adminPhoneInput?.value.trim() || '';
+  let adminUsername = adminUserInput?.value.trim() || '';
+  const adminPassword = adminPassInput?.value.trim() || '123456';
+  const initialFund = Number(fundInput?.value) || 0;
+  const bankInfo = bankInput?.value.trim() || '';
+
+  // 1. Bắt buộc Tên Câu Lạc Bộ
+  if (!name) {
+    if (modalBody) modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+    if (nameInput) {
+      setClubInputError(nameInput);
+      nameInput.focus();
+    }
+    showToast('Vui lòng nhập Tên Câu Lạc Bộ (*)!', 'warning');
+    return;
+  }
+
+  // 2. Tự động tạo Tên viết tắt nếu chưa nhập
+  if (!shortName) {
+    shortName = getSuggestedClubShortName(name) || name.toUpperCase();
+    if (shortInput) shortInput.value = shortName;
+  }
+
+  // 3. Thông minh hóa: Kiểm tra Họ tên & Username Chủ nhiệm
+  if (!adminName && !adminUsername) {
+    if (modalBody && adminNameInput) {
+      adminNameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (adminNameInput) {
+      setClubInputError(adminNameInput);
+      adminNameInput.focus();
+    }
+    showToast('Vui lòng nhập Họ tên hoặc Tên đăng nhập Chủ nhiệm (*)!', 'warning');
+    return;
+  }
+
+  // Nếu người dùng chỉ nhập Username (vd: tntoan) -> Tự động lấy làm Họ tên Chủ nhiệm
+  if (!adminName && adminUsername) {
+    adminName = adminUsername;
+    if (adminNameInput) adminNameInput.value = adminName;
+  }
+
+  // Nếu người dùng chỉ nhập Họ tên -> Tự động tạo Username
+  if (!adminUsername && adminName) {
+    adminUsername = generateAutoUsername(adminName) || 'admin';
+    if (adminUserInput) adminUserInput.value = adminUsername;
+  }
 
   const modeRadios = document.getElementsByName('newClubInitMode');
   let initMode = 'SAMPLE';
   for (const r of modeRadios) {
     if (r.checked) { initMode = r.value; break; }
-  }
-
-  if (!name || !shortName || !adminName || !adminUsername) {
-    showToast('Vui lòng điền đầy đủ các thông tin bắt buộc (*)!', 'warning');
-    return;
   }
 
   const clubId = 'club_' + Date.now();
@@ -8727,11 +8803,11 @@ function openAddClubModal() {
   const form = document.getElementById('formAddTournamentClub');
   if (form) form.reset();
 
-  const nameInput = document.getElementById('newClubName');
+  const nameInput = document.getElementById('tourNewClubName');
   if (nameInput) nameInput.value = '';
-  const codeInput = document.getElementById('newClubCode');
+  const codeInput = document.getElementById('tourNewClubCode');
   if (codeInput) codeInput.value = '';
-  const contactInput = document.getElementById('newClubContact');
+  const contactInput = document.getElementById('tourNewClubContact');
   if (contactInput) contactInput.value = '';
 
   const batchPanel = document.getElementById('panelBatchImportMembers');
@@ -8763,7 +8839,7 @@ function setTempMemberGender(gender) {
 }
 
 function autoSuggestClubCode(name) {
-  const codeInput = document.getElementById('newClubCode');
+  const codeInput = document.getElementById('tourNewClubCode');
   if (!codeInput) return;
   if (!name.trim()) {
     codeInput.value = '';
@@ -8823,9 +8899,9 @@ function addMemberToClubTempList() {
 }
 
 function loadSampleClubMembers() {
-  const nameInput = document.getElementById('newClubName');
-  const codeInput = document.getElementById('newClubCode');
-  const contactInput = document.getElementById('newClubContact');
+  const nameInput = document.getElementById('tourNewClubName');
+  const codeInput = document.getElementById('tourNewClubCode');
+  const contactInput = document.getElementById('tourNewClubContact');
 
   if (nameInput && !nameInput.value.trim()) {
     nameInput.value = 'CLB Cầu Lông Ngôi Sao Thủ Đô';
@@ -9039,11 +9115,11 @@ function handleAddNewClubSubmit(e) {
   const tour = getActiveTournament();
   if (!tour) return;
 
-  const name = document.getElementById('newClubName').value.trim();
-  const rawCode = document.getElementById('newClubCode').value.trim();
+  const name = document.getElementById('tourNewClubName').value.trim();
+  const rawCode = document.getElementById('tourNewClubCode').value.trim();
   const code = (rawCode || `CLB_${Date.now()}`).toUpperCase().replace(/\s+/g, '_');
-  const country = document.getElementById('newClubCountry').value;
-  const contact = document.getElementById('newClubContact').value.trim();
+  const country = document.getElementById('tourNewClubCountry').value;
+  const contact = document.getElementById('tourNewClubContact').value.trim();
 
   if (!name) {
     showToast('Tên CLB không được để trống!', 'warning');

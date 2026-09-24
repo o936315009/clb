@@ -1932,18 +1932,18 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div class="sm:col-span-2">
                     <label class="block font-bold text-slate-700 mb-1">Tên CLB / Đơn vị (*):</label>
-                    <input type="text" id="newClubName" required placeholder="VD: CLB Cầu Lông Ngôi Sao Thủ Đô" class="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold bg-white focus:outline-none focus:ring-1 focus:ring-purple-500" oninput="autoSuggestClubCode(this.value)" />
+                    <input type="text" id="tourNewClubName" required placeholder="VD: CLB Cầu Lông Ngôi Sao Thủ Đô" class="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold bg-white focus:outline-none focus:ring-1 focus:ring-purple-500" oninput="autoSuggestClubCode(this.value)" />
                   </div>
                   <div>
                     <label class="block font-bold text-slate-700 mb-1">Mã viết tắt (*):</label>
-                    <input type="text" id="newClubCode" placeholder="VD: NS_HANOI" class="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold uppercase bg-white focus:outline-none focus:ring-1 focus:ring-purple-500" />
+                    <input type="text" id="tourNewClubCode" placeholder="VD: NS_HANOI" class="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold uppercase bg-white focus:outline-none focus:ring-1 focus:ring-purple-500" />
                   </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label class="block font-bold text-slate-700 mb-1">Quốc gia / Khu vực:</label>
-                    <select id="newClubCountry" class="w-full px-2.5 py-2 border border-slate-200 rounded-xl font-semibold bg-white cursor-pointer">
+                    <select id="tourNewClubCountry" class="w-full px-2.5 py-2 border border-slate-200 rounded-xl font-semibold bg-white cursor-pointer">
                       <option value="VN">🇻🇳 Việt Nam</option>
                       <option value="KR">🇰🇷 Hàn Quốc</option>
                       <option value="JP">🇯🇵 Nhật Bản</option>
@@ -1952,7 +1952,7 @@
                   </div>
                   <div>
                     <label class="block font-bold text-slate-700 mb-1">Đại diện / Liên hệ:</label>
-                    <input type="text" id="newClubContact" placeholder="VD: Nguyễn Hoàng Sơn (Trưởng đoàn - 0989...)" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white" />
+                    <input type="text" id="tourNewClubContact" placeholder="VD: Nguyễn Hoàng Sơn (Trưởng đoàn - 0989...)" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white" />
                   </div>
                 </div>
               </div>
@@ -4343,7 +4343,7 @@
       </div>
 
       <!-- Modal Body Form -->
-      <form onsubmit="handleCreateNewClubSubmit(event)" class="flex flex-col flex-1 overflow-hidden">
+      <form onsubmit="handleCreateNewClubSubmit(event)" novalidate class="flex flex-col flex-1 overflow-hidden">
         <div class="p-5 overflow-y-auto space-y-5 text-xs">
 
           <!-- 1. THÔNG TIN ĐỊNH DANH CÂU LẠC BỘ -->
@@ -4359,12 +4359,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div class="sm:col-span-2">
                 <label class="block font-bold text-slate-700 mb-1">Tên Câu Lạc Bộ (*):</label>
-                <input type="text" id="newClubName" required placeholder="VD: CLB Cầu Lông Tia Chớp" oninput="autoSuggestClubShortName(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <input type="text" id="newClubName" placeholder="VD: CLB Cầu Lông Tia Chớp" oninput="autoSuggestClubShortName(this.value); clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
 
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tên viết tắt / Mã (*):</label>
-                <input type="text" id="newClubShortName" required placeholder="VD: TIA CHỚP" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-black text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
+                <input type="text" id="newClubShortName" placeholder="VD: TIA CHỚP" oninput="clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-black text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
               </div>
             </div>
 
@@ -4412,7 +4412,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Họ và tên Chủ nhiệm (*):</label>
-                <input type="text" id="newClubAdminName" required placeholder="VD: Nguyễn Hoàng Long" oninput="autoSuggestClubAdminUsername(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                <input type="text" id="newClubAdminName" placeholder="VD: Nguyễn Hoàng Long" oninput="autoSuggestClubAdminUsername(this.value); clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
 
               <div>
@@ -4422,12 +4422,12 @@
 
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tên đăng nhập (Username) (*):</label>
-                <input type="text" id="newClubAdminUsername" required placeholder="VD: long_admin" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                <input type="text" id="newClubAdminUsername" placeholder="VD: long_admin" oninput="clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
 
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Mật khẩu đăng nhập (*):</label>
-                <input type="text" id="newClubAdminPassword" required value="123456" placeholder="Nhập mật khẩu..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                <input type="text" id="newClubAdminPassword" value="123456" placeholder="Nhập mật khẩu..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
             </div>
           </div>

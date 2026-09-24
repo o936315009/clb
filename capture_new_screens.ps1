@@ -54,6 +54,41 @@ $targets = @(
     Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\User-Access-Modal.png"
     Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\User-Access-Modal.png"
     DelayMs = 2000
+  },
+  @{
+    Name = "Create-Club-Modal"
+    Url = "file:///C:/Users/ADMIN/.gemini/antigravity/scratch/clb-cau-long/index.html#create-club-modal"
+    Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\Create-Club-Modal.png"
+    Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\Create-Club-Modal.png"
+    DelayMs = 2000
+  },
+  @{
+    Name = "Settings-Multi-Club"
+    Url = "file:///C:/Users/ADMIN/.gemini/antigravity/scratch/clb-cau-long/index.html#multi-club-settings"
+    Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\Settings-Multi-Club.png"
+    Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\Settings-Multi-Club.png"
+    DelayMs = 2000
+  },
+  @{
+    Name = "Header-Club-Switcher"
+    Url = "file:///C:/Users/ADMIN/.gemini/antigravity/scratch/clb-cau-long/index.html#dashboard"
+    Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\Header-Club-Switcher.png"
+    Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\Header-Club-Switcher.png"
+    DelayMs = 2000
+  },
+  @{
+    Name = "Club-Switched-View"
+    Url = "file:///C:/Users/ADMIN/.gemini/antigravity/scratch/clb-cau-long/index.html#switch-lightning"
+    Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\Club-Switched-View.png"
+    Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\Club-Switched-View.png"
+    DelayMs = 2500
+  },
+  @{
+    Name = "Reset-To-Smash"
+    Url = "file:///C:/Users/ADMIN/.gemini/antigravity/scratch/clb-cau-long/index.html#switch-smash"
+    Output = "C:\Users\ADMIN\.gemini\antigravity\scratch\clb-cau-long\Reset-Smash.png"
+    Artifact = "C:\Users\ADMIN\.gemini\antigravity\brain\b1b6a0dd-94d6-4ea2-a5dc-a68db78b1ec6\Reset-Smash.png"
+    DelayMs = 1500
   }
 )
 
