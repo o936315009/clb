@@ -987,9 +987,9 @@ function switchTab(tabId) {
     const mBtn = document.getElementById(`m-nav-${id}`);
     if (mBtn) {
       if (id === tabId) {
-        mBtn.className = 'flex flex-col items-center py-1 text-[11px] font-semibold text-brand-700';
+        mBtn.className = 'flex flex-col items-center justify-center py-1 px-1 text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer';
       } else {
-        mBtn.className = 'flex flex-col items-center py-1 text-[11px] font-semibold text-slate-500';
+        mBtn.className = 'flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer';
       }
     }
   });
@@ -6413,9 +6413,26 @@ function handleResetPasswordSubmit(e) {
 // Cho phép tạo thêm CLB mới (Quỹ, Thành viên, Tài khoản Chủ nhiệm riêng) và chuyển đổi linh hoạt
 // ==========================================
 
+function renderAuthBadge() {
+  const container = document.getElementById('userAuthBadge');
+  if (!container) return;
+
+  const auth = AppState.auth || {};
+  const user = auth.user || {};
+  const role = user.role || 'ADMIN';
+  const roleDef = ROLE_DEFINITIONS[role] || { label: 'Chủ nhiệm', icon: '👑', color: 'amber' };
+  const displayName = user.name ? user.name.split(' (')[0] : (user.username || 'Admin');
+
+  container.innerHTML = `
+    <button type="button" onclick="switchTab('settings')" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200 transition cursor-pointer shadow-2xs" title="Tài khoản: ${user.name || user.username || 'Admin'} - Vai trò: ${roleDef.label}">
+      <span class="text-xs sm:text-sm">${roleDef.icon || '👑'}</span>
+      <span class="truncate max-w-[65px] sm:max-w-[110px]">${displayName}</span>
+    </button>
+  `;
+}
+
 function renderClubSwitcher() {
   const container = document.getElementById('headerClubSwitcherContainer');
-  if (!container) return;
 
   const registry = getClubsRegistry();
   const activeClub = getActiveClub();
@@ -6431,6 +6448,11 @@ function renderClubSwitcher() {
 
   const nameEl = document.getElementById('headerClubName');
   if (nameEl) nameEl.textContent = AppState.config?.clubName || activeClub.name;
+
+  const subTitleEl = document.getElementById('headerClubSubTitle');
+  if (subTitleEl) subTitleEl.textContent = '';
+
+  if (!container) return;
 
   let optionsHtml = listToRender.map(c => `
     <option value="${c.id}" ${c.id === activeClub.id ? 'selected' : ''} class="text-slate-900 font-bold py-1">
