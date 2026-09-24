@@ -11967,13 +11967,24 @@ function parseFirebaseConfigInput(rawInput) {
   return null;
 }
 
+// Cấu hình Firebase mặc định của dự án clblaptri
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAQ08HDY7wi9jQnhTH7mHkoavdRzIas-lA",
+  authDomain: "clblaptri.firebaseapp.com",
+  databaseURL: "https://clblaptri-default-rtdb.firebaseio.com",
+  projectId: "clblaptri",
+  storageBucket: "clblaptri.firebasestorage.app",
+  messagingSenderId: "324734150204",
+  appId: "1:324734150204:web:6aa6524fa6cdabe8cfc539",
+  measurementId: "G-6HK3TLY2HW"
+};
+
 function getStoredFirebaseConfig() {
   try {
     const raw = localStorage.getItem(CLOUD_CONFIG_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return DEFAULT_FIREBASE_CONFIG;
 }
 
 function updateCloudSyncUI(status, message = '') {
@@ -12136,6 +12147,16 @@ function subscribeToCloudClub(clubSlug) {
     const localTxCount = AppState.transactions?.length || 0;
     const cloudTxCount = cloudData.transactions?.length || 0;
 
+    // Hợp nhất dữ liệu thông minh hai chiều (tránh mất thành viên vừa tạo trên một thiết bị)
+    if (AppState && AppState.members && cloudData.members) {
+      const cloudMemberIds = new Set(cloudData.members.map(m => m.id));
+      const newLocalMembers = AppState.members.filter(m => !cloudMemberIds.has(m.id));
+      if (newLocalMembers.length > 0) {
+        cloudData.members = cloudData.members.concat(newLocalMembers);
+        setTimeout(() => { pushDataToCloud(); }, 300);
+      }
+    }
+
     const isDifferent = (cloudTime > localTime) || (localMemberCount !== cloudMemberCount) || (localTxCount !== cloudTxCount);
 
     if (isDifferent) {
@@ -12157,7 +12178,7 @@ function subscribeToCloudClub(clubSlug) {
       renderClubSwitcher();
       populateLeadershipSelects();
 
-      showToast(`☁️ Đã đồng bộ số liệu mới nhất từ đám mây (${cloudMemberCount} thành viên)!`, 'info');
+      showToast(`☁️ Đã đồng bộ số liệu mới nhất từ đám mây (${AppState.members?.length || 0} thành viên)!`, 'info');
       setTimeout(() => { isReceivingFromCloud = false; }, 600);
     }
   }, err => {
