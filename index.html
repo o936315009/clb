@@ -72,26 +72,28 @@
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <!-- Logo & Club Name -->
-      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20 ring-2 ring-brand-500/20">
-          <!-- Shuttlecock SVG Icon -->
-          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2a1.5 1.5 0 0 0-1.5 1.5v2.1a12.9 12.9 0 0 0-5.8 3.5 1.5 1.5 0 0 0 .2 2.2l6.2 4.9a1.5 1.5 0 0 0 1.8 0l6.2-4.9a1.5 1.5 0 0 0 .2-2.2 12.9 12.9 0 0 0-5.8-3.5V3.5A1.5 1.5 0 0 0 12 2zm-1.5 16.2a2.5 2.5 0 1 0 3 0v-2.7h-3v2.7z"/>
-          </svg>
+      <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+        <div id="headerClubLogoBadge" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20 ring-2 ring-brand-500/20 text-lg font-bold">
+          <span id="headerClubIconSpan">🏸</span>
         </div>
         <div>
-          <h1 id="headerClubName" class="font-extrabold text-lg leading-tight text-slate-900 tracking-tight">CLB CẦU LÔNG SMASH</h1>
-          <p class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+          <h1 id="headerClubName" class="font-extrabold text-base sm:text-lg leading-tight text-slate-900 tracking-tight">CLB CẦU LÔNG SMASH</h1>
+          <p class="text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Hệ thống Quản lý Sân & Quỹ CLB Cầu Lông
+            <span id="headerClubSubTitle">Hệ thống Quản lý Sân & Quỹ CLB Cầu Lông</span>
           </p>
         </div>
       </div>
 
       <!-- User Status & Quick Actions -->
-      <div class="flex items-center space-x-2 sm:space-x-4">
+      <div class="flex items-center space-x-1.5 sm:space-x-3">
+        <!-- Multi-Club Switcher Container -->
+        <div id="headerClubSwitcherContainer" class="flex items-center gap-1.5">
+          <!-- Rendered via JS -->
+        </div>
+
         <!-- Date display -->
-        <div class="hidden sm:flex items-center text-xs font-semibold px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
+        <div class="hidden lg:flex items-center text-xs font-semibold px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
           <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1.5 text-brand-600"></i>
           <span id="currentDateDisplay">--/--/----</span>
         </div>
@@ -2204,6 +2206,43 @@
       <!-- ================= 6. TAB: CẤU HÌNH & SAO LƯU ================= -->
       <section id="tab-settings" class="tab-pane hidden space-y-6">
         
+        <!-- ================= PHÂN HỆ: QUẢN LÝ ĐA CÂU LẠC BỘ (MULTI-CLUB MANAGER) ================= -->
+        <div id="sectionMultiClubManagement" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="building-2" class="w-5 h-5 text-emerald-600"></i>
+                <span>Quản Lý Đa Câu Lạc Bộ (Multi-Club Manager)</span>
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">Khởi tạo, theo dõi và chuyển đổi linh hoạt giữa các Câu Lạc Bộ với dữ liệu, quỹ và thành viên độc lập</p>
+            </div>
+            
+            <button type="button" onclick="openCreateClubModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <span>➕</span>
+              <span>Tạo Câu Lạc Bộ Mới</span>
+            </button>
+          </div>
+
+          <!-- Summary banner -->
+          <div class="p-3 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-slate-50 rounded-xl border border-emerald-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🏢</span>
+              <div>
+                <span class="font-bold text-slate-800">Đang hoạt động trên hệ thống:</span>
+                <span id="multiClubSummaryCount" class="font-extrabold text-emerald-700 ml-1">2 Câu Lạc Bộ</span>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium">
+              💡 Mỗi CLB có Quỹ tài chính, Ban chủ nhiệm, Danh sách hội viên & Lịch sử điểm danh riêng biệt
+            </div>
+          </div>
+
+          <!-- Club Cards Grid -->
+          <div id="multiClubListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Rendered via renderMultiClubSettingsSection() -->
+          </div>
+        </div>
+
         <!-- General config -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
@@ -4275,6 +4314,187 @@
             <button type="submit" class="px-5 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
               <span>✓</span>
               <span>Lưu Quyền Sử Dụng & Tài Khoản</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TẠO TÀI KHOẢN CÂU LẠC BỘ MỚI (MULTI-CLUB REGISTRATION) -->
+  <div id="modalCreateNewClub" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-slate-900 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner font-bold border border-white/20">
+            🏢
+          </div>
+          <div>
+            <h3 class="text-base font-black tracking-tight flex items-center gap-2 text-white">
+              <span>Tạo Tài Khoản Câu Lạc Bộ Mới</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-emerald-950 uppercase tracking-wider">Multi-Club</span>
+            </h3>
+            <p class="text-xs text-emerald-100 font-medium">Khởi tạo CLB mới với quỹ tài chính, danh sách hội viên & tài khoản Chủ nhiệm độc lập</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('modalCreateNewClub')" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body Form -->
+      <form onsubmit="handleCreateNewClubSubmit(event)" class="flex flex-col flex-1 overflow-hidden">
+        <div class="p-5 overflow-y-auto space-y-5 text-xs">
+
+          <!-- 1. THÔNG TIN ĐỊNH DANH CÂU LẠC BỘ -->
+          <div class="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h4 class="font-bold text-slate-800 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                <span>1.</span>
+                <span>Thông Tin Định Danh Câu Lạc Bộ</span>
+              </h4>
+              <span class="text-[11px] text-slate-400 italic">Bắt buộc nhập</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="sm:col-span-2">
+                <label class="block font-bold text-slate-700 mb-1">Tên Câu Lạc Bộ (*):</label>
+                <input type="text" id="newClubName" required placeholder="VD: CLB Cầu Lông Tia Chớp" oninput="autoSuggestClubShortName(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Tên viết tắt / Mã (*):</label>
+                <input type="text" id="newClubShortName" required placeholder="VD: TIA CHỚP" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-black text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
+              </div>
+            </div>
+
+            <!-- Icon Picker & Theme -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1.5">Biểu tượng Logo CLB:</label>
+                <input type="hidden" id="newClubLogoIcon" value="🏸" />
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <button type="button" onclick="selectClubModalIcon('🏸')" id="clubIconBtn-🏸" class="club-icon-choice w-9 h-9 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-base flex items-center justify-center transition cursor-pointer shadow-2xs">🏸</button>
+                  <button type="button" onclick="selectClubModalIcon('⚡')" id="clubIconBtn-⚡" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">⚡</button>
+                  <button type="button" onclick="selectClubModalIcon('🦅')" id="clubIconBtn-🦅" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🦅</button>
+                  <button type="button" onclick="selectClubModalIcon('🏆')" id="clubIconBtn-🏆" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🏆</button>
+                  <button type="button" onclick="selectClubModalIcon('🌟')" id="clubIconBtn-🌟" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🌟</button>
+                  <button type="button" onclick="selectClubModalIcon('🔥')" id="clubIconBtn-🔥" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🔥</button>
+                  <button type="button" onclick="selectClubModalIcon('🎯')" id="clubIconBtn-🎯" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🎯</button>
+                  <button type="button" onclick="selectClubModalIcon('🚀')" id="clubIconBtn-🚀" class="club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">🚀</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1.5">Màu chủ đạo giao diện (Theme):</label>
+                <select id="newClubThemeColor" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="emerald">BWF Emerald Green (Xanh thảm sân BWF)</option>
+                  <option value="cyan">Badminton Cyan / Teal (Xanh ngọc lông vũ)</option>
+                  <option value="ocean">Ocean Blue (Xanh thể thao năng động)</option>
+                  <option value="orange">Power Orange (Cam nhiệt huyết)</option>
+                  <option value="red">Yonex Crimson Red (Đỏ chiến binh)</option>
+                  <option value="purple">Royal Purple (Tím cao cấp)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. TÀI KHOẢN CHỦ NHIỆM / QUẢN TRỊ VIÊN (ADMIN ACCOUNT) -->
+          <div class="bg-gradient-to-br from-amber-50/60 to-slate-50 p-4 rounded-2xl border border-amber-200 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-amber-200/80">
+              <h4 class="font-bold text-amber-900 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                <span>2.</span>
+                <span>Tài Khoản Chủ Nhiệm / Sáng Lập CLB (Toàn Quyền Quản Trị)</span>
+              </h4>
+              <span class="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">👑 Chủ Nhiệm (ADMIN)</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Họ và tên Chủ nhiệm (*):</label>
+                <input type="text" id="newClubAdminName" required placeholder="VD: Nguyễn Hoàng Long" oninput="autoSuggestClubAdminUsername(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ:</label>
+                <input type="tel" id="newClubAdminPhone" placeholder="VD: 0988123456" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Tên đăng nhập (Username) (*):</label>
+                <input type="text" id="newClubAdminUsername" required placeholder="VD: long_admin" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Mật khẩu đăng nhập (*):</label>
+                <input type="text" id="newClubAdminPassword" required value="123456" placeholder="Nhập mật khẩu..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. TÀI CHÍNH & THU QUỸ BAN ĐẦU -->
+          <div class="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h4 class="font-bold text-slate-800 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                <span>3.</span>
+                <span>Tài Chính & Thông Tin Chuyển Khoản VietQR</span>
+              </h4>
+              <span class="text-[11px] text-slate-500">Thiết lập ví & quỹ</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Số dư Quỹ CLB ban đầu (VNĐ):</label>
+                <input type="number" id="newClubInitialFund" step="100000" min="0" value="2000000" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-extrabold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="text-[10px] text-slate-400 mt-1">Khoản tiền khởi tạo trong Quỹ chung CLB (Mặc định 2.000.000đ)</p>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Thông tin VietQR (Ngân hàng & STK):</label>
+                <input type="text" id="newClubBankInfo" placeholder="VD: TECHCOMBANK - 190333333333 - NGUYEN HOANG LONG" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="text-[10px] text-slate-400 mt-1">Dùng để thành viên quét mã nạp ví và đóng quỹ</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. KHỞI TẠO DANH SÁCH THÀNH VIÊN BAN ĐẦU -->
+          <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-3">
+            <h4 class="font-bold text-indigo-950 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+              <span>4.</span>
+              <span>Dữ Liệu Khởi Tạo Ban Đầu Cho CLB</span>
+            </h4>
+
+            <div class="space-y-2">
+              <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-indigo-200 cursor-pointer hover:border-indigo-400 transition">
+                <input type="radio" name="newClubInitMode" value="SAMPLE" checked class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                <div>
+                  <span class="font-bold text-slate-900 block text-xs">⭐ Khởi tạo sẵn 10 thành viên mẫu chuẩn (Khuyên dùng)</span>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Bao gồm Ban cán sự (Phó nhóm, Thủ quỹ, Trọng tài), thành viên Nam, Nữ & Khách giao lưu kèm quỹ mẫu để trải nghiệm hệ thống ngay lập tức.</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300 transition">
+                <input type="radio" name="newClubInitMode" value="FRESH" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">🌱 Bắt đầu hoàn toàn mới (Trắng danh sách)</span>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Chỉ có duy nhất tài khoản Chủ nhiệm, danh sách thành viên trống để bạn tự thêm thủ công hoặc dán từ Zalo.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+          <span class="text-[11px] text-slate-500 italic">* CLB mới sẽ được lưu cục bộ và có thể chuyển đổi bất cứ lúc nào</span>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeModal('modalCreateNewClub')" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition cursor-pointer">
+              Hủy bỏ
+            </button>
+            <button type="submit" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <span>🚀</span>
+              <span>Khởi Tạo CLB & Chuyển Ngay</span>
             </button>
           </div>
         </div>
