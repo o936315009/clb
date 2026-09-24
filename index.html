@@ -432,6 +432,10 @@
                     <span>✏️</span>
                     <span>Sửa / Bổ sung</span>
                   </button>
+                  <button type="button" onclick="saveAndSplitActivitySession()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Chốt danh sách, trừ tiền ví thành viên và ghi sổ quỹ ngay">
+                    <span>⚡</span>
+                    <span>Chốt & Trừ Ví</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -2217,7 +2221,11 @@
               <p class="text-xs text-slate-500 mt-0.5">Khởi tạo, theo dõi và chuyển đổi linh hoạt giữa các Câu Lạc Bộ với dữ liệu, quỹ và thành viên độc lập</p>
             </div>
             
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" id="btnToggleHideDevDemo" onclick="toggleHideDeveloperDemoClubs()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer" title="Ẩn hoặc hiện các câu lạc bộ mẫu của nhà phát triển (SMASH & Tia Chớp)">
+                <span id="iconToggleHideDevDemo">👁️</span>
+                <span id="textToggleHideDevDemo">Ẩn CLB mẫu Dev</span>
+              </button>
               <button type="button" onclick="openClubShortcutGuideModal()" class="px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer" title="Tạo lối tắt ra màn hình chính điện thoại hoặc máy tính">
                 <span>📱</span>
                 <span>Tạo Lối Tắt MH Chính</span>
@@ -2257,7 +2265,7 @@
                 <i data-lucide="sliders" class="w-5 h-5 text-brand-600"></i>
                 Cấu hình Thông tin & Giao diện CLB Cầu Lông
               </h2>
-              <p class="text-xs text-slate-500 mt-0.5">Thông tin định danh CLB, giao diện hiển thị và Ban lãnh đạo nhiệm kỳ</p>
+              <p class="text-xs text-slate-500 mt-0.5">Thông tin định danh CLB, tên truy cập đường link riêng, giao diện và Ban lãnh đạo nhiệm kỳ</p>
             </div>
             <span class="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200 flex items-center gap-1">
               <span>🏛️</span>
@@ -2269,7 +2277,7 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Tên CLB:</label>
-              <input type="text" id="configClubName" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold" value="CLB CẦU LÔNG SMASH" />
+              <input type="text" id="configClubName" oninput="onConfigClubNameChanged(this.value)" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold" value="CLB CẦU LÔNG SMASH" />
             </div>
 
             <div>
@@ -2288,6 +2296,48 @@
               <label class="block text-xs font-bold text-slate-700 mb-1">Thông tin VietQR (Ngân hàng & STK nạp ví):</label>
               <input type="text" id="configBankInfo" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-medium" placeholder="VD: MBBANK - 0987654321 - CLB CAU LONG" value="MBBANK - 0987654321 - CLB CAU LONG" />
             </div>
+          </div>
+
+          <!-- Tên truy cập cấu hình & Đường link riêng CLB -->
+          <div class="p-4 bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-slate-50 rounded-2xl border border-emerald-200 space-y-2.5">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🔗</span>
+                <div>
+                  <h3 class="text-xs sm:text-sm font-bold text-emerald-950">Tên Truy Cập Trong Cấu Hình (Mã Link Riêng CLB)</h3>
+                  <p class="text-[11px] text-slate-600 font-medium">Định danh link duy nhất để mở thẳng vào CLB này mà không bị trùng hay lẫn với các CLB khác</p>
+                </div>
+              </div>
+              <button type="button" onclick="openClubShortcutGuideModal()" class="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer">
+                <span>📱</span>
+                <span>Tạo phím tắt MH chính</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Tên truy cập (Mã Slug):</label>
+                <div class="flex items-center">
+                  <span class="px-2.5 py-2 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-xs font-mono font-bold text-slate-500">?club=</span>
+                  <input type="text" id="configClubAccessSlug" oninput="onConfigClubAccessSlugChanged(this.value)" placeholder="vd: smash" class="flex-1 px-3 py-2 text-xs font-mono font-bold text-emerald-900 border border-slate-200 rounded-r-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 lowercase" />
+                </div>
+              </div>
+
+              <div class="sm:col-span-2 space-y-1">
+                <label class="block text-[11px] font-bold text-slate-700">Đường link sử dụng trực tiếp của CLB này:</label>
+                <div class="flex items-center gap-1.5">
+                  <input type="text" id="configClubDirectUrlPreview" readonly onclick="this.select()" class="flex-1 px-3 py-2 text-xs border border-emerald-200 rounded-xl bg-white font-mono text-emerald-900 font-bold select-all focus:outline-none truncate" />
+                  <button type="button" onclick="copyConfigClubDirectLink()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    <span>Sao chép</span>
+                  </button>
+                  <button type="button" onclick="openConfigClubDirectLink()" class="px-2.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0" title="Mở link này">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 italic">* Bạn có thể tùy chỉnh tên truy cập (vd: <code>tiachop</code>, <code>vinhomessmash</code>). Khi lưu cấu hình, đường link sẽ tự động đổi theo tên này.</p>
           </div>
 
           <!-- BAN LÃNH ĐẠO CLB: Gồm Chủ tịch, Phó chủ tịch 1, Phó chủ tịch 2, Thư ký, Thủ quỹ, Truyền thông, Cố vấn 1, Cố vấn 2 (Lấy từ danh sách thành viên) -->
@@ -4365,13 +4415,32 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div class="sm:col-span-2">
                 <label class="block font-bold text-slate-700 mb-1">Tên Câu Lạc Bộ (*):</label>
-                <input type="text" id="newClubName" placeholder="VD: CLB Cầu Lông Tia Chớp" oninput="autoSuggestClubShortName(this.value); clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <input type="text" id="newClubName" placeholder="VD: CLB Cầu Lông Tia Chớp" oninput="onNewClubNameChanged(this.value); clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
 
               <div>
                 <label class="block font-bold text-slate-700 mb-1">Tên viết tắt / Mã (*):</label>
                 <input type="text" id="newClubShortName" placeholder="VD: TIA CHỚP" oninput="clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-black text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
               </div>
+            </div>
+
+            <!-- Tên truy cập Link riêng (Access Slug) -->
+            <div class="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/90 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="block font-bold text-emerald-950 text-xs flex items-center gap-1.5">
+                  <span>🔗</span>
+                  <span>Tên truy cập tạo link riêng (*):</span>
+                </label>
+                <span class="text-[10px] text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-full border border-emerald-300 shadow-2xs">Tự động tạo từ tên CLB</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold text-slate-500 shrink-0">?club=</span>
+                <input type="text" id="newClubAccessSlug" placeholder="tiachop" oninput="updateNewClubSlugPreview(this.value); clearClubInputError(this)" class="flex-1 px-3 py-1.5 text-xs font-mono font-bold text-emerald-900 border border-emerald-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 lowercase" />
+              </div>
+              <p class="text-[11px] text-slate-600 flex items-center gap-1.5 pt-0.5">
+                <span class="font-medium text-slate-500">Đường link của bạn:</span>
+                <code id="newClubSlugPreview" class="text-emerald-800 font-black font-mono text-[11px]">https://.../?club=tiachop</code>
+              </p>
             </div>
 
             <!-- Icon Picker & Theme -->
@@ -4464,26 +4533,29 @@
           </div>
 
           <!-- 4. KHỞI TẠO DANH SÁCH THÀNH VIÊN BAN ĐẦU -->
-          <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-3">
-            <h4 class="font-bold text-indigo-950 flex items-center gap-1.5 text-xs uppercase tracking-wide">
-              <span>4.</span>
-              <span>Dữ Liệu Khởi Tạo Ban Đầu Cho CLB</span>
-            </h4>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-slate-800 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                <span>4.</span>
+                <span>Dữ Liệu Khởi Tạo Ban Đầu Cho CLB</span>
+              </h4>
+              <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Không có dữ liệu mẫu nhà phát triển</span>
+            </div>
 
             <div class="space-y-2">
-              <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-indigo-200 cursor-pointer hover:border-indigo-400 transition">
-                <input type="radio" name="newClubInitMode" value="SAMPLE" checked class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+              <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border-2 border-emerald-500 cursor-pointer shadow-2xs transition">
+                <input type="radio" name="newClubInitMode" value="FRESH" checked class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
                 <div>
-                  <span class="font-bold text-slate-900 block text-xs">⭐ Khởi tạo sẵn 10 thành viên mẫu chuẩn (Khuyên dùng)</span>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Bao gồm Ban cán sự (Phó nhóm, Thủ quỹ, Trọng tài), thành viên Nam, Nữ & Khách giao lưu kèm quỹ mẫu để trải nghiệm hệ thống ngay lập tức.</p>
+                  <span class="font-bold text-slate-900 block text-xs">🌱 Bắt đầu hoàn toàn mới - Dữ liệu thực tế CLB (Khuyên dùng)</span>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Chỉ có duy nhất tài khoản Chủ nhiệm bạn vừa tạo, hoàn toàn không hiển thị dữ liệu mẫu của nhà phát triển. Danh sách hội viên sẵn sàng để bạn tự thêm hoặc dán từ Zalo.</p>
                 </div>
               </label>
 
               <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300 transition">
-                <input type="radio" name="newClubInitMode" value="FRESH" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                <input type="radio" name="newClubInitMode" value="SAMPLE" class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
                 <div>
-                  <span class="font-bold text-slate-800 block text-xs">🌱 Bắt đầu hoàn toàn mới (Trắng danh sách)</span>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Chỉ có duy nhất tài khoản Chủ nhiệm, danh sách thành viên trống để bạn tự thêm thủ công hoặc dán từ Zalo.</p>
+                  <span class="font-bold text-slate-700 block text-xs">⭐ Khởi tạo sẵn 10 thành viên thử nghiệm</span>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Tạo sẵn 10 người chơi mẫu để trải nghiệm thử tính năng điểm danh và xếp lịch thi đấu.</p>
                 </div>
               </label>
             </div>

@@ -13,6 +13,7 @@ const ACTIVE_CLUB_ID_KEY = 'CLB_ACTIVE_CLUB_ID_V1';
 
 const DEFAULT_DEFAULT_CLUB = {
   id: 'club_smash',
+  accessSlug: 'smash',
   name: 'CLB CẦU LÔNG SMASH',
   shortName: 'SMASH',
   logoIcon: '🏸',
@@ -22,11 +23,13 @@ const DEFAULT_DEFAULT_CLUB = {
   storageKey: 'CLB_CAU_LONG_SMASH_DATA_V1',
   adminName: 'Trần Đức Chính',
   adminUsername: 'chinh',
-  phone: '0901000001'
+  phone: '0901000001',
+  isDeveloperSample: true
 };
 
 const DEFAULT_SECOND_CLUB = {
   id: 'club_lightning',
+  accessSlug: 'tiachop',
   name: 'CLB CẦU LÔNG TIA CHỚP',
   shortName: 'TIA CHỚP',
   logoIcon: '⚡',
@@ -36,8 +39,23 @@ const DEFAULT_SECOND_CLUB = {
   storageKey: 'CLB_CAU_LONG_DATA_club_lightning',
   adminName: 'Nguyễn Hoàng Long',
   adminUsername: 'long_admin',
-  phone: '0988123456'
+  phone: '0988123456',
+  isDeveloperSample: true
 };
+
+function generateAccessSlug(name) {
+  if (!name) return 'clb';
+  let str = name.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd');
+  // Strip common prefix words
+  str = str.replace(/\b(cau\s*long|câu\s*lạc\s*bộ|clb|cau|long)\b/gi, ' ');
+  str = str.trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!str) str = 'clb-' + Math.floor(Math.random() * 1000);
+  return str;
+}
 
 function initSecondClubDataIfMissing() {
   try {
@@ -45,6 +63,7 @@ function initSecondClubDataIfMissing() {
       const secondClubData = {
         config: {
           clubName: 'CLB CẦU LÔNG TIA CHỚP',
+          accessSlug: 'tiachop',
           themeColor: 'cyan',
           bankInfo: 'TECHCOMBANK - 190333333333 - NGUYEN HOANG LONG',
           leadership: {
@@ -140,13 +159,20 @@ function getClubsRegistry() {
       localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(initial));
       return initial;
     }
-    if (!list.some(c => c.id === 'club_smash')) {
-      list.unshift(DEFAULT_DEFAULT_CLUB);
-      localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(list));
-    }
-    if (!list.some(c => c.id === 'club_lightning')) {
-      initSecondClubDataIfMissing();
-      list.push(DEFAULT_SECOND_CLUB);
+    // Chuẩn hóa accessSlug và cờ isDeveloperSample cho các CLB
+    let changed = false;
+    list.forEach(c => {
+      if (!c.accessSlug) {
+        if (c.id === 'club_smash') c.accessSlug = 'smash';
+        else if (c.id === 'club_lightning') c.accessSlug = 'tiachop';
+        else c.accessSlug = generateAccessSlug(c.name || c.shortName || c.id);
+        changed = true;
+      }
+      if (c.id === 'club_smash' || c.id === 'club_lightning') {
+        c.isDeveloperSample = true;
+      }
+    });
+    if (changed) {
       localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(list));
     }
     return list;
@@ -182,19 +208,84 @@ function getClubIdFromUrl() {
   return null;
 }
 
+function formatSlugToClubName(slug) {
+  if (!slug) return 'CLB CẦU LÔNG';
+  const clean = slug.replace(/^club[-_]?/i, '').replace(/[-_]+/g, ' ').trim();
+  const words = clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  return 'CLB CẦU LÔNG ' + words.join(' ').toUpperCase();
+}
+
 function getActiveClubId() {
   const registry = getClubsRegistry();
   const urlClub = getClubIdFromUrl();
   if (urlClub) {
-    const matched = registry.find(c => c.id === urlClub || (c.shortName && c.shortName.toLowerCase() === urlClub.toLowerCase()));
+    const urlClubLower = urlClub.toLowerCase();
+    const matched = registry.find(c =>
+      c.id.toLowerCase() === urlClubLower ||
+      (c.accessSlug && c.accessSlug.toLowerCase() === urlClubLower) ||
+      (c.shortName && c.shortName.toLowerCase() === urlClubLower)
+    );
     if (matched) {
       localStorage.setItem(ACTIVE_CLUB_ID_KEY, matched.id);
       return matched.id;
     }
+
+    // CLB chưa có trong danh bạ: Tự động khởi tạo ngay theo slug trên URL
+    // Tuyệt đối không để rơi về CLB mẫu của nhà phát triển (SMASH)
+    const cleanSlug = urlClubLower.replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'clb';
+    const newClubId = 'club_' + cleanSlug;
+    const storageKey = 'CLB_CAU_LONG_DATA_' + cleanSlug;
+    const clubName = formatSlugToClubName(cleanSlug);
+    const shortName = getSuggestedClubShortName(clubName) || cleanSlug.toUpperCase();
+
+    // Kiểm tra xem đã có dữ liệu lưu trước đó ở storageKey này chưa
+    let existingData = null;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) existingData = JSON.parse(raw);
+    } catch (e) {}
+
+    const newClubRecord = {
+      id: newClubId,
+      accessSlug: cleanSlug,
+      name: existingData?.config?.clubName || clubName,
+      shortName: shortName,
+      logoIcon: '🏸',
+      themeColor: existingData?.config?.themeColor || 'emerald',
+      bankInfo: existingData?.config?.bankInfo || '',
+      createdAt: getFormattedCurrentDate(),
+      storageKey: storageKey,
+      adminName: existingData?.auth?.user?.name?.replace(/\s*\(Chủ nhiệm\)/i, '') || 'Chủ nhiệm CLB',
+      adminUsername: existingData?.auth?.user?.username || 'admin',
+      phone: '',
+      isDeveloperSample: false
+    };
+
+    registry.push(newClubRecord);
+    saveClubsRegistry(registry);
+
+    if (!existingData) {
+      const freshData = getBlankClubInitialData(newClubRecord);
+      localStorage.setItem(storageKey, JSON.stringify(freshData));
+    }
+
+    localStorage.setItem('CLB_HIDE_DEV_DEMO', 'true');
+    localStorage.setItem(ACTIVE_CLUB_ID_KEY, newClubId);
+    return newClubId;
   }
 
   let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
   if (!activeId || !registry.some(c => c.id === activeId)) {
+    // Nếu người dùng chọn ẩn demo developer, ưu tiên CLB thực của người dùng trước
+    const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+    if (isHideDemo) {
+      const userClub = registry.find(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning');
+      if (userClub) {
+        activeId = userClub.id;
+        localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+        return activeId;
+      }
+    }
     activeId = registry[0]?.id || 'club_smash';
     localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
   }
@@ -207,17 +298,20 @@ function setActiveClubId(clubId) {
 
 function getClubDirectUrl(clubOrId) {
   const registry = getClubsRegistry();
-  const club = typeof clubOrId === 'string' ? registry.find(c => c.id === clubOrId) : clubOrId;
-  const clubId = club ? club.id : 'club_smash';
+  const club = typeof clubOrId === 'string' ? registry.find(c => c.id === clubOrId || c.accessSlug === clubOrId) : clubOrId;
+  const slug = club ? (club.accessSlug || club.shortName?.toLowerCase() || club.id) : (typeof clubOrId === 'string' ? clubOrId : 'smash');
 
   const baseUrl = window.location.href.split('#')[0].split('?')[0];
-  return `${baseUrl}?club=${encodeURIComponent(clubId)}`;
+  return `${baseUrl}?club=${encodeURIComponent(slug)}`;
 }
 
-function updateClubUrlParam(clubId) {
+function updateClubUrlParam(clubOrId) {
   try {
+    const registry = getClubsRegistry();
+    const club = typeof clubOrId === 'string' ? registry.find(c => c.id === clubOrId || c.accessSlug === clubOrId) : clubOrId;
+    const slug = club?.accessSlug || club?.shortName?.toLowerCase() || (typeof clubOrId === 'string' ? clubOrId : club?.id);
     const url = new URL(window.location.href);
-    url.searchParams.set('club', clubId);
+    url.searchParams.set('club', slug);
     window.history.replaceState({}, '', url.toString());
   } catch (e) {}
 }
@@ -281,6 +375,107 @@ function generateAutoUsername(name) {
   if (parts.length === 1) return parts[0];
   const lastName = parts[parts.length - 1];
   return lastName;
+}
+
+function getBlankClubInitialData(club) {
+  const c = club || {};
+  const adminName = c.adminName || 'Chủ nhiệm CLB';
+  const adminUsername = c.adminUsername || generateAutoUsername(adminName) || 'admin';
+  const adminPhone = c.phone || '';
+  const adminChipName = adminName.trim().split(/\s+/).pop().toUpperCase();
+  const initFund = typeof c.initialFund === 'number' ? c.initialFund : 0;
+  const slug = c.accessSlug || generateAccessSlug(c.name || 'clb');
+
+  const adminMember = {
+    id: 'M001',
+    name: adminName,
+    chipName: adminChipName,
+    phone: adminPhone,
+    type: 'OFFICIAL',
+    username: adminUsername,
+    password: c.adminPassword || '123456',
+    balance: 0,
+    monthlySessions: 0,
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    permissions: getRoleDefaultPermissions('ADMIN')
+  };
+
+  const initialTx = initFund > 0 ? [{
+    id: 'TX_INIT_' + Date.now(),
+    date: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    categoryGroup: 'INCOME_A',
+    subType: 'MEM_FUND',
+    categoryName: 'Quỹ thành lập CLB',
+    amount: initFund,
+    targetName: 'Quỹ chung CLB',
+    walletImpact: 0,
+    fundImpact: initFund,
+    description: `Khởi tạo số dư ban đầu cho ${c.name || 'CLB'}`,
+    operator: adminUsername
+  }] : [];
+
+  return {
+    config: {
+      clubName: c.name || 'CLB CẦU LÔNG',
+      accessSlug: slug,
+      themeColor: c.themeColor || 'emerald',
+      bankInfo: c.bankInfo || '',
+      leadership: {
+        president: 'M001',
+        vicePresident1: '',
+        vicePresident2: '',
+        secretary: '',
+        treasurer: '',
+        media: '',
+        advisor1: '',
+        advisor2: ''
+      },
+      dailyBoxPrice: 340000,
+      shuttlecocksPerBox: 12,
+      dailyRateTitle: 'ĐƠN GIÁ THEO NGÀY 12',
+      shuttleBillingMode: 'BY_SHUTTLE',
+      shuttleUnitPrice: 28333,
+      defaultShuttlesPerSession: 6,
+      viceLeaderId: '',
+      permissions: {
+        allowViceLeaderAttendance: true,
+        allowViceLeaderTournamentSync: true
+      },
+      guestPrices: { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 },
+      feeTiers: [
+        { id: 1, name: 'Bậc 1 (0–4 buổi)', minSessions: 0, maxSessions: 4, price: 50000 },
+        { id: 2, name: 'Bậc 2 (5–9 buổi)', minSessions: 5, maxSessions: 9, price: 100000 },
+        { id: 3, name: 'Bậc 3 (10–15 buổi)', minSessions: 10, maxSessions: 15, price: 150000 },
+        { id: 4, name: 'Bậc 4 (16–30+ buổi)', minSessions: 16, maxSessions: 999, price: 200000 }
+      ],
+      allowNegativeWallet: true,
+      settlementMode: 'MONTHLY',
+      defaultSettlementDay: 'END_OF_MONTH'
+    },
+    funds: {
+      clubFund: initFund,
+      advanceFund: 0,
+      shuttleAdvanceFund: 0,
+      courtAdvanceFund: 0,
+      guestAdvanceIncome: 0,
+      shuttlePaidTotal: 0,
+      courtPaidTotal: 0
+    },
+    members: [adminMember],
+    attendanceRecords: [],
+    transactions: initialTx,
+    auth: {
+      isLoggedIn: true,
+      user: {
+        id: 'M001',
+        username: adminUsername,
+        role: 'ADMIN',
+        name: `${adminName} (Chủ nhiệm)`,
+        permissions: getRoleDefaultPermissions('ADMIN')
+      }
+    }
+  };
 }
 
 // ==========================================
@@ -438,19 +633,23 @@ let AppState = {};
 function loadData() {
   try {
     STORAGE_KEY = getCurrentClubStorageKey();
+    const activeClub = getActiveClub();
+    const isSmash = activeClub.id === 'club_smash';
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       AppState = JSON.parse(saved);
+      const blankData = getBlankClubInitialData(activeClub);
+
       // Đảm bảo không bị thiếu cấu trúc khi cập nhật phiên bản
-      if (!AppState.config) AppState.config = DEFAULT_INITIAL_DATA.config;
-      if (!AppState.funds) AppState.funds = DEFAULT_INITIAL_DATA.funds;
-      if (!AppState.members) AppState.members = DEFAULT_INITIAL_DATA.members;
-      if (!AppState.transactions) AppState.transactions = DEFAULT_INITIAL_DATA.transactions;
-      if (!AppState.attendanceRecords) AppState.attendanceRecords = DEFAULT_INITIAL_DATA.attendanceRecords;
-      if (!AppState.auth) AppState.auth = DEFAULT_INITIAL_DATA.auth;
+      if (!AppState.config) AppState.config = isSmash ? DEFAULT_INITIAL_DATA.config : blankData.config;
+      if (!AppState.funds) AppState.funds = isSmash ? DEFAULT_INITIAL_DATA.funds : blankData.funds;
+      if (!AppState.members) AppState.members = isSmash ? DEFAULT_INITIAL_DATA.members : blankData.members;
+      if (!AppState.transactions) AppState.transactions = isSmash ? DEFAULT_INITIAL_DATA.transactions : [];
+      if (!AppState.attendanceRecords) AppState.attendanceRecords = [];
+      if (!AppState.auth) AppState.auth = isSmash ? DEFAULT_INITIAL_DATA.auth : blankData.auth;
 
       // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế (riêng cho CLB Smash mặc định)
-      if (getActiveClubId() === 'club_smash') {
+      if (isSmash) {
         if (!AppState.members || AppState.members.length < 20) {
           AppState.members = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA.members));
         } else {
@@ -476,22 +675,22 @@ function loadData() {
       // Chuẩn hóa và gán vai trò & quyền sử dụng (User Access Management) cho từng thành viên
       if (AppState.members && AppState.members.length > 0) {
         const leadership = AppState.config?.leadership || {};
-        const presId = leadership.president || 'M001';
-        const vice1Id = leadership.vicePresident1 || 'M002';
-        const vice2Id = leadership.vicePresident2 || 'M003';
-        const secId = leadership.secretary || 'M004';
-        const treasId = leadership.treasurer || 'M005';
-        const viceLeadId = AppState.config?.viceLeaderId || 'M002';
+        const presId = leadership.president || (isSmash ? 'M001' : AppState.members[0].id);
+        const vice1Id = leadership.vicePresident1 || (isSmash ? 'M002' : '');
+        const vice2Id = leadership.vicePresident2 || (isSmash ? 'M003' : '');
+        const secId = leadership.secretary || (isSmash ? 'M004' : '');
+        const treasId = leadership.treasurer || (isSmash ? 'M005' : '');
+        const viceLeadId = AppState.config?.viceLeaderId || (isSmash ? 'M002' : '');
 
         AppState.members.forEach(m => {
           if (!m.role || m.role === 'MEMBER') {
-            if (m.id === presId || m.id === 'M001' || m.username === 'admin' || m.id === 'M020') {
+            if (m.id === presId || (isSmash && (m.id === 'M001' || m.username === 'admin' || m.id === 'M020'))) {
               m.role = 'ADMIN';
-            } else if (m.id === vice1Id || m.id === vice2Id || m.id === viceLeadId || m.id === 'M002' || m.id === 'M003') {
+            } else if ((vice1Id && m.id === vice1Id) || (vice2Id && m.id === vice2Id) || (viceLeadId && m.id === viceLeadId) || (isSmash && (m.id === 'M002' || m.id === 'M003'))) {
               m.role = 'VICE_ADMIN';
-            } else if (m.id === treasId || m.id === 'M005') {
+            } else if ((treasId && m.id === treasId) || (isSmash && m.id === 'M005')) {
               m.role = 'TREASURER';
-            } else if (m.id === secId || m.id === 'M004') {
+            } else if ((secId && m.id === secId) || (isSmash && m.id === 'M004')) {
               m.role = 'REFEREE';
             } else {
               m.role = 'MEMBER';
@@ -519,7 +718,7 @@ function loadData() {
       }
 
       if (AppState.config) {
-        AppState.config.guestPrices = DEFAULT_INITIAL_DATA.config.guestPrices;
+        if (!AppState.config.guestPrices) AppState.config.guestPrices = DEFAULT_INITIAL_DATA.config.guestPrices;
         if (AppState.config.dailyBoxPrice === undefined) AppState.config.dailyBoxPrice = 340000;
         if (AppState.config.shuttlecocksPerBox === undefined) AppState.config.shuttlecocksPerBox = 12;
         if (!AppState.config.dailyRateTitle) AppState.config.dailyRateTitle = 'ĐƠN GIÁ THEO NGÀY 12';
@@ -530,7 +729,7 @@ function loadData() {
           AppState.config.shuttleUnitPrice = Math.round(bp / sc) || 28333;
         }
         if (!AppState.config.defaultShuttlesPerSession) AppState.config.defaultShuttlesPerSession = 6;
-        if (!AppState.config.viceLeaderId) AppState.config.viceLeaderId = 'M002';
+        if (!AppState.config.viceLeaderId) AppState.config.viceLeaderId = isSmash ? 'M002' : '';
         if (!AppState.config.permissions) {
           AppState.config.permissions = {
             allowViceLeaderAttendance: true,
@@ -541,7 +740,7 @@ function loadData() {
         if (!AppState.config.settlementMode) AppState.config.settlementMode = 'MONTHLY';
         if (!AppState.config.defaultSettlementDay) AppState.config.defaultSettlementDay = 'END_OF_MONTH';
         if (!AppState.config.leadership) {
-          AppState.config.leadership = {
+          AppState.config.leadership = isSmash ? {
             president: 'M001',
             vicePresident1: 'M002',
             vicePresident2: 'M003',
@@ -550,27 +749,44 @@ function loadData() {
             media: 'M008',
             advisor1: 'M006',
             advisor2: 'M007'
+          } : {
+            president: AppState.members?.[0]?.id || '',
+            vicePresident1: '',
+            vicePresident2: '',
+            secretary: '',
+            treasurer: '',
+            media: '',
+            advisor1: '',
+            advisor2: ''
           };
-        } else if (!AppState.config.leadership.media) {
-          AppState.config.leadership.media = 'M008';
+        } else if (!isSmash) {
+          // Loại bỏ ID mẫu của dev nếu không tồn tại trong danh sách thành viên CLB này
+          const memberIds = new Set((AppState.members || []).map(m => m.id));
+          ['president', 'vicePresident1', 'vicePresident2', 'secretary', 'treasurer', 'media', 'advisor1', 'advisor2'].forEach(k => {
+            if (AppState.config.leadership[k] && !memberIds.has(AppState.config.leadership[k])) {
+              AppState.config.leadership[k] = (k === 'president') ? (AppState.members?.[0]?.id || '') : '';
+            }
+          });
         }
       }
 
       if (AppState.funds) {
-        if (AppState.funds.shuttleAdvanceFund === undefined) AppState.funds.shuttleAdvanceFund = 800000;
-        if (AppState.funds.courtAdvanceFund === undefined) AppState.funds.courtAdvanceFund = 760000;
-        if (AppState.funds.guestAdvanceIncome === undefined) AppState.funds.guestAdvanceIncome = 240000;
-        if (AppState.funds.shuttlePaidTotal === undefined) AppState.funds.shuttlePaidTotal = 680000;
-        if (AppState.funds.courtPaidTotal === undefined) AppState.funds.courtPaidTotal = 1500000;
+        if (AppState.funds.shuttleAdvanceFund === undefined) AppState.funds.shuttleAdvanceFund = isSmash ? 800000 : 0;
+        if (AppState.funds.courtAdvanceFund === undefined) AppState.funds.courtAdvanceFund = isSmash ? 760000 : 0;
+        if (AppState.funds.guestAdvanceIncome === undefined) AppState.funds.guestAdvanceIncome = isSmash ? 240000 : 0;
+        if (AppState.funds.shuttlePaidTotal === undefined) AppState.funds.shuttlePaidTotal = isSmash ? 680000 : 0;
+        if (AppState.funds.courtPaidTotal === undefined) AppState.funds.courtPaidTotal = isSmash ? 1500000 : 0;
       }
       saveData();
     } else {
-      AppState = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA));
+      AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
       saveData();
     }
   } catch (err) {
     console.error('Error loading data, using defaults:', err);
-    AppState = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA));
+    const activeClub = getActiveClub();
+    const isSmash = activeClub.id === 'club_smash';
+    AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
     saveData();
   }
 }
@@ -1053,7 +1269,85 @@ let activityState = {
   matches: []
 };
 
-function initActivitySessionData() {
+function saveActivitySessionState() {
+  try {
+    const clubId = getActiveClubId();
+    const sessionKey = 'CLB_SESSION_' + clubId;
+    const serializable = {
+      date: activityState.date,
+      type: activityState.type,
+      lang: activityState.lang || 'VI',
+      selectedMemberIds: Array.from(activityState.selectedMemberIds || []),
+      selectedGuestIds: Array.from(activityState.selectedGuestIds || []),
+      saveGuestDebt: activityState.saveGuestDebt,
+      shuttleBillingMode: activityState.shuttleBillingMode,
+      shuttleCount: activityState.shuttleCount,
+      expenses: activityState.expenses,
+      frontPersonId: activityState.frontPersonId,
+      frontAmount: activityState.frontAmount,
+      isFrontAll: activityState.isFrontAll,
+      tipAmount: activityState.tipAmount,
+      matches: activityState.matches,
+      temporaryAttendanceSaved: activityState.temporaryAttendanceSaved,
+      savedAttendanceTime: activityState.savedAttendanceTime,
+      isEditingAttendance: activityState.isEditingAttendance,
+      updatedAt: Date.now()
+    };
+    localStorage.setItem(sessionKey, JSON.stringify(serializable));
+  } catch (e) {}
+}
+
+function loadActivitySessionState() {
+  try {
+    const clubId = getActiveClubId();
+    const sessionKey = 'CLB_SESSION_' + clubId;
+    const raw = localStorage.getItem(sessionKey);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data) return false;
+
+    const validMemberIds = new Set((AppState.members || []).map(m => m.id));
+    const restoredMembers = new Set((data.selectedMemberIds || []).filter(id => validMemberIds.has(id)));
+    const restoredGuests = new Set((data.selectedGuestIds || []).filter(id => validMemberIds.has(id)));
+
+    activityState.date = data.date || getTodayInputFormat();
+    activityState.type = data.type || 'Buổi cầu';
+    activityState.lang = data.lang || 'VI';
+    activityState.selectedMemberIds = restoredMembers;
+    activityState.selectedGuestIds = restoredGuests;
+    activityState.saveGuestDebt = !!data.saveGuestDebt;
+    activityState.shuttleBillingMode = data.shuttleBillingMode || 'BY_SHUTTLE';
+    activityState.shuttleCount = data.shuttleCount || 6;
+    if (data.expenses && Array.isArray(data.expenses) && data.expenses.length > 0) {
+      activityState.expenses = data.expenses;
+    }
+    activityState.frontPersonId = data.frontPersonId || 'NONE';
+    activityState.frontAmount = data.frontAmount || 0;
+    activityState.isFrontAll = !!data.isFrontAll;
+    activityState.tipAmount = data.tipAmount || 0;
+    activityState.matches = data.matches || [];
+    activityState.temporaryAttendanceSaved = !!data.temporaryAttendanceSaved;
+    activityState.savedAttendanceTime = data.savedAttendanceTime || null;
+    activityState.isEditingAttendance = !!data.isEditingAttendance;
+    activityState.initialized = true;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function clearActivitySessionState() {
+  try {
+    const clubId = getActiveClubId();
+    localStorage.removeItem('CLB_SESSION_' + clubId);
+  } catch (e) {}
+}
+
+function initActivitySessionData(forceReset = false) {
+  if (!forceReset && loadActivitySessionState()) {
+    return;
+  }
+
   activityState.date = getTodayInputFormat();
   activityState.type = 'Buổi cầu';
   activityState.lang = 'VI';
@@ -1158,22 +1452,26 @@ function switchActiveUserRole(role) {
   }
   AppState.auth.isLoggedIn = true;
 
-  const viceLeader = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.viceLeaderId || 'M002'))) || (AppState.members ? AppState.members[1] : null);
-  const viceName = viceLeader ? viceLeader.name : 'Nguyễn Thành Công';
-
-  const treasurer = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.leadership?.treasurer || 'M005'))) || (AppState.members ? AppState.members[4] : null);
-  const treasurerName = treasurer ? treasurer.name : 'Đặng Thành Đạt';
-
-  const referee = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.leadership?.secretary || 'M004'))) || (AppState.members ? AppState.members[3] : null);
-  const refereeName = referee ? referee.name : 'Vũ Văn Duy';
-
+  const activeClub = getActiveClub();
+  const defaultAdminName = activeClub?.adminName || 'Chủ nhiệm CLB';
   const president = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.leadership?.president || 'M001'))) || (AppState.members ? AppState.members[0] : null);
-  const presidentName = president ? president.name : 'Trần Đức Chính';
+  const presidentName = president ? president.name : defaultAdminName;
+
+  const viceLeader = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.viceLeaderId || AppState.config?.leadership?.vicePresident1))) || (AppState.members && AppState.members.length > 1 ? AppState.members[1] : null);
+  const viceName = viceLeader ? viceLeader.name : 'Phó chủ nhiệm CLB';
+
+  const treasurer = (AppState.members && AppState.members.find(m => m.id === AppState.config?.leadership?.treasurer)) || (AppState.members && AppState.members.length > 2 ? AppState.members[2] : null);
+  const treasurerName = treasurer ? treasurer.name : 'Thủ quỹ CLB';
+
+  const referee = (AppState.members && AppState.members.find(m => m.id === AppState.config?.leadership?.secretary)) || (AppState.members && AppState.members.length > 3 ? AppState.members[3] : null);
+  const refereeName = referee ? referee.name : 'Trọng tài CLB';
+
+  const sampleMember = (AppState.members && AppState.members.find(m => m.role === 'MEMBER')) || (AppState.members ? AppState.members[AppState.members.length - 1] : null);
 
   if (role === 'ADMIN') {
     AppState.auth.user = {
       id: president ? president.id : 'M001',
-      username: 'admin',
+      username: (president && president.username) ? president.username : (activeClub?.adminUsername || 'admin'),
       role: 'ADMIN',
       name: `${presidentName} (Chủ nhiệm)`,
       permissions: getRoleDefaultPermissions('ADMIN')
@@ -1181,7 +1479,7 @@ function switchActiveUserRole(role) {
   } else if (role === 'VICE_ADMIN') {
     AppState.auth.user = {
       id: viceLeader ? viceLeader.id : 'M002',
-      username: (viceLeader && viceLeader.username) ? viceLeader.username : 'cong',
+      username: (viceLeader && viceLeader.username) ? viceLeader.username : 'vice_admin',
       role: 'VICE_ADMIN',
       name: `${viceName} (Phó nhóm)`,
       permissions: getRoleDefaultPermissions('VICE_ADMIN')
@@ -1189,7 +1487,7 @@ function switchActiveUserRole(role) {
   } else if (role === 'TREASURER') {
     AppState.auth.user = {
       id: treasurer ? treasurer.id : 'M005',
-      username: (treasurer && treasurer.username) ? treasurer.username : 'dat',
+      username: (treasurer && treasurer.username) ? treasurer.username : 'thuquy',
       role: 'TREASURER',
       name: `${treasurerName} (Thủ quỹ)`,
       permissions: getRoleDefaultPermissions('TREASURER')
@@ -1197,17 +1495,17 @@ function switchActiveUserRole(role) {
   } else if (role === 'REFEREE') {
     AppState.auth.user = {
       id: referee ? referee.id : 'M004',
-      username: (referee && referee.username) ? referee.username : 'duy',
+      username: (referee && referee.username) ? referee.username : 'trongtai',
       role: 'REFEREE',
       name: `${refereeName} (Trọng tài)`,
       permissions: getRoleDefaultPermissions('REFEREE')
     };
   } else {
     AppState.auth.user = {
-      id: 'M009',
-      username: 'hieu',
+      id: sampleMember ? sampleMember.id : (president ? president.id : 'M001'),
+      username: (sampleMember && sampleMember.username) ? sampleMember.username : 'member',
       role: 'MEMBER',
-      name: 'Bùi Trung Hiếu (Thành viên)',
+      name: sampleMember ? `${sampleMember.name} (Thành viên)` : 'Thành viên CLB',
       permissions: getRoleDefaultPermissions('MEMBER')
     };
   }
@@ -1482,6 +1780,7 @@ function toggleActivityMember(memberId) {
   if (activityState.temporaryAttendanceSaved) {
     activityState.isEditingAttendance = true;
   }
+  saveActivitySessionState();
   renderActivityMemberChips();
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
@@ -1501,6 +1800,7 @@ function selectAllActivityMembers() {
   if (activityState.temporaryAttendanceSaved) {
     activityState.isEditingAttendance = true;
   }
+  saveActivitySessionState();
   renderActivityMemberChips();
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
@@ -1516,6 +1816,7 @@ function deselectAllActivityMembers() {
   if (activityState.temporaryAttendanceSaved) {
     activityState.isEditingAttendance = true;
   }
+  saveActivitySessionState();
   renderActivityMemberChips();
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
@@ -1593,6 +1894,7 @@ function toggleActivityGuest(guestId) {
   if (activityState.temporaryAttendanceSaved) {
     activityState.isEditingAttendance = true;
   }
+  saveActivitySessionState();
   renderActivityGuestChips();
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
@@ -1632,7 +1934,10 @@ function addNewGuestInline() {
     username: '',
     password: '',
     balance: 0,
-    monthlySessions: 1
+    monthlySessions: 1,
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    permissions: getRoleDefaultPermissions('MEMBER')
   };
 
   AppState.members.push(newGuest);
@@ -1641,6 +1946,7 @@ function addNewGuestInline() {
     activityState.isEditingAttendance = true;
   }
   saveData();
+  saveActivitySessionState();
 
   nameInput.value = '';
   renderActivityGuestChips();
@@ -1652,6 +1958,7 @@ function addNewGuestInline() {
 
 function toggleSaveGuestDebt(checked) {
   activityState.saveGuestDebt = checked;
+  saveActivitySessionState();
 }
 
 // --- 4C. DÒNG LƯU VÀ SỬA ĐIỂM DANH TẠM THỜI (ÁP DỤNG CHO THỐNG KÊ TRẬN CẦU) ---
@@ -1689,7 +1996,7 @@ function updateAttendanceSaveBarUI() {
         badge.textContent = '✓ Đã lưu tạm';
       }
       if (countText) countText.textContent = `${total} người đã lưu (${memCount} TV, ${guestCount} Khách)`;
-      if (noteText) noteText.textContent = `Đã áp dụng cho các trận cầu • Lưu lúc ${activityState.savedAttendanceTime || ''}`;
+      if (noteText) noteText.textContent = `Đã lưu tạm (${activityState.savedAttendanceTime || ''}) • Bấm "Chốt & Trừ Ví" để hoàn tất trừ quỹ`;
       if (btnLabel) btnLabel.textContent = '✓ Đã lưu tạm';
       if (btnSave) btnSave.className = 'px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer';
     }
@@ -1701,7 +2008,7 @@ function updateAttendanceSaveBarUI() {
       badge.textContent = 'Chưa lưu tạm';
     }
     if (countText) countText.textContent = `${total} người được chọn (${memCount} TV, ${guestCount} Khách)`;
-    if (noteText) noteText.textContent = 'Bấm "Lưu điểm danh" để nạp vào thống kê các trận cầu';
+    if (noteText) noteText.textContent = 'Bấm "Lưu điểm danh" hoặc "Chốt & Trừ Ví" để áp dụng';
     if (btnLabel) btnLabel.textContent = 'Lưu điểm danh';
     if (btnSave) btnSave.className = 'px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer';
   }
@@ -1735,6 +2042,7 @@ function saveTemporaryAttendance() {
     }
   }
 
+  saveActivitySessionState();
   updateAttendanceSaveBarUI();
   renderActivityMatches();
 
@@ -1800,6 +2108,7 @@ function addActivityExpenseRow() {
     amount: 0,
     isCombo: false
   });
+  saveActivitySessionState();
   renderActivityExpenseRows();
   recalculateActivitySplit();
 }
@@ -1809,13 +2118,17 @@ function removeActivityExpenseRow(id) {
   if (activityState.expenses.length === 0) {
     activityState.expenses.push({ id: Date.now(), title: '', qty: 1, unitPrice: 0, amount: 0, isCombo: false });
   }
+  saveActivitySessionState();
   renderActivityExpenseRows();
   recalculateActivitySplit();
 }
 
 function updateExpenseTitle(id, val) {
   const exp = activityState.expenses.find(e => e.id === id);
-  if (exp) exp.title = val;
+  if (exp) {
+    exp.title = val;
+    saveActivitySessionState();
+  }
 }
 
 function updateExpenseQty(id, val) {
@@ -1831,6 +2144,7 @@ function updateExpenseQty(id, val) {
     } else {
       exp.amount = exp.qty * exp.unitPrice;
     }
+    saveActivitySessionState();
     renderActivityExpenseRows();
     recalculateActivitySplit();
   }
@@ -1841,6 +2155,7 @@ function updateExpenseUnitPrice(id, val) {
   if (exp) {
     exp.unitPrice = Math.max(0, Number(val) || 0);
     exp.amount = exp.qty * exp.unitPrice;
+    saveActivitySessionState();
     renderActivityExpenseRows();
     recalculateActivitySplit();
   }
@@ -1851,6 +2166,7 @@ function updateExpenseAmountDirect(id, val) {
   if (exp) {
     exp.amount = Math.max(0, Number(val) || 0);
     exp.unitPrice = Math.round(exp.amount / exp.qty);
+    saveActivitySessionState();
     recalculateActivitySplit();
   }
 }
@@ -3115,13 +3431,21 @@ function saveAndSplitActivitySession() {
   calculateAdvanceFundStats();
   saveData();
 
+  // Dọn sạch phiên tạm thời để bắt đầu buổi mới
+  clearActivitySessionState();
+  initActivitySessionData(true);
+
   let successMsg = `Đã lưu và trừ ví thành công ${memberCount} thành viên! (Cầu: +${formatMoney(totalMemberShuttleFee)}, Sân: +${formatMoney(totalMemberCourtFee)}, Khách: +${formatMoney(guestPaid)}).`;
   if (negativeCount > 0) successMsg += ` Có ${negativeCount} thành viên đang có số dư âm (dư nợ).`;
   showToast(successMsg, 'success');
 
   renderDashboard();
   renderFinanceTab();
-  recalculateActivitySplit();
+  if (currentTab === 'attendance') {
+    renderAttendanceTab();
+  } else {
+    recalculateActivitySplit();
+  }
 
   // Tự động mở modal xem và tải ảnh báo cáo khi kết thúc hoạt động
   setTimeout(() => {
@@ -5447,6 +5771,7 @@ function handleMemberSubmit(e) {
     const member = AppState.members.find(m => m.id === editId);
     if (member) {
       member.name = name;
+      member.chipName = name.trim().split(/\s+/).pop().toUpperCase();
       member.phone = phone;
       member.type = type;
       member.username = username;
@@ -5455,15 +5780,20 @@ function handleMemberSubmit(e) {
   } else {
     // Thêm thành viên mới
     const newId = 'M' + String(Date.now()).slice(-4);
+    const chip = name.trim().split(/\s+/).pop().toUpperCase();
     const newMember = {
       id: newId,
       name: name,
+      chipName: chip,
       phone: phone,
       type: type,
-      username: username,
-      password: password || '123',
+      username: username || generateAutoUsername(name),
+      password: password || '123456',
       balance: initBalance,
-      monthlySessions: 0
+      monthlySessions: 0,
+      role: 'MEMBER',
+      status: 'ACTIVE',
+      permissions: getRoleDefaultPermissions('MEMBER')
     };
     AppState.members.push(newMember);
 
@@ -5472,8 +5802,14 @@ function handleMemberSubmit(e) {
         id: 'TX_' + Date.now(),
         date: getNowTimestampString(),
         type: 'TOPUP',
+        categoryGroup: 'WALLET_TOPUP',
+        subType: 'TOPUP',
+        categoryName: 'Nạp ví ban đầu',
         amount: initBalance,
         targetName: name,
+        memberId: newId,
+        walletImpact: initBalance,
+        fundImpact: 0,
         description: 'Số dư ví ban đầu khi tạo thành viên',
         operator: (AppState.auth && AppState.auth.user) ? AppState.auth.user.username : 'admin'
       });
@@ -5528,15 +5864,20 @@ function handleAddGuestSubmit(e) {
     return;
   }
 
+  const chip = name.trim().split(/\s+/).pop().toUpperCase();
   const newGuest = {
     id: 'GUEST_' + Date.now(),
     name: name,
+    chipName: chip,
     phone: phone,
     type: type,
     username: '',
     password: '',
     balance: 0,
-    monthlySessions: 0
+    monthlySessions: 0,
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    permissions: getRoleDefaultPermissions('MEMBER')
   };
 
   AppState.members.push(newGuest);
@@ -6073,6 +6414,11 @@ function renderClubSwitcher() {
 
   const registry = getClubsRegistry();
   const activeClub = getActiveClub();
+  const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+  const visibleClubs = isHideDemo
+    ? registry.filter(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning')
+    : registry;
+  const listToRender = visibleClubs.length > 0 ? visibleClubs : registry;
 
   // Cập nhật biểu tượng và tên trên Header
   const iconEl = document.getElementById('headerClubIconSpan');
@@ -6081,7 +6427,7 @@ function renderClubSwitcher() {
   const nameEl = document.getElementById('headerClubName');
   if (nameEl) nameEl.textContent = AppState.config?.clubName || activeClub.name;
 
-  let optionsHtml = registry.map(c => `
+  let optionsHtml = listToRender.map(c => `
     <option value="${c.id}" ${c.id === activeClub.id ? 'selected' : ''} class="text-slate-900 font-bold py-1">
       ${c.logoIcon || '🏸'} ${c.shortName || c.name}
     </option>
@@ -6109,22 +6455,29 @@ function renderClubSwitcher() {
 
 function switchActiveClub(clubId) {
   const registry = getClubsRegistry();
-  const targetClub = registry.find(c => c.id === clubId);
+  const targetClub = registry.find(c => c.id === clubId || c.accessSlug === clubId);
   if (!targetClub) {
     showToast('Không tìm thấy thông tin Câu Lạc Bộ!', 'error');
     return;
   }
 
-  // 1. Lưu lại trạng thái CLB hiện tại
-  saveData();
+  // 1. Lưu lại trạng thái CLB HIỆN TẠI vào đúng storageKey hiện tại của nó (tránh ghi đè sang CLB mới)
+  // 1. Lưu lại trạng thái CLB HIỆN TẠI vào đúng storageKey hiện tại của nó (tránh ghi đè sang CLB mới)
+  const curKey = STORAGE_KEY || getCurrentClubStorageKey();
+  if (curKey && curKey !== targetClub.storageKey && AppState && Object.keys(AppState).length > 0) {
+    try {
+      localStorage.setItem(curKey, JSON.stringify(AppState));
+    } catch (e) {}
+  }
 
   // 2. Chuyển đổi mã CLB tích cực & cập nhật URL
-  setActiveClubId(clubId);
-  updateClubUrlParam(clubId);
+  setActiveClubId(targetClub.id);
   STORAGE_KEY = targetClub.storageKey;
+  updateClubUrlParam(targetClub.accessSlug || targetClub.id);
 
   // 3. Tải dữ liệu của CLB đích
   loadData();
+  initActivitySessionData(true);
 
   // 4. Đồng bộ Theme màu & Header
   applyThemeColor(AppState.config?.themeColor || targetClub.themeColor || 'emerald');
@@ -6172,6 +6525,7 @@ function openCreateClubModal() {
 
   const nameInput = document.getElementById('newClubName');
   const shortInput = document.getElementById('newClubShortName');
+  const slugInput = document.getElementById('newClubAccessSlug');
   const logoInput = document.getElementById('newClubLogoIcon');
   const themeInput = document.getElementById('newClubThemeColor');
   const adminNameInput = document.getElementById('newClubAdminName');
@@ -6181,18 +6535,25 @@ function openCreateClubModal() {
   const fundInput = document.getElementById('newClubInitialFund');
   const bankInput = document.getElementById('newClubBankInfo');
 
-  [nameInput, shortInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
+  [nameInput, shortInput, slugInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
 
   if (nameInput) nameInput.value = '';
   if (shortInput) shortInput.value = '';
+  if (slugInput) slugInput.value = '';
+  updateNewClubSlugPreview('clb');
   if (logoInput) logoInput.value = '🏸';
   if (themeInput) themeInput.value = 'emerald';
   if (adminNameInput) adminNameInput.value = '';
   if (adminPhoneInput) adminPhoneInput.value = '';
   if (adminUserInput) adminUserInput.value = '';
   if (adminPassInput) adminPassInput.value = '123456';
-  if (fundInput) fundInput.value = '2000000';
+  if (fundInput) fundInput.value = '0';
   if (bankInput) bankInput.value = '';
+
+  const modeRadios = document.getElementsByName('newClubInitMode');
+  for (const r of modeRadios) {
+    r.checked = (r.value === 'FRESH');
+  }
 
   selectClubModalIcon('🏸');
   modal.classList.remove('hidden');
@@ -6232,6 +6593,24 @@ function autoSuggestClubAdminUsername(name) {
   userInput.value = username;
 }
 
+function onNewClubNameChanged(fullName) {
+  autoSuggestClubShortName(fullName);
+  const slugInput = document.getElementById('newClubAccessSlug');
+  if (slugInput) {
+    const slug = generateAccessSlug(fullName);
+    slugInput.value = slug;
+    updateNewClubSlugPreview(slug);
+  }
+}
+
+function updateNewClubSlugPreview(slug) {
+  const preview = document.getElementById('newClubSlugPreview');
+  if (!preview) return;
+  const cleanSlug = (slug || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  preview.textContent = `${baseUrl}?club=${encodeURIComponent(cleanSlug || 'clb')}`;
+}
+
 function handleCreateNewClubSubmit(event) {
   if (event) event.preventDefault();
 
@@ -6240,6 +6619,7 @@ function handleCreateNewClubSubmit(event) {
 
   const nameInput = document.getElementById('newClubName');
   const shortInput = document.getElementById('newClubShortName');
+  const slugInput = document.getElementById('newClubAccessSlug');
   const logoInput = document.getElementById('newClubLogoIcon');
   const themeInput = document.getElementById('newClubThemeColor');
   const adminNameInput = document.getElementById('newClubAdminName');
@@ -6250,10 +6630,11 @@ function handleCreateNewClubSubmit(event) {
   const bankInput = document.getElementById('newClubBankInfo');
 
   // Reset highlight lỗi trước đó
-  [nameInput, shortInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
+  [nameInput, shortInput, slugInput, adminNameInput, adminUserInput].forEach(clearClubInputError);
 
   let name = nameInput?.value.trim() || '';
   let shortName = shortInput?.value.trim() || '';
+  let accessSlug = slugInput?.value.trim().toLowerCase() || '';
   const logoIcon = logoInput?.value || '🏸';
   const themeColor = themeInput?.value || 'emerald';
   let adminName = adminNameInput?.value.trim() || '';
@@ -6278,6 +6659,15 @@ function handleCreateNewClubSubmit(event) {
   if (!shortName) {
     shortName = getSuggestedClubShortName(name) || name.toUpperCase();
     if (shortInput) shortInput.value = shortName;
+  }
+
+  // 2.5 Tự động tạo Mã link riêng (Access Slug) nếu chưa nhập
+  if (!accessSlug) {
+    accessSlug = generateAccessSlug(name);
+  }
+  accessSlug = accessSlug.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!accessSlug) {
+    accessSlug = 'clb-' + Date.now();
   }
 
   // 3. Thông minh hóa: Kiểm tra Họ tên & Username Chủ nhiệm
@@ -6306,13 +6696,14 @@ function handleCreateNewClubSubmit(event) {
   }
 
   const modeRadios = document.getElementsByName('newClubInitMode');
-  let initMode = 'SAMPLE';
+  let initMode = 'FRESH';
   for (const r of modeRadios) {
     if (r.checked) { initMode = r.value; break; }
   }
 
-  const clubId = 'club_' + Date.now();
-  const storageKey = 'CLB_CAU_LONG_DATA_' + clubId;
+  const cleanSlug = accessSlug;
+  const clubId = 'club_' + cleanSlug;
+  const storageKey = 'CLB_CAU_LONG_DATA_' + cleanSlug;
 
   // Xây dựng tài khoản Chủ nhiệm CLB mới
   const adminMemberId = 'M001';
@@ -6325,7 +6716,7 @@ function handleCreateNewClubSubmit(event) {
     type: 'OFFICIAL',
     username: adminUsername,
     password: adminPassword,
-    balance: 500000,
+    balance: 0,
     monthlySessions: 0,
     role: 'ADMIN',
     status: 'ACTIVE',
@@ -6337,6 +6728,7 @@ function handleCreateNewClubSubmit(event) {
   let attendanceList = [];
 
   if (initMode === 'SAMPLE') {
+    adminMember.balance = 500000;
     // 10 Thành viên mẫu chuẩn (Nam, Nữ, Ban Cán Sự, Khách Giao Lưu)
     const sampleMembers = [
       { id: 'M002', name: 'Trần Bảo Ngọc', chipName: 'NGỌC', phone: '0988111002', type: 'OFFICIAL', username: 'ngoc', password: '123', balance: 400000, monthlySessions: 3, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
@@ -6381,7 +6773,7 @@ function handleCreateNewClubSubmit(event) {
       }
     ];
   } else {
-    // FRESH mode
+    // FRESH mode: Bắt đầu hoàn toàn mới, 0 dummy data, chỉ có duy nhất tài khoản Chủ nhiệm
     adminMember.balance = 0;
     if (initialFund > 0) {
       transactionsList.push({
@@ -6404,6 +6796,7 @@ function handleCreateNewClubSubmit(event) {
   const newClubAppState = {
     config: {
       clubName: name,
+      accessSlug: accessSlug,
       themeColor: themeColor,
       bankInfo: bankInfo || `NGAN HANG - 0123456789 - ${shortName}`,
       leadership: {
@@ -6466,12 +6859,20 @@ function handleCreateNewClubSubmit(event) {
     }
   };
 
-  // 1. Lưu dữ liệu CLB mới vào localStorage riêng
+  // 1. Lưu lại CLB hiện tại đang chạy (tránh mất dữ liệu của CLB cũ)
+  if (STORAGE_KEY && STORAGE_KEY !== storageKey && AppState && Object.keys(AppState).length > 0) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState));
+    } catch (e) {}
+  }
+
+  // 2. Lưu dữ liệu CLB mới vào localStorage riêng theo key chuẩn định danh
   localStorage.setItem(storageKey, JSON.stringify(newClubAppState));
 
-  // 2. Thêm vào danh bạ CLB (Registry)
+  // 3. Thêm hoặc cập nhật danh bạ CLB (Registry) không trùng lặp
   const newClubRecord = {
     id: clubId,
+    accessSlug: cleanSlug,
     name: name,
     shortName: shortName,
     logoIcon: logoIcon,
@@ -6481,29 +6882,63 @@ function handleCreateNewClubSubmit(event) {
     storageKey: storageKey,
     adminName: adminName,
     adminUsername: adminUsername,
-    phone: adminPhone
+    phone: adminPhone,
+    isDeveloperSample: false
   };
 
   const registry = getClubsRegistry();
-  registry.push(newClubRecord);
+  const existingIdx = registry.findIndex(c => (c.accessSlug && c.accessSlug.toLowerCase() === cleanSlug) || c.id === clubId);
+  if (existingIdx >= 0) {
+    registry[existingIdx] = newClubRecord;
+  } else {
+    registry.push(newClubRecord);
+  }
   saveClubsRegistry(registry);
 
-  // 3. Đóng Modal
+  // 4. Tự động ẩn CLB demo của nhà phát triển để giao diện người dùng hoàn toàn sạch sẽ
+  localStorage.setItem('CLB_HIDE_DEV_DEMO', 'true');
+
+  // 5. Kích hoạt trực tiếp CLB mới vào bộ nhớ mà không qua switchActiveClub để loại trừ hoàn toàn nguy cơ race-condition
+  setActiveClubId(clubId);
+  STORAGE_KEY = storageKey;
+  AppState = newClubAppState;
+  updateClubUrlParam(cleanSlug);
+
+  // 6. Xóa và làm mới phiên điểm danh cho CLB mới
+  clearActivitySessionState();
+  initActivitySessionData(true);
+
+  // 7. Đồng bộ Theme màu & Header
+  applyThemeColor(themeColor);
+  const nameEl = document.getElementById('headerClubName');
+  if (nameEl) nameEl.textContent = name;
+  const iconEl = document.getElementById('headerClubIconSpan');
+  if (iconEl) iconEl.textContent = logoIcon;
+
+  // 8. Đóng Modal
   closeModal('modalCreateNewClub');
 
-  // 4. Chuyển sang CLB mới ngay lập tức
-  switchActiveClub(clubId);
+  // 9. Render lại toàn bộ giao diện của phân hệ đang mở
+  renderClubSwitcher();
+  renderDashboard();
+  populateLeadershipSelects();
 
-  showToast(`🎉 Chúc mừng! Câu Lạc Bộ ${name} đã được khởi tạo thành công!`, 'success');
+  if (currentTab === 'attendance') renderAttendanceTab();
+  else if (currentTab === 'finance') renderFinanceTab();
+  else if (currentTab === 'members') renderMemberManagementList();
+  else if (currentTab === 'tournament') renderTournamentModule();
+  else if (currentTab === 'settings') renderSettingsTab();
+
+  showToast(`🎉 Chúc mừng! Câu Lạc Bộ ${name} đã được khởi tạo thành công! Link riêng: ?club=${cleanSlug}`, 'success');
 }
 
 function deleteClub(clubId) {
-  if (clubId === 'club_smash') {
-    showToast('Không thể xóa Câu Lạc Bộ mặc định của hệ thống!', 'error');
+  const registry = getClubsRegistry();
+  if (registry.length <= 1) {
+    showToast('Hệ thống cần tối thiểu 1 Câu Lạc Bộ hoạt động!', 'error');
     return;
   }
 
-  const registry = getClubsRegistry();
   const club = registry.find(c => c.id === clubId);
   if (!club) return;
 
@@ -6517,7 +6952,8 @@ function deleteClub(clubId) {
   saveClubsRegistry(updated);
 
   if (getActiveClubId() === clubId) {
-    switchActiveClub('club_smash');
+    const nextClub = updated[0];
+    switchActiveClub(nextClub.id);
   } else {
     renderClubSwitcher();
     renderMultiClubSettingsSection();
@@ -6526,19 +6962,68 @@ function deleteClub(clubId) {
   showToast(`Đã xóa Câu Lạc Bộ: ${club.name}`, 'info');
 }
 
+function toggleHideDeveloperDemoClubs() {
+  const isHidden = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+  const newHidden = !isHidden;
+  localStorage.setItem('CLB_HIDE_DEV_DEMO', newHidden ? 'true' : 'false');
+
+  updateDevDemoToggleUI();
+  renderClubSwitcher();
+  renderMultiClubSettingsSection();
+
+  if (newHidden) {
+    showToast('Đã ẩn các CLB dữ liệu mẫu của nhà phát triển (SMASH & Tia Chớp)', 'info');
+    const activeId = getActiveClubId();
+    if (activeId === 'club_smash' || activeId === 'club_lightning') {
+      const registry = getClubsRegistry();
+      const userClub = registry.find(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning');
+      if (userClub) {
+        switchActiveClub(userClub.id);
+      }
+    }
+  } else {
+    showToast('Đã hiển thị các CLB dữ liệu mẫu của nhà phát triển', 'info');
+  }
+}
+
+function updateDevDemoToggleUI() {
+  const isHidden = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+  const iconEl = document.getElementById('iconToggleHideDevDemo');
+  const textEl = document.getElementById('textToggleHideDevDemo');
+  const btnEl = document.getElementById('btnToggleHideDevDemo');
+  if (!btnEl) return;
+
+  if (isHidden) {
+    if (iconEl) iconEl.textContent = '👁️‍🗨️';
+    if (textEl) textEl.textContent = 'Hiện CLB mẫu Dev';
+    btnEl.className = 'px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+  } else {
+    if (iconEl) iconEl.textContent = '👁️';
+    if (textEl) textEl.textContent = 'Ẩn CLB mẫu Dev';
+    btnEl.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+  }
+}
+
 function renderMultiClubSettingsSection() {
   const container = document.getElementById('multiClubListContainer');
   const countEl = document.getElementById('multiClubSummaryCount');
   if (!container) return;
 
+  updateDevDemoToggleUI();
+
   const registry = getClubsRegistry();
   const activeId = getActiveClubId();
+  const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+  const visibleClubs = isHideDemo
+    ? registry.filter(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning')
+    : registry;
+  const listToRender = visibleClubs.length > 0 ? visibleClubs : registry;
 
   if (countEl) {
-    countEl.textContent = `${registry.length} Câu Lạc Bộ`;
+    countEl.textContent = `${listToRender.length} Câu Lạc Bộ` + (isHideDemo && registry.length > listToRender.length ? ` (Đã ẩn ${registry.length - listToRender.length} CLB mẫu Dev)` : '');
   }
 
-  container.innerHTML = registry.map(club => {
+  container.innerHTML = listToRender.map(club => {
     const isActive = club.id === activeId;
     
     let clubFund = 0;
@@ -6551,6 +7036,8 @@ function renderMultiClubSettingsSection() {
         memberCount = parsed.members?.length || 0;
       }
     } catch (e) {}
+
+    const directSlug = club.accessSlug || club.shortName?.toLowerCase() || club.id;
 
     return `
       <div class="p-4 rounded-2xl border ${isActive ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'} flex flex-col justify-between transition space-y-3">
@@ -6566,6 +7053,7 @@ function renderMultiClubSettingsSection() {
                 <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
                   ${club.shortName || 'CLB'}
                 </span>
+                ${club.isDeveloperSample ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Mẫu Dev</span>' : ''}
               </div>
               <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
                 <span>👑 Chủ nhiệm: <strong class="text-slate-700">${club.adminName || 'Admin'}</strong></span>
@@ -6609,7 +7097,7 @@ function renderMultiClubSettingsSection() {
               <span>Link sử dụng riêng:</span>
             </span>
             <span class="font-mono text-[10px] text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md font-extrabold border border-emerald-300">
-              ?club=${club.id}
+              ?club=${directSlug}
             </span>
           </div>
 
@@ -6646,13 +7134,11 @@ function renderMultiClubSettingsSection() {
             🏦 ${club.bankInfo || 'Chưa thiết lập VietQR'}
           </span>
           <div class="flex items-center gap-1.5">
-            ${club.id !== 'club_smash' ? `
+            ${registry.length > 1 ? `
               <button type="button" onclick="deleteClub('${club.id}')" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" title="Xóa Câu Lạc Bộ này">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
               </button>
-            ` : `
-              <span class="text-[10px] text-slate-400 italic">Mặc định</span>
-            `}
+            ` : ''}
           </div>
         </div>
 
@@ -9852,13 +10338,65 @@ function renderTournamentFilteredViews() {
 
 // ==========================================
 // 17. CẤU HÌNH & SAO LƯU DỮ LIỆU
+function onConfigClubNameChanged(val) {
+  const slugInput = document.getElementById('configClubAccessSlug');
+  if (slugInput && !slugInput.value) {
+    const slug = generateAccessSlug(val);
+    slugInput.value = slug;
+    onConfigClubAccessSlugChanged(slug);
+  }
+}
+
+function onConfigClubAccessSlugChanged(val) {
+  const previewInput = document.getElementById('configClubDirectUrlPreview');
+  const cleanSlug = (val || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  if (previewInput) {
+    previewInput.value = `${baseUrl}?club=${encodeURIComponent(cleanSlug || 'clb')}`;
+  }
+}
+
+function copyConfigClubDirectLink() {
+  const input = document.getElementById('configClubDirectUrlPreview');
+  if (!input) return;
+  const url = input.value;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('✓ Đã sao chép đường link sử dụng riêng của CLB!', 'success');
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+      showToast('✓ Đã sao chép đường link sử dụng riêng của CLB!', 'success');
+    });
+  } else {
+    input.select();
+    document.execCommand('copy');
+    showToast('✓ Đã sao chép đường link sử dụng riêng của CLB!', 'success');
+  }
+}
+
+function openConfigClubDirectLink() {
+  const input = document.getElementById('configClubDirectUrlPreview');
+  if (input && input.value) {
+    window.open(input.value, '_blank');
+  }
+}
+
 function renderSettingsTab() {
   const config = AppState.config;
-  if (document.getElementById('configClubName')) document.getElementById('configClubName').value = config.clubName || 'CLB CẦU LÔNG SMASH';
+  const activeClub = getActiveClub();
+  if (document.getElementById('configClubName')) document.getElementById('configClubName').value = config.clubName || 'CLB CẦU LÔNG';
   if (document.getElementById('configThemeColor')) document.getElementById('configThemeColor').value = config.themeColor || 'emerald';
   if (document.getElementById('configBankInfo')) document.getElementById('configBankInfo').value = config.bankInfo || '';
 
-  // Khởi tạo và đổ danh sách thành viên vào 7 vị trí Ban Lãnh Đạo CLB
+  // Khởi tạo Tên truy cập cấu hình & Đường link trực tiếp CLB
+  const curSlug = config.accessSlug || activeClub.accessSlug || activeClub.shortName?.toLowerCase() || (activeClub.id === 'club_smash' ? 'smash' : activeClub.id);
+  const slugInput = document.getElementById('configClubAccessSlug');
+  if (slugInput) slugInput.value = curSlug;
+  const previewInput = document.getElementById('configClubDirectUrlPreview');
+  if (previewInput) previewInput.value = getClubDirectUrl(activeClub);
+
+  // Khởi tạo và đổ danh sách thành viên vào 8 vị trí Ban Lãnh Đạo CLB
   populateLeadershipSelects();
 
   if (document.getElementById('guestPriceA')) document.getElementById('guestPriceA').value = config.guestPrices?.GUEST_A || 90000;
@@ -9995,8 +10533,9 @@ function saveFeeTiersConfig() {
  * Đổ danh sách thành viên vào 8 vị trí Ban Lãnh Đạo CLB
  */
 function populateLeadershipSelects() {
+  const isSmash = getActiveClubId() === 'club_smash';
   if (!AppState.config.leadership) {
-    AppState.config.leadership = {
+    AppState.config.leadership = isSmash ? {
       president: 'M001',
       vicePresident1: 'M002',
       vicePresident2: 'M003',
@@ -10005,24 +10544,31 @@ function populateLeadershipSelects() {
       media: 'M008',
       advisor1: 'M006',
       advisor2: 'M007'
+    } : {
+      president: AppState.members?.[0]?.id || '',
+      vicePresident1: '',
+      vicePresident2: '',
+      secretary: '',
+      treasurer: '',
+      media: '',
+      advisor1: '',
+      advisor2: ''
     };
-  }
-  if (!AppState.config.leadership.media) {
-    AppState.config.leadership.media = 'M008';
   }
 
   const leadership = AppState.config.leadership;
   const members = AppState.members || [];
+  const memberIds = new Set(members.map(m => m.id));
 
   const roleConfigs = [
-    { id: 'configLeaderPresident', key: 'president', defaultVal: 'M001' },
-    { id: 'configLeaderVice1', key: 'vicePresident1', defaultVal: 'M002' },
-    { id: 'configLeaderVice2', key: 'vicePresident2', defaultVal: 'M003' },
-    { id: 'configLeaderSecretary', key: 'secretary', defaultVal: 'M004' },
-    { id: 'configLeaderTreasurer', key: 'treasurer', defaultVal: 'M005' },
-    { id: 'configLeaderMedia', key: 'media', defaultVal: 'M008' },
-    { id: 'configLeaderAdvisor1', key: 'advisor1', defaultVal: 'M006' },
-    { id: 'configLeaderAdvisor2', key: 'advisor2', defaultVal: 'M007' }
+    { id: 'configLeaderPresident', key: 'president', defaultVal: isSmash ? 'M001' : (members[0]?.id || '') },
+    { id: 'configLeaderVice1', key: 'vicePresident1', defaultVal: isSmash ? 'M002' : '' },
+    { id: 'configLeaderVice2', key: 'vicePresident2', defaultVal: isSmash ? 'M003' : '' },
+    { id: 'configLeaderSecretary', key: 'secretary', defaultVal: isSmash ? 'M004' : '' },
+    { id: 'configLeaderTreasurer', key: 'treasurer', defaultVal: isSmash ? 'M005' : '' },
+    { id: 'configLeaderMedia', key: 'media', defaultVal: isSmash ? 'M008' : '' },
+    { id: 'configLeaderAdvisor1', key: 'advisor1', defaultVal: isSmash ? 'M006' : '' },
+    { id: 'configLeaderAdvisor2', key: 'advisor2', defaultVal: isSmash ? 'M007' : '' }
   ];
 
   const officialMembers = members.filter(m => m.type === 'OFFICIAL');
@@ -10033,7 +10579,10 @@ function populateLeadershipSelects() {
     const select = document.getElementById(r.id);
     if (!select) return;
 
-    const currentVal = leadership[r.key] !== undefined ? leadership[r.key] : r.defaultVal;
+    let currentVal = leadership[r.key] !== undefined ? leadership[r.key] : r.defaultVal;
+    if (currentVal && !memberIds.has(currentVal)) {
+      currentVal = (r.key === 'president') ? (members[0]?.id || '') : '';
+    }
 
     let html = `<option value="">-- Chưa chỉ định --</option>`;
 
@@ -10158,9 +10707,24 @@ function toggleLeadershipCollapse() {
 }
 
 function saveGeneralConfig() {
-  AppState.config.clubName = document.getElementById('configClubName')?.value.trim() || 'CLB CẦU LÔNG SMASH';
+  const clubName = document.getElementById('configClubName')?.value.trim() || 'CLB CẦU LÔNG';
+  AppState.config.clubName = clubName;
   AppState.config.themeColor = document.getElementById('configThemeColor')?.value || 'emerald';
   AppState.config.bankInfo = document.getElementById('configBankInfo')?.value.trim() || '';
+
+  // Đọc và lưu Access Slug cấu hình
+  const slugInput = document.getElementById('configClubAccessSlug');
+  let slug = slugInput?.value.trim().toLowerCase() || '';
+  if (!slug) slug = generateAccessSlug(clubName);
+  slug = slug.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) slug = 'clb';
+  AppState.config.accessSlug = slug;
+  if (slugInput) slugInput.value = slug;
+
+  // Cập nhật thẻ preview URL
+  const previewInput = document.getElementById('configClubDirectUrlPreview');
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  if (previewInput) previewInput.value = `${baseUrl}?club=${encodeURIComponent(slug)}`;
 
   // Lưu cấu hình Ban Lãnh Đạo (8 vị trí) lấy từ danh sách thành viên
   if (!AppState.config.leadership) AppState.config.leadership = {};
@@ -10173,11 +10737,28 @@ function saveGeneralConfig() {
   AppState.config.leadership.advisor1 = document.getElementById('configLeaderAdvisor1')?.value || '';
   AppState.config.leadership.advisor2 = document.getElementById('configLeaderAdvisor2')?.value || '';
 
+  // Đồng bộ sang danh bạ Registry
+  const registry = getClubsRegistry();
+  const activeId = getActiveClubId();
+  const clubInReg = registry.find(c => c.id === activeId);
+  if (clubInReg) {
+    clubInReg.name = clubName;
+    clubInReg.themeColor = AppState.config.themeColor;
+    clubInReg.bankInfo = AppState.config.bankInfo;
+    clubInReg.accessSlug = slug;
+    saveClubsRegistry(registry);
+  }
+
+  // Cập nhật URL trình duyệt theo slug mới
+  updateClubUrlParam(slug);
+
   applyThemeColor(AppState.config.themeColor);
   saveData();
   renderDashboard();
+  renderClubSwitcher();
+  renderMultiClubSettingsSection();
   renderLeadershipSummaryCard();
-  showToast('✓ Đã lưu thông tin CLB & Ban lãnh đạo thành công!', 'success');
+  showToast('✓ Đã lưu thông tin CLB, link riêng & Ban lãnh đạo thành công!', 'success');
 }
 
 function saveGuestPricingConfig() {
@@ -10296,14 +10877,16 @@ function importDataBackup(event) {
 }
 
 function resetDefaultDemoData() {
-  const confirmed = confirm('CẢNH BÁO: Thao tác này sẽ đưa toàn bộ dữ liệu về trạng thái mẫu ban đầu.\nBạn có chắc chắn muốn đặt lại?');
+  const activeClub = getActiveClub();
+  const isSmash = activeClub.id === 'club_smash';
+  const confirmed = confirm(`CẢNH BÁO: Thao tác này sẽ đưa toàn bộ dữ liệu của "${activeClub.name}" về trạng thái ban đầu.\nBạn có chắc chắn muốn đặt lại?`);
   if (!confirmed) return;
 
-  AppState = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA));
+  AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
   saveData();
-  applyThemeColor(AppState.config.themeColor || 'emerald');
+  applyThemeColor(AppState.config?.themeColor || activeClub.themeColor || 'emerald');
   renderDashboard();
-  showToast('Đã đặt lại dữ liệu mẫu ban đầu thành công!', 'success');
+  showToast(`Đã đặt lại dữ liệu của ${activeClub.name} về ban đầu thành công!`, 'success');
 }
 
 // ==========================================
@@ -10352,14 +10935,16 @@ function handleLogin(e) {
   const p = document.getElementById('loginPassword').value.trim();
 
   if (u === 'admin' && (p === 'admin123' || p === '123456' || p === '123')) {
+    const activeClub = getActiveClub();
     const adminMem = AppState.members.find(m => m.role === 'ADMIN') || AppState.members[0];
+    const adminDisplayName = adminMem ? adminMem.name : (activeClub?.adminName || 'Chủ nhiệm');
     AppState.auth = {
       isLoggedIn: true,
       user: {
         id: adminMem ? adminMem.id : 'M001',
         username: 'admin',
         role: 'ADMIN',
-        name: adminMem ? adminMem.name : 'Trần Đức Chính (Chủ nhiệm)',
+        name: `${adminDisplayName} (Chủ nhiệm)`,
         permissions: getRoleDefaultPermissions('ADMIN')
       }
     };
@@ -11239,6 +11824,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyThemeColor(AppState.config.themeColor || 'emerald');
   renderDashboard();
   renderClubSwitcher();
+  updateDevDemoToggleUI();
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();
