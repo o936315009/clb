@@ -18,7 +18,7 @@ git add .
 
 echo.
 echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Cap nhat luu tru du lieu CLB va chot tru vi truc tiep"
+git commit -m "Tich hop Dong bo Dam may Firebase Realtime Database va cai thien sao luu"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

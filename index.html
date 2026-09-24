@@ -92,6 +92,12 @@
           <!-- Rendered via JS -->
         </div>
 
+        <!-- Cloud Sync Status Badge -->
+        <button type="button" onclick="openCloudSyncModal()" id="headerCloudSyncBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer shadow-2xs" title="Cấu hình đồng bộ dữ liệu đám mây đa thiết bị">
+          <span id="cloudSyncDot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+          <span id="cloudSyncText">Đám mây</span>
+        </button>
+
         <!-- Date display -->
         <div class="hidden lg:flex items-center text-xs font-semibold px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
           <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1.5 text-brand-600"></i>
@@ -2843,6 +2849,39 @@
           </div>
         </div>
 
+        <!-- Cloud Sync (Firebase Realtime Database) -->
+        <div class="bg-gradient-to-br from-white via-sky-50/40 to-slate-50 rounded-2xl border border-sky-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span class="text-xl">☁️</span>
+              Đồng Bộ Đám Mây Đa Thiết Bị (Real-time Cloud Sync)
+            </h2>
+            <div id="settingsCloudStatusBadge" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span>Chưa kết nối đám mây</span>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-600 mt-2.5 leading-relaxed">
+            Kết nối với <strong class="text-slate-900 font-bold">Google Firebase Realtime Database (miễn phí)</strong> để dữ liệu tự động đồng bộ ngay lập tức giữa <strong class="text-emerald-700">Điện thoại 📱</strong> và <strong class="text-blue-700">Máy tính 💻</strong> theo thời gian thực. Bất kỳ lúc nào thêm thành viên, điểm danh hay trừ ví, thiết bị khác sẽ tự động cập nhật sau 1 giây!
+          </p>
+
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button type="button" onclick="openCloudSyncModal()" class="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white text-xs font-black rounded-xl shadow-xs transition active:scale-95 cursor-pointer">
+              <span class="mr-1.5">⚙️</span>
+              Cài đặt Kết Nối Đám Mây
+            </button>
+            <button type="button" onclick="copyMobileSyncUrl()" id="btnCopyMobileSync" class="inline-flex items-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-xs transition active:scale-95 cursor-pointer">
+              <span class="mr-1.5">📲</span>
+              Sao chép Link Đồng Bộ cho Điện Thoại (Zalo)
+            </button>
+            <button type="button" onclick="manualTriggerCloudSync()" class="inline-flex items-center px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer">
+              <span class="mr-1.5">🔄</span>
+              Đồng bộ ngay bây giờ
+            </button>
+          </div>
+        </div>
+
         <!-- Backup & Restore -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <h2 class="text-base font-bold text-slate-900 pb-3 border-b border-slate-100 flex items-center gap-2">
@@ -4875,8 +4914,111 @@
     </div>
   </div>
 
+  <!-- MODAL ĐỒNG BỘ ĐÁM MÂY (FIREBASE REALTIME DATABASE) -->
+  <div id="modalCloudSync" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 bg-gradient-to-r from-sky-600 via-blue-600 to-slate-900 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner font-bold border border-white/20">
+            ☁️
+          </div>
+          <div>
+            <h3 class="text-base font-black tracking-tight flex items-center gap-2 text-white">
+              Đồng Bộ Đám Mây Đa Thiết Bị
+              <span id="modalCloudStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800">Chưa kết nối</span>
+            </h3>
+            <p class="text-xs text-sky-100 font-medium">Tự động đồng bộ số liệu giữa Điện thoại 📱 & Máy tính 💻 theo thời gian thực</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('modalCloudSync')" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        
+        <!-- Status summary banner -->
+        <div id="cloudConnectionBanner" class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span id="cloudStatusIcon" class="text-xl">⚪</span>
+            <div>
+              <div id="cloudStatusTitle" class="font-black text-slate-800">Chưa kết nối đám mây</div>
+              <div id="cloudStatusDesc" class="text-[11px] text-slate-500">Dữ liệu hiện chỉ lưu trên trình duyệt của máy này.</div>
+            </div>
+          </div>
+          <button type="button" onclick="testCloudConnection()" id="btnTestCloudConn" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer">
+            Kiểm tra kết nối
+          </button>
+        </div>
+
+        <!-- Input Firebase Config -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="font-bold text-slate-800 flex items-center gap-1">
+              <span>Mã cấu hình Google Firebase (Config JSON hoặc Snippet):</span>
+            </label>
+            <a href="https://console.firebase.google.com" target="_blank" class="text-[11px] font-bold text-sky-600 hover:underline flex items-center gap-1">
+              <span>Mở Firebase Console</span>
+              <span>↗</span>
+            </a>
+          </div>
+          <textarea id="cloudFirebaseConfigInput" rows="5" placeholder='Dán mã firebaseConfig từ Google Firebase vào đây, ví dụ:
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  databaseURL: "https://ten-du-an-default-rtdb.firebaseio.com",
+  projectId: "ten-du-an"
+};' class="w-full p-3 font-mono text-[11px] border border-slate-200 rounded-2xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900"></textarea>
+          <p class="text-[10px] text-slate-400 mt-1">Hệ thống tự động trích xuất thông tin dù bạn dán toàn bộ đoạn mã Javascript hay JSON.</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button type="button" onclick="saveCloudConfigAndConnect()" class="flex-1 py-2.5 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5">
+            <span>💾</span>
+            <span>Lưu & Bắt Đầu Đồng Bộ</span>
+          </button>
+          <button type="button" onclick="copyMobileSyncUrl()" class="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5">
+            <span>📲</span>
+            <span>Link cho Điện Thoại (Zalo)</span>
+          </button>
+          <button type="button" onclick="disconnectCloudSync()" id="btnDisconnectCloud" class="py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition cursor-pointer">
+            Ngắt kết nối
+          </button>
+        </div>
+
+        <!-- 3-step Guide Accordion -->
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="font-black text-slate-800 text-xs mb-2 flex items-center gap-1.5">
+            <span>📖</span>
+            <span>Hướng dẫn 3 phút tạo Firebase miễn phí trọn đời của Google:</span>
+          </div>
+          <ol class="space-y-2 text-[11px] text-slate-600 list-decimal pl-4">
+            <li>Truy cập <a href="https://console.firebase.google.com" target="_blank" class="text-sky-600 font-bold hover:underline">console.firebase.google.com</a> bằng tài khoản Gmail ➔ Bấm <strong>Add project (Thêm dự án)</strong> ➔ Đặt tên CLB ➔ Bấm Tiếp tục.</li>
+            <li>Tại menu trái, chọn <strong>Build</strong> ➔ <strong>Realtime Database</strong> ➔ Bấm <strong>Create Database</strong> ➔ Chọn vị trí (Singapore / US) ➔ Chọn <strong>Start in test mode (Chế độ thử nghiệm)</strong> ➔ Bấm Enable.</li>
+            <li>Bấm vào biểu tượng ⚙️ (Project settings) ➔ Cuộn xuống mục "Your apps" ➔ Bấm biểu tượng Web <strong>&lt;/&gt;</strong> ➔ Copy đoạn mã <code>firebaseConfig</code> và dán vào ô bên trên ➔ Bấm <strong>"Lưu & Bắt Đầu Đồng Bộ"</strong>.</li>
+          </ol>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+        <span class="text-[11px] text-slate-400">Dữ liệu được mã hóa an toàn trên đám mây Google.</span>
+        <button type="button" onclick="closeModal('modalCloudSync')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
+          Đóng
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Google Firebase Realtime Database SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <!-- Application Logic -->
   <script src="app.js"></script>

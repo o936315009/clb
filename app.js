@@ -820,6 +820,11 @@ function saveData() {
         if (nameEl) nameEl.textContent = currentClub.name;
       }
     }
+
+    // Tự động đẩy lên Google Firebase Cloud Sync (nếu có kết nối)
+    if (typeof pushDataToCloud === 'function') {
+      pushDataToCloud();
+    }
   } catch (err) {
     console.error('Error saving state to localStorage:', err);
     showToast('Lỗi lưu trữ dữ liệu cục bộ!', 'error');
@@ -6499,6 +6504,11 @@ function switchActiveClub(clubId) {
   else if (currentTab === 'tournament') renderTournamentModule();
   else if (currentTab === 'settings') renderSettingsTab();
 
+  // Chuyển kênh đồng bộ đám mây sang CLB mới
+  if (typeof subscribeToCloudClub === 'function') {
+    subscribeToCloudClub(targetClub.accessSlug || targetClub.id);
+  }
+
   showToast(`✓ Đã chuyển sang Câu Lạc Bộ: ${targetClub.name}`, 'success');
 }
 
@@ -10844,12 +10854,13 @@ function exportDataBackup() {
   const downloadAnchor = document.createElement('a');
   const now = new Date();
   const dateTag = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const clubSlug = AppState.config?.accessSlug || 'clb';
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `clb_cau_long_smash_${dateTag}.json`);
+  downloadAnchor.setAttribute("download", `sao_luu_${clubSlug}_${dateTag}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
-  showToast('Đã tải xuống tệp sao lưu dữ liệu!', 'success');
+  showToast(`✓ Đã tải xuống tệp sao lưu dữ liệu của ${AppState.config?.clubName || 'CLB'}!`, 'success');
 }
 
 function importDataBackup(event) {
@@ -10864,8 +10875,16 @@ function importDataBackup(event) {
         AppState = parsed;
         saveData();
         applyThemeColor(AppState.config.themeColor || 'emerald');
+        const nameEl = document.getElementById('headerClubName');
+        if (nameEl) nameEl.textContent = AppState.config.clubName || 'CLB CẦU LÔNG';
+        
         renderDashboard();
-        showToast('Khôi phục dữ liệu từ tệp thành công!', 'success');
+        renderMemberManagementList();
+        renderFinanceTab();
+        renderAttendanceTab();
+        renderClubSwitcher();
+        populateLeadershipSelects();
+        showToast('🎉 Khôi phục dữ liệu từ tệp thành công!', 'success');
       } else {
         showToast('Tệp sao lưu không đúng định dạng dữ liệu CLB!', 'error');
       }
@@ -11828,6 +11847,7 @@ document.addEventListener('DOMContentLoaded', () => {
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();
+  initFirebaseCloudSync();
 
   if (window.location.hash) {
     const rawHash = window.location.hash.replace('#', '');
@@ -11885,3 +11905,425 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+
+// ==========================================
+// 21. MODULE ĐỒNG BỘ ĐÁM MÂY (FIREBASE REALTIME DATABASE)
+// ==========================================
+const CLOUD_CONFIG_STORAGE_KEY = 'CLB_FIREBASE_CONFIG';
+let firebaseDb = null;
+let isSyncingToCloud = false;
+let isReceivingFromCloud = false;
+let cloudSyncDebounceTimer = null;
+let currentCloudClubRef = null;
+let currentCloudSlug = null;
+
+// Phân tích mã cấu hình Firebase dù là JSON, biến Javascript hay chuỗi
+function parseFirebaseConfigInput(rawInput) {
+  if (!rawInput || typeof rawInput !== 'string') return null;
+  const str = rawInput.trim();
+  
+  // 1. Thử parse JSON trực tiếp
+  try {
+    const obj = JSON.parse(str);
+    if (obj.databaseURL || obj.projectId || obj.apiKey) return obj;
+  } catch (e) {}
+
+  // 2. Tìm khối object { ... } trong đoạn mã JS
+  const match = str.match(/\{[\s\S]*\}/);
+  if (match) {
+    try {
+      const jsonStr = match[0]
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+        .replace(/'/g, '"')
+        .replace(/,\s*}/g, '}');
+      const obj = JSON.parse(jsonStr);
+      if (obj.databaseURL || obj.projectId || obj.apiKey) return obj;
+    } catch (e) {}
+  }
+
+  // 3. Tìm từng trường riêng lẻ bằng Regex
+  const extractField = (key) => {
+    const reg = new RegExp(`['"]?${key}['"]?\\s*:\\s*['"]([^'"]+)['"]`, 'i');
+    const m = str.match(reg);
+    return m ? m[1].trim() : '';
+  };
+
+  const apiKey = extractField('apiKey');
+  const databaseURL = extractField('databaseURL');
+  const projectId = extractField('projectId');
+  const authDomain = extractField('authDomain');
+  const appId = extractField('appId');
+
+  if (databaseURL || (projectId && apiKey)) {
+    return {
+      apiKey: apiKey,
+      databaseURL: databaseURL || `https://${projectId}-default-rtdb.firebaseio.com`,
+      projectId: projectId,
+      authDomain: authDomain || `${projectId}.firebaseapp.com`,
+      appId: appId
+    };
+  }
+
+  return null;
+}
+
+function getStoredFirebaseConfig() {
+  try {
+    const raw = localStorage.getItem(CLOUD_CONFIG_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateCloudSyncUI(status, message = '') {
+  const dot = document.getElementById('cloudSyncDot');
+  const text = document.getElementById('cloudSyncText');
+  const modalBadge = document.getElementById('modalCloudStatusBadge');
+  const settingsBadge = document.getElementById('settingsCloudStatusBadge');
+  const bannerIcon = document.getElementById('cloudStatusIcon');
+  const bannerTitle = document.getElementById('cloudStatusTitle');
+  const bannerDesc = document.getElementById('cloudStatusDesc');
+
+  let dotColor = 'bg-slate-400';
+  let badgeText = 'Ngoại tuyến';
+  let badgeClass = 'bg-slate-200 text-slate-700';
+  let icon = '⚪';
+  let title = 'Chưa kết nối đám mây';
+  let desc = 'Dữ liệu đang được lưu cục bộ trên máy này.';
+
+  if (status === 'CONNECTED') {
+    dotColor = 'bg-emerald-500 animate-pulse';
+    badgeText = 'Đang đồng bộ';
+    badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+    icon = '🟢';
+    title = 'Đã kết nối đám mây trực tuyến';
+    desc = 'Tất cả thay đổi sẽ đồng bộ tức thì với Điện thoại & Máy tính khác.';
+  } else if (status === 'SYNCING') {
+    dotColor = 'bg-amber-500 animate-spin';
+    badgeText = 'Đang tải lên...';
+    badgeClass = 'bg-amber-100 text-amber-800 border border-amber-300';
+    icon = '🟡';
+    title = 'Đang đẩy dữ liệu lên đám mây...';
+    desc = 'Đang cập nhật lên máy chủ Google Firebase.';
+  } else if (status === 'CONNECTING') {
+    dotColor = 'bg-sky-500 animate-pulse';
+    badgeText = 'Đang kết nối...';
+    badgeClass = 'bg-sky-100 text-sky-800 border border-sky-300';
+    icon = '🔵';
+    title = 'Đang kết nối máy chủ Google...';
+    desc = 'Đang xác thực thông tin cấu hình Firebase.';
+  } else if (status === 'ERROR') {
+    dotColor = 'bg-rose-500';
+    badgeText = 'Lỗi kết nối';
+    badgeClass = 'bg-rose-100 text-rose-800 border border-rose-300';
+    icon = '🔴';
+    title = 'Lỗi kết nối Firebase';
+    desc = message || 'Vui lòng kiểm tra lại mã cấu hình hoặc quyền truy cập của Realtime Database.';
+  }
+
+  if (dot) {
+    dot.className = `w-2.5 h-2.5 rounded-full ${dotColor}`;
+  }
+  if (text) {
+    text.textContent = status === 'CONNECTED' ? 'Đám mây: Đã kết nối' : (status === 'SYNCING' ? 'Đám mây: Đang lưu...' : 'Đám mây');
+  }
+  if (modalBadge) {
+    modalBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`;
+    modalBadge.textContent = badgeText;
+  }
+  if (settingsBadge) {
+    settingsBadge.className = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeClass}`;
+    settingsBadge.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${title}</span>`;
+  }
+  if (bannerIcon) bannerIcon.textContent = icon;
+  if (bannerTitle) bannerTitle.textContent = title;
+  if (bannerDesc) bannerDesc.textContent = desc;
+}
+
+function initFirebaseCloudSync() {
+  // 1. Kiểm tra tham số cloud_cfg trên URL (khi mở link từ Zalo trên điện thoại)
+  try {
+    const url = new URL(window.location.href);
+    const cloudCfgParam = url.searchParams.get('cloud_cfg');
+    if (cloudCfgParam) {
+      try {
+        const decoded = decodeURIComponent(escape(atob(cloudCfgParam)));
+        const parsed = JSON.parse(decoded);
+        if (parsed && (parsed.databaseURL || parsed.projectId)) {
+          localStorage.setItem(CLOUD_CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+          showToast('🎉 Đã kích hoạt đồng bộ đám mây tự động theo link!', 'success');
+        }
+      } catch (e) {
+        console.error('Lỗi giải mã cloud_cfg:', e);
+      }
+      url.searchParams.delete('cloud_cfg');
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (e) {}
+
+  // 2. Kiểm tra thư viện Firebase SDK
+  if (typeof firebase === 'undefined') {
+    console.warn('Firebase SDK chưa được tải.');
+    updateCloudSyncUI('OFFLINE');
+    return;
+  }
+
+  const config = getStoredFirebaseConfig();
+  if (!config) {
+    updateCloudSyncUI('OFFLINE');
+    return;
+  }
+
+  try {
+    updateCloudSyncUI('CONNECTING');
+    if (!firebase.apps || firebase.apps.length === 0) {
+      firebase.initializeApp(config);
+    }
+    firebaseDb = firebase.database();
+
+    // Theo dõi trạng thái kết nối mạng
+    firebaseDb.ref('.info/connected').on('value', snap => {
+      const isConnected = snap.val() === true;
+      if (isConnected) {
+        updateCloudSyncUI('CONNECTED');
+      } else {
+        updateCloudSyncUI('CONNECTING');
+      }
+    });
+
+    // Bắt đầu lắng nghe thay đổi của CLB hiện tại
+    const club = getActiveClub();
+    const clubSlug = club?.accessSlug || club?.id || 'clb';
+    subscribeToCloudClub(clubSlug);
+  } catch (err) {
+    console.error('Lỗi khởi tạo Firebase:', err);
+    updateCloudSyncUI('ERROR', err.message);
+  }
+}
+
+function subscribeToCloudClub(clubSlug) {
+  if (!firebaseDb) return;
+  const cleanSlug = (clubSlug || 'clb').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+
+  // Hủy đăng ký CLB cũ nếu có
+  if (currentCloudClubRef) {
+    try { currentCloudClubRef.off(); } catch (e) {}
+  }
+
+  currentCloudSlug = cleanSlug;
+  currentCloudClubRef = firebaseDb.ref('clubs/' + cleanSlug);
+
+  currentCloudClubRef.on('value', snapshot => {
+    const cloudData = snapshot.val();
+    if (!cloudData) {
+      // Nếu trên đám mây chưa có dữ liệu cho CLB này, tự động đẩy dữ liệu hiện tại lên
+      if (AppState && AppState.members && AppState.members.length > 0 && !isSyncingToCloud) {
+        pushDataToCloud();
+      }
+      return;
+    }
+
+    // Nếu đang trong quá trình mình đẩy lên thì bỏ qua
+    if (isSyncingToCloud) return;
+
+    // Kiểm tra xem dữ liệu đám mây có mới hơn không
+    const localTime = AppState._lastModified || 0;
+    const cloudTime = cloudData._lastModified || 0;
+
+    const localMemberCount = AppState.members?.length || 0;
+    const cloudMemberCount = cloudData.members?.length || 0;
+    const localTxCount = AppState.transactions?.length || 0;
+    const cloudTxCount = cloudData.transactions?.length || 0;
+
+    const isDifferent = (cloudTime > localTime) || (localMemberCount !== cloudMemberCount) || (localTxCount !== cloudTxCount);
+
+    if (isDifferent) {
+      isReceivingFromCloud = true;
+      AppState = cloudData;
+      STORAGE_KEY = getCurrentClubStorageKey();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState));
+      } catch (e) {}
+
+      applyThemeColor(AppState.config?.themeColor || 'emerald');
+      const nameEl = document.getElementById('headerClubName');
+      if (nameEl) nameEl.textContent = AppState.config?.clubName || 'CLB CẦU LÔNG';
+
+      renderDashboard();
+      renderMemberManagementList();
+      renderFinanceTab();
+      if (currentTab === 'attendance') renderAttendanceTab();
+      renderClubSwitcher();
+      populateLeadershipSelects();
+
+      showToast(`☁️ Đã đồng bộ số liệu mới nhất từ đám mây (${cloudMemberCount} thành viên)!`, 'info');
+      setTimeout(() => { isReceivingFromCloud = false; }, 600);
+    }
+  }, err => {
+    console.error('Lỗi lắng nghe Firebase:', err);
+    updateCloudSyncUI('ERROR', err.message);
+  });
+}
+
+function pushDataToCloud() {
+  if (!firebaseDb || isReceivingFromCloud) return;
+  const club = getActiveClub();
+  const cleanSlug = (club?.accessSlug || club?.id || 'clb').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+
+  clearTimeout(cloudSyncDebounceTimer);
+  cloudSyncDebounceTimer = setTimeout(() => {
+    if (!firebaseDb || isReceivingFromCloud) return;
+    isSyncingToCloud = true;
+    updateCloudSyncUI('SYNCING');
+
+    AppState._lastModified = Date.now();
+
+    firebaseDb.ref('clubs/' + cleanSlug).set(AppState)
+      .then(() => {
+        isSyncingToCloud = false;
+        updateCloudSyncUI('CONNECTED');
+      })
+      .catch(err => {
+        isSyncingToCloud = false;
+        console.error('Lỗi đẩy dữ liệu lên Firebase:', err);
+        updateCloudSyncUI('ERROR', err.message);
+      });
+  }, 400);
+}
+
+function openCloudSyncModal() {
+  const modal = document.getElementById('modalCloudSync');
+  if (!modal) return;
+
+  const input = document.getElementById('cloudFirebaseConfigInput');
+  const stored = getStoredFirebaseConfig();
+  if (input) {
+    input.value = stored ? JSON.stringify(stored, null, 2) : '';
+  }
+
+  const storedConfig = getStoredFirebaseConfig();
+  if (storedConfig) {
+    updateCloudSyncUI(firebaseDb ? 'CONNECTED' : 'CONNECTING');
+  } else {
+    updateCloudSyncUI('OFFLINE');
+  }
+
+  openModal('modalCloudSync');
+}
+
+function saveCloudConfigAndConnect() {
+  const input = document.getElementById('cloudFirebaseConfigInput');
+  const raw = input ? input.value.trim() : '';
+
+  if (!raw) {
+    showToast('Vui lòng dán mã cấu hình Firebase!', 'warning');
+    return;
+  }
+
+  const parsed = parseFirebaseConfigInput(raw);
+  if (!parsed || (!parsed.databaseURL && !parsed.projectId)) {
+    showToast('Mã cấu hình không hợp lệ! Vui lòng kiểm tra lại databaseURL hoặc projectId.', 'error');
+    return;
+  }
+
+  localStorage.setItem(CLOUD_CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+  showToast('✓ Đã lưu cấu hình Firebase! Đang tiến hành kết nối...', 'info');
+
+  initFirebaseCloudSync();
+
+  // Đẩy dữ liệu hiện tại lên đám mây ngay lập tức
+  setTimeout(() => {
+    if (firebaseDb) {
+      pushDataToCloud();
+      showToast('🎉 Kết nối đám mây thành công! Dữ liệu đã được tải lên máy chủ Google.', 'success');
+    }
+  }, 1000);
+}
+
+function disconnectCloudSync() {
+  if (!confirm('Bạn có chắc chắn muốn ngắt kết nối đồng bộ đám mây?\nDữ liệu trên máy này vẫn sẽ được lưu trữ bình thường trong trình duyệt.')) {
+    return;
+  }
+
+  if (currentCloudClubRef) {
+    try { currentCloudClubRef.off(); } catch (e) {}
+  }
+  firebaseDb = null;
+  localStorage.removeItem(CLOUD_CONFIG_STORAGE_KEY);
+  updateCloudSyncUI('OFFLINE');
+
+  const input = document.getElementById('cloudFirebaseConfigInput');
+  if (input) input.value = '';
+
+  showToast('Đã ngắt kết nối đám mây. Ứng dụng chuyển sang chế độ ngoại tuyến.', 'info');
+}
+
+function testCloudConnection() {
+  const stored = getStoredFirebaseConfig();
+  if (!stored) {
+    showToast('Chưa có cấu hình đám mây. Vui lòng dán mã Firebase trước.', 'warning');
+    return;
+  }
+
+  updateCloudSyncUI('CONNECTING');
+  showToast('Đang kiểm tra kết nối đến Google Firebase...', 'info');
+
+  if (!firebaseDb) {
+    initFirebaseCloudSync();
+  }
+
+  setTimeout(() => {
+    if (firebaseDb) {
+      updateCloudSyncUI('CONNECTED');
+      showToast('✓ Kết nối đám mây hoạt động hoàn hảo!', 'success');
+    } else {
+      updateCloudSyncUI('ERROR', 'Không thể kết nối đến Firebase');
+      showToast('Không thể kết nối đến Firebase! Vui lòng kiểm tra quyền Realtime Database (Test mode).', 'error');
+    }
+  }, 1500);
+}
+
+function copyMobileSyncUrl() {
+  const stored = getStoredFirebaseConfig();
+  if (!stored) {
+    showToast('Vui lòng kết nối cấu hình Firebase trước khi tạo link cho điện thoại!', 'warning');
+    openCloudSyncModal();
+    return;
+  }
+
+  const club = getActiveClub();
+  const slug = club?.accessSlug || club?.id || 'clb';
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(stored))));
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  const syncUrl = `${baseUrl}?club=${encodeURIComponent(slug)}&cloud_cfg=${encodeURIComponent(encoded)}`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(syncUrl).then(() => {
+      showToast('📋 Đã sao chép link đồng bộ! Hãy gửi link qua Zalo và mở trên Điện thoại để tự động kết nối.', 'success');
+    }).catch(() => {
+      prompt('Sao chép link đồng bộ này và gửi qua Zalo cho Điện thoại:', syncUrl);
+    });
+  } else {
+    prompt('Sao chép link đồng bộ này và gửi qua Zalo cho Điện thoại:', syncUrl);
+  }
+}
+
+function manualTriggerCloudSync() {
+  const stored = getStoredFirebaseConfig();
+  if (!stored) {
+    showToast('Chưa kết nối đám mây. Hãy bấm "Cài đặt Kết Nối Đám Mây" trước.', 'warning');
+    openCloudSyncModal();
+    return;
+  }
+
+  if (!firebaseDb) {
+    initFirebaseCloudSync();
+  }
+
+  showToast('Đang đồng bộ dữ liệu hai chiều...', 'info');
+  pushDataToCloud();
+  setTimeout(() => {
+    showToast('✓ Đồng bộ đám mây hoàn tất!', 'success');
+  }, 1000);
+}
