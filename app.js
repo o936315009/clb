@@ -5,7 +5,191 @@
  * wallet deduction, financial transactions, matchmaking, and data backup.
  */
 
-const STORAGE_KEY = 'CLB_CAU_LONG_SMASH_DATA_V1';
+// ==========================================
+// HỆ THỐNG ĐA CÂU LẠC BỘ (MULTI-CLUB REGISTRY & STATE RESOLUTION)
+// ==========================================
+const CLUBS_REGISTRY_KEY = 'CLB_CAU_LONG_REGISTRY_V1';
+const ACTIVE_CLUB_ID_KEY = 'CLB_ACTIVE_CLUB_ID_V1';
+
+const DEFAULT_DEFAULT_CLUB = {
+  id: 'club_smash',
+  name: 'CLB CẦU LÔNG SMASH',
+  shortName: 'SMASH',
+  logoIcon: '🏸',
+  themeColor: 'emerald',
+  bankInfo: 'MBBANK - 0987654321 - CLB CAU LONG SMASH',
+  createdAt: '01/01/2026',
+  storageKey: 'CLB_CAU_LONG_SMASH_DATA_V1',
+  adminName: 'Trần Đức Chính',
+  adminUsername: 'chinh',
+  phone: '0901000001'
+};
+
+const DEFAULT_SECOND_CLUB = {
+  id: 'club_lightning',
+  name: 'CLB CẦU LÔNG TIA CHỚP',
+  shortName: 'TIA CHỚP',
+  logoIcon: '⚡',
+  themeColor: 'cyan',
+  bankInfo: 'TECHCOMBANK - 190333333333 - NGUYEN HOANG LONG',
+  createdAt: '15/02/2026',
+  storageKey: 'CLB_CAU_LONG_DATA_club_lightning',
+  adminName: 'Nguyễn Hoàng Long',
+  adminUsername: 'long_admin',
+  phone: '0988123456'
+};
+
+function initSecondClubDataIfMissing() {
+  try {
+    if (!localStorage.getItem(DEFAULT_SECOND_CLUB.storageKey)) {
+      const secondClubData = {
+        config: {
+          clubName: 'CLB CẦU LÔNG TIA CHỚP',
+          themeColor: 'cyan',
+          bankInfo: 'TECHCOMBANK - 190333333333 - NGUYEN HOANG LONG',
+          leadership: {
+            president: 'M001',
+            vicePresident1: 'M002',
+            vicePresident2: 'M003',
+            secretary: 'M005',
+            treasurer: 'M004',
+            media: 'M007',
+            advisor1: '',
+            advisor2: ''
+          },
+          dailyBoxPrice: 350000,
+          shuttlecocksPerBox: 12,
+          dailyRateTitle: 'ĐƠN GIÁ THEO NGÀY 12',
+          shuttleBillingMode: 'BY_SHUTTLE',
+          shuttleUnitPrice: 29167,
+          defaultShuttlesPerSession: 6,
+          viceLeaderId: 'M002',
+          permissions: {
+            allowViceLeaderAttendance: true,
+            allowViceLeaderTournamentSync: true
+          },
+          guestPrices: { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 },
+          feeTiers: [
+            { id: 1, name: 'Bậc 1 (0–4 buổi)', minSessions: 0, maxSessions: 4, price: 50000 },
+            { id: 2, name: 'Bậc 2 (5–9 buổi)', minSessions: 5, maxSessions: 9, price: 100000 },
+            { id: 3, name: 'Bậc 3 (10–15 buổi)', minSessions: 10, maxSessions: 15, price: 150000 },
+            { id: 4, name: 'Bậc 4 (16–30+ buổi)', minSessions: 16, maxSessions: 999, price: 200000 }
+          ],
+          allowNegativeWallet: true,
+          settlementMode: 'MONTHLY',
+          defaultSettlementDay: 'END_OF_MONTH'
+        },
+        funds: {
+          clubFund: 3500000,
+          advanceFund: 1200000,
+          shuttleAdvanceFund: 600000,
+          courtAdvanceFund: 450000,
+          guestAdvanceIncome: 150000,
+          shuttlePaidTotal: 580000,
+          courtPaidTotal: 1200000
+        },
+        members: [
+          { id: 'M001', name: 'Nguyễn Hoàng Long', chipName: 'LONG', phone: '0988123456', type: 'OFFICIAL', username: 'long_admin', password: '123', balance: 500000, monthlySessions: 4, role: 'ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('ADMIN') },
+          { id: 'M002', name: 'Trần Bảo Ngọc', chipName: 'NGỌC', phone: '0988111002', type: 'OFFICIAL', username: 'ngoc', password: '123', balance: 400000, monthlySessions: 3, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
+          { id: 'M003', name: 'Lê Quốc Huy', chipName: 'HUY', phone: '0988111003', type: 'OFFICIAL', username: 'huy', password: '123', balance: 450000, monthlySessions: 4, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
+          { id: 'M004', name: 'Phạm Thu Thảo', chipName: 'THẢO', phone: '0988111004', type: 'OFFICIAL', username: 'thao', password: '123', balance: 600000, monthlySessions: 5, role: 'TREASURER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('TREASURER') },
+          { id: 'M005', name: 'Vũ Minh Đức', chipName: 'ĐỨC', phone: '0988111005', type: 'OFFICIAL', username: 'duc', password: '123', balance: 350000, monthlySessions: 2, role: 'REFEREE', status: 'ACTIVE', permissions: getRoleDefaultPermissions('REFEREE') },
+          { id: 'M006', name: 'Đỗ Văn Nam', chipName: 'NAM', phone: '0988111006', type: 'OFFICIAL', username: 'nam', password: '123', balance: 300000, monthlySessions: 2, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+          { id: 'M007', name: 'Hoàng Yến Nhi', chipName: 'NHI', phone: '0988111007', type: 'OFFICIAL', username: 'nhi', password: '123', balance: 500000, monthlySessions: 4, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+          { id: 'M008', name: 'Bùi Anh Tuấn', chipName: 'TUẤN', phone: '0988111008', type: 'HONORARY', username: 'tuan', password: '123', balance: 250000, monthlySessions: 2, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+          { id: 'G001', name: 'Khách Giao Lưu 1', chipName: 'K1', phone: '', type: 'GUEST_A', level: 'A', fee: 90000, username: 'guest1', password: '123', balance: 0, monthlySessions: 1, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+          { id: 'G002', name: 'Khách Giao Lưu 2', chipName: 'K2', phone: '', type: 'GUEST_B', level: 'B', fee: 70000, username: 'guest2', password: '123', balance: 0, monthlySessions: 1, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') }
+        ],
+        attendanceRecords: [
+          { id: 'ATT_L101', date: '2026-09-15', memberId: 'M001', memberName: 'Nguyễn Hoàng Long', fee: 100000, sessionIndex: 4, timestamp: '15/09/2026 18:30' }
+        ],
+        transactions: [
+          { id: 'TX_L1', date: '01/09/2026 08:00', categoryGroup: 'INCOME_A', subType: 'MEM_FUND', categoryName: 'Quỹ thành viên', amount: 3500000, targetName: 'Quỹ thành lập CLB', walletImpact: 0, fundImpact: 3500000, description: 'Thu quỹ ban đầu khi thành lập CLB Cầu Lông Tia Chớp', operator: 'long_admin' }
+        ],
+        auth: {
+          isLoggedIn: true,
+          user: {
+            id: 'M001',
+            username: 'long_admin',
+            role: 'ADMIN',
+            name: 'Nguyễn Hoàng Long (Chủ nhiệm)',
+            permissions: getRoleDefaultPermissions('ADMIN')
+          }
+        }
+      };
+      localStorage.setItem(DEFAULT_SECOND_CLUB.storageKey, JSON.stringify(secondClubData));
+    }
+  } catch (e) {
+    console.error('Error init second club:', e);
+  }
+}
+
+function getClubsRegistry() {
+  try {
+    const raw = localStorage.getItem(CLUBS_REGISTRY_KEY);
+    if (!raw) {
+      initSecondClubDataIfMissing();
+      const initial = [DEFAULT_DEFAULT_CLUB, DEFAULT_SECOND_CLUB];
+      localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(initial));
+      return initial;
+    }
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length === 0) {
+      initSecondClubDataIfMissing();
+      const initial = [DEFAULT_DEFAULT_CLUB, DEFAULT_SECOND_CLUB];
+      localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(initial));
+      return initial;
+    }
+    if (!list.some(c => c.id === 'club_smash')) {
+      list.unshift(DEFAULT_DEFAULT_CLUB);
+      localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(list));
+    }
+    if (!list.some(c => c.id === 'club_lightning')) {
+      initSecondClubDataIfMissing();
+      list.push(DEFAULT_SECOND_CLUB);
+      localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(list));
+    }
+    return list;
+  } catch (e) {
+    console.error('Error reading clubs registry:', e);
+    return [DEFAULT_DEFAULT_CLUB];
+  }
+}
+
+function saveClubsRegistry(clubs) {
+  try {
+    localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(clubs));
+  } catch (e) {
+    console.error('Error saving clubs registry:', e);
+  }
+}
+
+function getActiveClubId() {
+  let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
+  const registry = getClubsRegistry();
+  if (!activeId || !registry.some(c => c.id === activeId)) {
+    activeId = registry[0]?.id || 'club_smash';
+    localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+  }
+  return activeId;
+}
+
+function setActiveClubId(clubId) {
+  localStorage.setItem(ACTIVE_CLUB_ID_KEY, clubId);
+}
+
+function getActiveClub() {
+  const activeId = getActiveClubId();
+  const registry = getClubsRegistry();
+  return registry.find(c => c.id === activeId) || registry[0] || DEFAULT_DEFAULT_CLUB;
+}
+
+function getCurrentClubStorageKey() {
+  const club = getActiveClub();
+  return club?.storageKey || 'CLB_CAU_LONG_SMASH_DATA_V1';
+}
+
+let STORAGE_KEY = getCurrentClubStorageKey();
 
 // ==========================================
 // 0. ĐỊNH NGHĨA VAI TRÒ & PHÂN QUYỀN HỆ THỐNG (USER ACCESS & PERMISSIONS)
@@ -209,6 +393,7 @@ let AppState = {};
 
 function loadData() {
   try {
+    STORAGE_KEY = getCurrentClubStorageKey();
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       AppState = JSON.parse(saved);
@@ -220,26 +405,28 @@ function loadData() {
       if (!AppState.attendanceRecords) AppState.attendanceRecords = DEFAULT_INITIAL_DATA.attendanceRecords;
       if (!AppState.auth) AppState.auth = DEFAULT_INITIAL_DATA.auth;
 
-      // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế
-      if (!AppState.members || AppState.members.length < 20) {
-        AppState.members = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA.members));
-      } else {
-        // Chuyển đổi thành viên dự bị / UNOFFICIAL thành HONORARY (Danh dự)
-        AppState.members.forEach(m => {
-          if (m.type === 'UNOFFICIAL' || m.type === 'PROBATION') {
-            m.type = 'HONORARY';
-          }
-          if (!m.chipName) {
-            const parts = m.name.trim().split(' ');
-            m.chipName = parts[parts.length - 1].toUpperCase();
-          }
-        });
+      // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế (riêng cho CLB Smash mặc định)
+      if (getActiveClubId() === 'club_smash') {
+        if (!AppState.members || AppState.members.length < 20) {
+          AppState.members = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA.members));
+        } else {
+          // Chuyển đổi thành viên dự bị / UNOFFICIAL thành HONORARY (Danh dự)
+          AppState.members.forEach(m => {
+            if (m.type === 'UNOFFICIAL' || m.type === 'PROBATION') {
+              m.type = 'HONORARY';
+            }
+            if (!m.chipName) {
+              const parts = m.name.trim().split(' ');
+              m.chipName = parts[parts.length - 1].toUpperCase();
+            }
+          });
 
-        if (!AppState.members.some(m => m.id === 'G007' || m.chipName === 'PHONG')) {
-          AppState.members.push({ id: 'G007', name: 'PHONG', chipName: 'PHONG', phone: '', type: 'GUEST_A', level: 'A', fee: 90000, username: '', password: '', balance: 0, monthlySessions: 1 });
+          if (!AppState.members.some(m => m.id === 'G007' || m.chipName === 'PHONG')) {
+            AppState.members.push({ id: 'G007', name: 'PHONG', chipName: 'PHONG', phone: '', type: 'GUEST_A', level: 'A', fee: 90000, username: '', password: '', balance: 0, monthlySessions: 1 });
+          }
+          const gQuang = AppState.members.find(m => m.id === 'G005' || m.name === 'QUANG - Q' || m.name === 'QUANG-Q');
+          if (gQuang) { gQuang.name = 'QUANG-Q'; gQuang.chipName = 'QUANG-Q'; }
         }
-        const gQuang = AppState.members.find(m => m.id === 'G005' || m.name === 'QUANG - Q' || m.name === 'QUANG-Q');
-        if (gQuang) { gQuang.name = 'QUANG-Q'; gQuang.chipName = 'QUANG-Q'; }
       }
 
       // Chuẩn hóa và gán vai trò & quyền sử dụng (User Access Management) cho từng thành viên
@@ -346,7 +533,33 @@ function loadData() {
 
 function saveData() {
   try {
+    STORAGE_KEY = getCurrentClubStorageKey();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(AppState));
+
+    // Đồng bộ thông tin cơ bản sang danh bạ CLB (Clubs Registry)
+    const activeId = getActiveClubId();
+    const registry = getClubsRegistry();
+    const currentClub = registry.find(c => c.id === activeId);
+    if (currentClub && AppState.config) {
+      let changed = false;
+      if (AppState.config.clubName && currentClub.name !== AppState.config.clubName) {
+        currentClub.name = AppState.config.clubName;
+        changed = true;
+      }
+      if (AppState.config.themeColor && currentClub.themeColor !== AppState.config.themeColor) {
+        currentClub.themeColor = AppState.config.themeColor;
+        changed = true;
+      }
+      if (AppState.config.bankInfo && currentClub.bankInfo !== AppState.config.bankInfo) {
+        currentClub.bankInfo = AppState.config.bankInfo;
+        changed = true;
+      }
+      if (changed) {
+        saveClubsRegistry(registry);
+        const nameEl = document.getElementById('headerClubName');
+        if (nameEl) nameEl.textContent = currentClub.name;
+      }
+    }
   } catch (err) {
     console.error('Error saving state to localStorage:', err);
     showToast('Lỗi lưu trữ dữ liệu cục bộ!', 'error');
@@ -636,6 +849,9 @@ function renderDashboard() {
 
   // 9. Auth badge
   renderAuthBadge();
+
+  // 10. Multi-Club Switcher in Header
+  renderClubSwitcher();
 }
 
 function renderDashboardWalletList() {
@@ -5803,6 +6019,487 @@ function handleResetPasswordSubmit(e) {
 }
 
 // ==========================================
+// 15.5 PHÂN HỆ QUẢN LÝ ĐA CÂU LẠC BỘ (MULTI-CLUB SWITCHER & ACCOUNTS)
+// Cho phép tạo thêm CLB mới (Quỹ, Thành viên, Tài khoản Chủ nhiệm riêng) và chuyển đổi linh hoạt
+// ==========================================
+
+function renderClubSwitcher() {
+  const container = document.getElementById('headerClubSwitcherContainer');
+  if (!container) return;
+
+  const registry = getClubsRegistry();
+  const activeClub = getActiveClub();
+
+  // Cập nhật biểu tượng và tên trên Header
+  const iconEl = document.getElementById('headerClubIconSpan');
+  if (iconEl) iconEl.textContent = activeClub.logoIcon || '🏸';
+
+  const nameEl = document.getElementById('headerClubName');
+  if (nameEl) nameEl.textContent = AppState.config?.clubName || activeClub.name;
+
+  let optionsHtml = registry.map(c => `
+    <option value="${c.id}" ${c.id === activeClub.id ? 'selected' : ''} class="text-slate-900 font-bold py-1">
+      ${c.logoIcon || '🏸'} ${c.shortName || c.name}
+    </option>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="flex items-center gap-1 bg-slate-100/90 hover:bg-slate-200/60 border border-slate-300/80 rounded-xl p-0.5 sm:p-1 transition shadow-2xs">
+      <div class="flex items-center gap-1 px-1 sm:px-1.5 py-0.5 text-xs">
+        <span class="text-sm select-none" id="headerSwitcherActiveIcon">${activeClub.logoIcon || '🏸'}</span>
+        <select id="headerClubSelect" onchange="switchActiveClub(this.value)" class="bg-transparent font-black text-xs text-slate-900 border-none outline-none cursor-pointer max-w-[100px] sm:max-w-[155px] md:max-w-[190px] truncate" title="Chuyển đổi Câu Lạc Bộ">
+          ${optionsHtml}
+        </select>
+      </div>
+      <button type="button" onclick="openCreateClubModal()" class="px-2 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0" title="Tạo tài khoản Câu Lạc Bộ mới">
+        <span>➕</span>
+        <span class="hidden md:inline">Tạo CLB</span>
+      </button>
+    </div>
+  `;
+}
+
+function switchActiveClub(clubId) {
+  const registry = getClubsRegistry();
+  const targetClub = registry.find(c => c.id === clubId);
+  if (!targetClub) {
+    showToast('Không tìm thấy thông tin Câu Lạc Bộ!', 'error');
+    return;
+  }
+
+  // 1. Lưu lại trạng thái CLB hiện tại
+  saveData();
+
+  // 2. Chuyển đổi mã CLB tích cực
+  setActiveClubId(clubId);
+  STORAGE_KEY = targetClub.storageKey;
+
+  // 3. Tải dữ liệu của CLB đích
+  loadData();
+
+  // 4. Đồng bộ Theme màu & Header
+  applyThemeColor(AppState.config?.themeColor || targetClub.themeColor || 'emerald');
+
+  const nameEl = document.getElementById('headerClubName');
+  if (nameEl) nameEl.textContent = AppState.config?.clubName || targetClub.name;
+
+  const iconEl = document.getElementById('headerClubIconSpan');
+  if (iconEl) iconEl.textContent = targetClub.logoIcon || '🏸';
+
+  // 5. Render lại toàn bộ giao diện của phân hệ đang mở
+  renderClubSwitcher();
+  renderDashboard();
+  populateLeadershipSelects();
+
+  if (currentTab === 'attendance') renderAttendanceTab();
+  else if (currentTab === 'finance') renderFinanceTab();
+  else if (currentTab === 'members') renderMemberManagementList();
+  else if (currentTab === 'tournament') renderTournamentModule();
+  else if (currentTab === 'settings') renderSettingsTab();
+
+  showToast(`✓ Đã chuyển sang Câu Lạc Bộ: ${targetClub.name}`, 'success');
+}
+
+function openCreateClubModal() {
+  const modal = document.getElementById('modalCreateNewClub');
+  if (!modal) return;
+
+  const nameInput = document.getElementById('newClubName');
+  const shortInput = document.getElementById('newClubShortName');
+  const logoInput = document.getElementById('newClubLogoIcon');
+  const themeInput = document.getElementById('newClubThemeColor');
+  const adminNameInput = document.getElementById('newClubAdminName');
+  const adminPhoneInput = document.getElementById('newClubAdminPhone');
+  const adminUserInput = document.getElementById('newClubAdminUsername');
+  const adminPassInput = document.getElementById('newClubAdminPassword');
+  const fundInput = document.getElementById('newClubInitialFund');
+  const bankInput = document.getElementById('newClubBankInfo');
+
+  if (nameInput) nameInput.value = '';
+  if (shortInput) shortInput.value = '';
+  if (logoInput) logoInput.value = '🏸';
+  if (themeInput) themeInput.value = 'emerald';
+  if (adminNameInput) adminNameInput.value = '';
+  if (adminPhoneInput) adminPhoneInput.value = '';
+  if (adminUserInput) adminUserInput.value = '';
+  if (adminPassInput) adminPassInput.value = '123456';
+  if (fundInput) fundInput.value = '2000000';
+  if (bankInput) bankInput.value = '';
+
+  selectClubModalIcon('🏸');
+  modal.classList.remove('hidden');
+}
+
+function selectClubModalIcon(icon) {
+  const input = document.getElementById('newClubLogoIcon');
+  if (input) input.value = icon;
+
+  document.querySelectorAll('.club-icon-choice').forEach(btn => {
+    btn.className = 'club-icon-choice w-9 h-9 rounded-xl border border-slate-200 bg-white text-base flex items-center justify-center hover:bg-slate-50 transition cursor-pointer';
+  });
+
+  const activeBtn = document.getElementById(`clubIconBtn-${icon}`);
+  if (activeBtn) {
+    activeBtn.className = 'club-icon-choice w-9 h-9 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-base flex items-center justify-center transition cursor-pointer shadow-2xs';
+  }
+}
+
+function autoSuggestClubShortName(fullName) {
+  const shortInput = document.getElementById('newClubShortName');
+  if (!shortInput || !fullName) return;
+
+  let clean = fullName.replace(/^(clb\s+cầu\s+lông|câu\s+lạc\s+bộ\s+cầu\s+lông|clb|cầu\s+lông)\s*/i, '').trim();
+  if (!clean) clean = fullName;
+
+  shortInput.value = clean.toUpperCase();
+}
+
+function autoSuggestClubAdminUsername(name) {
+  const userInput = document.getElementById('newClubAdminUsername');
+  if (!userInput || !name) return;
+  const username = generateAutoUsername(name);
+  userInput.value = username;
+}
+
+function handleCreateNewClubSubmit(event) {
+  if (event) event.preventDefault();
+
+  const name = document.getElementById('newClubName')?.value.trim();
+  const shortName = document.getElementById('newClubShortName')?.value.trim();
+  const logoIcon = document.getElementById('newClubLogoIcon')?.value || '🏸';
+  const themeColor = document.getElementById('newClubThemeColor')?.value || 'emerald';
+  const adminName = document.getElementById('newClubAdminName')?.value.trim();
+  const adminPhone = document.getElementById('newClubAdminPhone')?.value.trim() || '';
+  const adminUsername = document.getElementById('newClubAdminUsername')?.value.trim();
+  const adminPassword = document.getElementById('newClubAdminPassword')?.value.trim() || '123456';
+  const initialFund = Number(document.getElementById('newClubInitialFund')?.value) || 0;
+  const bankInfo = document.getElementById('newClubBankInfo')?.value.trim() || '';
+
+  const modeRadios = document.getElementsByName('newClubInitMode');
+  let initMode = 'SAMPLE';
+  for (const r of modeRadios) {
+    if (r.checked) { initMode = r.value; break; }
+  }
+
+  if (!name || !shortName || !adminName || !adminUsername) {
+    showToast('Vui lòng điền đầy đủ các thông tin bắt buộc (*)!', 'warning');
+    return;
+  }
+
+  const clubId = 'club_' + Date.now();
+  const storageKey = 'CLB_CAU_LONG_DATA_' + clubId;
+
+  // Xây dựng tài khoản Chủ nhiệm CLB mới
+  const adminMemberId = 'M001';
+  const adminChip = adminName.trim().split(/\s+/).pop().toUpperCase();
+  const adminMember = {
+    id: adminMemberId,
+    name: adminName,
+    chipName: adminChip,
+    phone: adminPhone,
+    type: 'OFFICIAL',
+    username: adminUsername,
+    password: adminPassword,
+    balance: 500000,
+    monthlySessions: 0,
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    permissions: getRoleDefaultPermissions('ADMIN')
+  };
+
+  let membersList = [adminMember];
+  let transactionsList = [];
+  let attendanceList = [];
+
+  if (initMode === 'SAMPLE') {
+    // 10 Thành viên mẫu chuẩn (Nam, Nữ, Ban Cán Sự, Khách Giao Lưu)
+    const sampleMembers = [
+      { id: 'M002', name: 'Trần Bảo Ngọc', chipName: 'NGỌC', phone: '0988111002', type: 'OFFICIAL', username: 'ngoc', password: '123', balance: 400000, monthlySessions: 3, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
+      { id: 'M003', name: 'Lê Quốc Huy', chipName: 'HUY', phone: '0988111003', type: 'OFFICIAL', username: 'huy', password: '123', balance: 450000, monthlySessions: 4, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
+      { id: 'M004', name: 'Phạm Thu Thảo', chipName: 'THẢO', phone: '0988111004', type: 'OFFICIAL', username: 'thao', password: '123', balance: 600000, monthlySessions: 5, role: 'TREASURER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('TREASURER') },
+      { id: 'M005', name: 'Vũ Minh Đức', chipName: 'ĐỨC', phone: '0988111005', type: 'OFFICIAL', username: 'duc', password: '123', balance: 350000, monthlySessions: 2, role: 'REFEREE', status: 'ACTIVE', permissions: getRoleDefaultPermissions('REFEREE') },
+      { id: 'M006', name: 'Đỗ Văn Nam', chipName: 'NAM', phone: '0988111006', type: 'OFFICIAL', username: 'nam', password: '123', balance: 300000, monthlySessions: 2, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+      { id: 'M007', name: 'Hoàng Yến Nhi', chipName: 'NHI', phone: '0988111007', type: 'OFFICIAL', username: 'nhi', password: '123', balance: 500000, monthlySessions: 4, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+      { id: 'M008', name: 'Bùi Anh Tuấn', chipName: 'TUẤN', phone: '0988111008', type: 'HONORARY', username: 'tuan', password: '123', balance: 250000, monthlySessions: 2, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+      { id: 'G001', name: 'Khách Giao Lưu 1', chipName: 'K1', phone: '', type: 'GUEST_A', level: 'A', fee: 90000, username: 'guest1', password: '123', balance: 0, monthlySessions: 1, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') },
+      { id: 'G002', name: 'Khách Giao Lưu 2', chipName: 'K2', phone: '', type: 'GUEST_B', level: 'B', fee: 70000, username: 'guest2', password: '123', balance: 0, monthlySessions: 1, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') }
+    ];
+    membersList = membersList.concat(sampleMembers);
+
+    transactionsList = [
+      {
+        id: 'TX_INIT_1',
+        date: getNowTimestampString(),
+        categoryGroup: 'INCOME_A',
+        subType: 'MEM_FUND',
+        categoryName: 'Quỹ thành viên',
+        amount: initialFund,
+        targetName: 'Quỹ thành lập CLB',
+        walletImpact: 0,
+        fundImpact: initialFund,
+        description: `Thu quỹ ban đầu khi thành lập ${name}`,
+        operator: adminUsername
+      },
+      {
+        id: 'TX_INIT_2',
+        date: getNowTimestampString(),
+        categoryGroup: 'WALLET_TOPUP',
+        subType: 'TOPUP',
+        categoryName: 'Nạp ví',
+        amount: 500000,
+        targetName: adminName,
+        memberId: adminMemberId,
+        walletImpact: 500000,
+        fundImpact: 0,
+        description: 'Nạp tiền ví thành viên Chủ nhiệm sáng lập',
+        operator: adminUsername
+      }
+    ];
+  } else {
+    // FRESH mode
+    adminMember.balance = 0;
+    if (initialFund > 0) {
+      transactionsList.push({
+        id: 'TX_INIT_1',
+        date: getNowTimestampString(),
+        categoryGroup: 'INCOME_A',
+        subType: 'MEM_FUND',
+        categoryName: 'Quỹ thành viên',
+        amount: initialFund,
+        targetName: 'Quỹ thành lập CLB',
+        walletImpact: 0,
+        fundImpact: initialFund,
+        description: `Thu quỹ ban đầu khi thành lập ${name}`,
+        operator: adminUsername
+      });
+    }
+  }
+
+  // Khởi tạo đối tượng AppState cho CLB mới
+  const newClubAppState = {
+    config: {
+      clubName: name,
+      themeColor: themeColor,
+      bankInfo: bankInfo || `NGAN HANG - 0123456789 - ${shortName}`,
+      leadership: {
+        president: adminMemberId,
+        vicePresident1: initMode === 'SAMPLE' ? 'M002' : '',
+        vicePresident2: initMode === 'SAMPLE' ? 'M003' : '',
+        secretary: initMode === 'SAMPLE' ? 'M005' : '',
+        treasurer: initMode === 'SAMPLE' ? 'M004' : '',
+        media: initMode === 'SAMPLE' ? 'M007' : '',
+        advisor1: '',
+        advisor2: ''
+      },
+      dailyBoxPrice: 340000,
+      shuttlecocksPerBox: 12,
+      dailyRateTitle: 'ĐƠN GIÁ THEO NGÀY 12',
+      shuttleBillingMode: 'BY_SHUTTLE',
+      shuttleUnitPrice: 28333,
+      defaultShuttlesPerSession: 6,
+      viceLeaderId: initMode === 'SAMPLE' ? 'M002' : '',
+      permissions: {
+        allowViceLeaderAttendance: true,
+        allowViceLeaderTournamentSync: true
+      },
+      guestPrices: {
+        GUEST_A: 90000,
+        GUEST_B: 70000,
+        GUEST_C: 50000
+      },
+      feeTiers: [
+        { id: 1, name: 'Bậc 1 (0–4 buổi)', minSessions: 0, maxSessions: 4, price: 50000 },
+        { id: 2, name: 'Bậc 2 (5–9 buổi)', minSessions: 5, maxSessions: 9, price: 100000 },
+        { id: 3, name: 'Bậc 3 (10–15 buổi)', minSessions: 10, maxSessions: 15, price: 150000 },
+        { id: 4, name: 'Bậc 4 (16–30+ buổi)', minSessions: 16, maxSessions: 999, price: 200000 }
+      ],
+      allowNegativeWallet: true,
+      settlementMode: 'MONTHLY',
+      defaultSettlementDay: 'END_OF_MONTH'
+    },
+    funds: {
+      clubFund: initialFund,
+      advanceFund: 0,
+      shuttleAdvanceFund: 0,
+      courtAdvanceFund: 0,
+      guestAdvanceIncome: 0,
+      shuttlePaidTotal: 0,
+      courtPaidTotal: 0
+    },
+    members: membersList,
+    attendanceRecords: attendanceList,
+    transactions: transactionsList,
+    auth: {
+      isLoggedIn: true,
+      user: {
+        id: adminMemberId,
+        username: adminUsername,
+        role: 'ADMIN',
+        name: `${adminName} (Chủ nhiệm)`,
+        permissions: getRoleDefaultPermissions('ADMIN')
+      }
+    }
+  };
+
+  // 1. Lưu dữ liệu CLB mới vào localStorage riêng
+  localStorage.setItem(storageKey, JSON.stringify(newClubAppState));
+
+  // 2. Thêm vào danh bạ CLB (Registry)
+  const newClubRecord = {
+    id: clubId,
+    name: name,
+    shortName: shortName,
+    logoIcon: logoIcon,
+    themeColor: themeColor,
+    bankInfo: bankInfo,
+    createdAt: getFormattedCurrentDate(),
+    storageKey: storageKey,
+    adminName: adminName,
+    adminUsername: adminUsername,
+    phone: adminPhone
+  };
+
+  const registry = getClubsRegistry();
+  registry.push(newClubRecord);
+  saveClubsRegistry(registry);
+
+  // 3. Đóng Modal
+  closeModal('modalCreateNewClub');
+
+  // 4. Chuyển sang CLB mới ngay lập tức
+  switchActiveClub(clubId);
+
+  showToast(`🎉 Chúc mừng! Câu Lạc Bộ ${name} đã được khởi tạo thành công!`, 'success');
+}
+
+function deleteClub(clubId) {
+  if (clubId === 'club_smash') {
+    showToast('Không thể xóa Câu Lạc Bộ mặc định của hệ thống!', 'error');
+    return;
+  }
+
+  const registry = getClubsRegistry();
+  const club = registry.find(c => c.id === clubId);
+  if (!club) return;
+
+  if (!confirm(`Bạn có chắc chắn muốn xóa Câu Lạc Bộ "${club.name}"?\nToàn bộ dữ liệu quỹ, điểm danh và thành viên của CLB này sẽ bị xóa khỏi máy tính.`)) {
+    return;
+  }
+
+  localStorage.removeItem(club.storageKey);
+
+  const updated = registry.filter(c => c.id !== clubId);
+  saveClubsRegistry(updated);
+
+  if (getActiveClubId() === clubId) {
+    switchActiveClub('club_smash');
+  } else {
+    renderClubSwitcher();
+    renderMultiClubSettingsSection();
+  }
+
+  showToast(`Đã xóa Câu Lạc Bộ: ${club.name}`, 'info');
+}
+
+function renderMultiClubSettingsSection() {
+  const container = document.getElementById('multiClubListContainer');
+  const countEl = document.getElementById('multiClubSummaryCount');
+  if (!container) return;
+
+  const registry = getClubsRegistry();
+  const activeId = getActiveClubId();
+
+  if (countEl) {
+    countEl.textContent = `${registry.length} Câu Lạc Bộ`;
+  }
+
+  container.innerHTML = registry.map(club => {
+    const isActive = club.id === activeId;
+    
+    let clubFund = 0;
+    let memberCount = 0;
+    try {
+      const raw = localStorage.getItem(club.storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        clubFund = parsed.funds?.clubFund || 0;
+        memberCount = parsed.members?.length || 0;
+      }
+    } catch (e) {}
+
+    return `
+      <div class="p-4 rounded-2xl border ${isActive ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'} flex flex-col justify-between transition space-y-3">
+        
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl ${isActive ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md' : 'bg-slate-100 text-slate-800 border border-slate-200'} flex items-center justify-center text-2xl font-bold shadow-xs shrink-0">
+              ${club.logoIcon || '🏸'}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="font-extrabold text-sm text-slate-900 leading-tight">${club.name}</h3>
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                  ${club.shortName || 'CLB'}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                <span>👑 Chủ nhiệm: <strong class="text-slate-700">${club.adminName || 'Admin'}</strong></span>
+                ${club.phone ? `<span>• 📞 ${club.phone}</span>` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            ${isActive ? `
+              <span class="px-2.5 py-1 bg-emerald-600 text-white font-extrabold text-[10px] rounded-full uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <span>✓</span>
+                <span>Đang chọn</span>
+              </span>
+            ` : `
+              <button type="button" onclick="switchActiveClub('${club.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-emerald-600 text-slate-700 hover:text-white font-bold text-xs rounded-xl border border-slate-200 hover:border-emerald-600 transition flex items-center gap-1 cursor-pointer">
+                <span>👉</span>
+                <span>Chuyển CLB</span>
+              </button>
+            `}
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t ${isActive ? 'border-emerald-200/80' : 'border-slate-100'} text-xs">
+          <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+            <span class="text-[11px] text-slate-500 block">💰 Quỹ CLB:</span>
+            <span class="font-extrabold text-emerald-700 text-xs">${formatMoney(clubFund)}</span>
+          </div>
+          <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+            <span class="text-[11px] text-slate-500 block">👥 Thành viên:</span>
+            <span class="font-extrabold text-slate-800 text-xs">${memberCount} người</span>
+          </div>
+        </div>
+
+        <!-- Details & Actions -->
+        <div class="flex items-center justify-between pt-1 text-[11px] text-slate-500">
+          <span class="truncate max-w-[200px]" title="${club.bankInfo || ''}">
+            🏦 ${club.bankInfo || 'Chưa thiết lập VietQR'}
+          </span>
+          <div class="flex items-center gap-1.5">
+            ${club.id !== 'club_smash' ? `
+              <button type="button" onclick="deleteClub('${club.id}')" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" title="Xóa Câu Lạc Bộ này">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
+              </button>
+            ` : `
+              <span class="text-[10px] text-slate-400 italic">Mặc định</span>
+            `}
+          </div>
+        </div>
+
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+// ==========================================
 // 16. HỆ THỐNG QUẢN LÝ GIẢI ĐẤU CẦU LÔNG CHUYÊN NGHIỆP (TOURNAMENT ENGINE)
 // DỮ LIỆU HOẠT ĐỘNG HOÀN TOÀN ĐỘC LẬP VỚI CÁC HOẠT ĐỘNG NGÀY THƯỜNG CỦA CLB
 // CẤU TRÚC 16 NODES: Tournament -> Organization -> Country -> Club -> Player -> Registration
@@ -8946,6 +9643,7 @@ function renderSettingsTab() {
 
   renderFeeTiersConfigTable();
   renderUserAccessTable();
+  renderMultiClubSettingsSection();
   lucide.createIcons();
 }
 
@@ -10254,6 +10952,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
   applyThemeColor(AppState.config.themeColor || 'emerald');
   renderDashboard();
+  renderClubSwitcher();
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();
@@ -10265,17 +10964,25 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleLeadershipCollapse();
     } else if (rawHash === 'settings-access') {
       switchTab('settings');
-      setTimeout(() => {
-        const el = document.getElementById('sectionUserAccessManagement');
-        if (el) {
-          const y = el.getBoundingClientRect().top + window.pageYOffset - 15;
-          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-        }
-      }, 150);
+      toggleLeadershipCollapse();
+    } else if (rawHash === 'multi-club-settings') {
+      switchTab('settings');
     } else if (rawHash === 'user-access-modal') {
       switchTab('settings');
       setTimeout(() => {
         openUserAccessModal('M002');
+      }, 200);
+    } else if (rawHash === 'create-club-modal') {
+      setTimeout(() => {
+        openCreateClubModal();
+      }, 300);
+    } else if (rawHash === 'switch-lightning') {
+      setTimeout(() => {
+        switchActiveClub('club_lightning');
+      }, 200);
+    } else if (rawHash === 'switch-smash') {
+      setTimeout(() => {
+        switchActiveClub('club_smash');
       }, 200);
     } else if (rawHash.startsWith('tournament')) {
       switchTab('tournament');
