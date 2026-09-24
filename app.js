@@ -244,23 +244,29 @@ function loadData() {
 
       // Chuẩn hóa và gán vai trò & quyền sử dụng (User Access Management) cho từng thành viên
       if (AppState.members && AppState.members.length > 0) {
+        const leadership = AppState.config?.leadership || {};
+        const presId = leadership.president || 'M001';
+        const vice1Id = leadership.vicePresident1 || 'M002';
+        const vice2Id = leadership.vicePresident2 || 'M003';
+        const secId = leadership.secretary || 'M004';
+        const treasId = leadership.treasurer || 'M005';
+        const viceLeadId = AppState.config?.viceLeaderId || 'M002';
+
         AppState.members.forEach(m => {
-          if (!m.role) {
-            if (m.id === 'M001' || m.username === 'admin' || m.id === AppState.config?.leadership?.president) {
+          if (!m.role || m.role === 'MEMBER') {
+            if (m.id === presId || m.id === 'M001' || m.username === 'admin' || m.id === 'M020') {
               m.role = 'ADMIN';
-            } else if (m.id === 'M002' || m.id === 'M003' || m.id === AppState.config?.viceLeaderId || m.id === AppState.config?.leadership?.vicePresident1 || m.id === AppState.config?.leadership?.vicePresident2) {
+            } else if (m.id === vice1Id || m.id === vice2Id || m.id === viceLeadId || m.id === 'M002' || m.id === 'M003') {
               m.role = 'VICE_ADMIN';
-            } else if (m.id === 'M005' || m.id === AppState.config?.leadership?.treasurer) {
+            } else if (m.id === treasId || m.id === 'M005') {
               m.role = 'TREASURER';
-            } else if (m.id === 'M004' || m.id === AppState.config?.leadership?.secretary) {
+            } else if (m.id === secId || m.id === 'M004') {
               m.role = 'REFEREE';
-            } else if (m.id === 'M020') {
-              m.role = 'ADMIN';
             } else {
               m.role = 'MEMBER';
             }
           }
-          if (!m.permissions || typeof m.permissions !== 'object') {
+          if (!m.permissions || typeof m.permissions !== 'object' || (m.role !== 'MEMBER' && Object.values(m.permissions).every(v => v === false))) {
             m.permissions = getRoleDefaultPermissions(m.role);
           }
           if (!m.status) {
@@ -10261,7 +10267,10 @@ document.addEventListener('DOMContentLoaded', () => {
       switchTab('settings');
       setTimeout(() => {
         const el = document.getElementById('sectionUserAccessManagement');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.pageYOffset - 15;
+          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        }
       }, 150);
     } else if (rawHash === 'user-access-modal') {
       switchTab('settings');

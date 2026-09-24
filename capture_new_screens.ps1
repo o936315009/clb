@@ -61,7 +61,7 @@ foreach ($t in $targets) {
   Write-Host "Capturing $($t.Name)..."
   if (Test-Path $t.Output) { Remove-Item $t.Output -Force }
   
-  $proc = Start-Process -FilePath $edgePath -ArgumentList "--headless=new", "--disable-gpu", "--window-size=1440,1150", "--screenshot=$($t.Output)", $t.Url -PassThru
+  $proc = Start-Process -FilePath $edgePath -ArgumentList "--headless=new", "--disable-gpu", "--window-size=1440,1280", "--screenshot=$($t.Output)", $t.Url -PassThru
   Start-Sleep -Milliseconds $t.DelayMs
   
   $proc.WaitForExit(8000)
