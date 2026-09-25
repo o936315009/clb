@@ -1233,6 +1233,22 @@ let currentTab = 'dashboard';
 
 function switchTab(tabId) {
   if (tabId === 'matchmaker') tabId = 'tournament';
+
+  // Chặn tài khoản thành viên truy cập tab Cấu hình & Sao lưu
+  if (tabId === 'settings') {
+    const role = getCurrentUserRole();
+    const isMember = role === 'MEMBER';
+    const canConfig = canConfigSystem() && !isMember;
+    if (!canConfig) {
+      showToast('⚠️ Tài khoản thành viên không có quyền truy cập Cấu hình và Sao lưu!', 'warning');
+      if (currentTab === 'settings') {
+        currentTab = 'dashboard';
+      }
+      switchTab('dashboard');
+      return;
+    }
+  }
+
   currentTab = tabId;
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
   const activePane = document.getElementById(`tab-${tabId}`);
@@ -1249,14 +1265,22 @@ function switchTab(tabId) {
     activeNav.classList.add('text-brand-700', 'bg-brand-50');
   }
 
+  // Cập nhật ẩn/hiện điều hướng (thành viên không hiển thị Cấu hình & Sao lưu)
+  updateNavigationUI();
+
   // Cập nhật mobile navigation bar
+  const curRole = getCurrentUserRole();
+  const isMem = curRole === 'MEMBER';
+  const canCfg = canConfigSystem() && !isMem;
+
   ['dashboard', 'attendance', 'finance', 'members', 'tournament', 'settings'].forEach(id => {
     const mBtn = document.getElementById(`m-nav-${id}`);
     if (mBtn) {
+      const isHidden = (id === 'settings' && !canCfg);
       if (id === tabId) {
-        mBtn.className = 'flex flex-col items-center justify-center py-1 px-1 text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer';
+        mBtn.className = `flex flex-col items-center justify-center py-1 px-1 text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer ${isHidden ? 'hidden' : ''}`;
       } else {
-        mBtn.className = 'flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer';
+        mBtn.className = `flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer ${isHidden ? 'hidden' : ''}`;
       }
     }
   });
@@ -1277,6 +1301,41 @@ function switchTab(tabId) {
   }
 
   lucide.createIcons();
+}
+
+/**
+ * Cập nhật hiển thị các mục điều hướng (Ẩn Cấu hình & Sao lưu với tài khoản thành viên)
+ */
+function updateNavigationUI() {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  const canConfig = canConfigSystem() && !isMember;
+
+  // 1. Nút Cấu hình & Sao lưu trên Desktop Sidebar
+  const navSettings = document.getElementById('nav-settings');
+  if (navSettings) {
+    if (canConfig) {
+      navSettings.classList.remove('hidden');
+    } else {
+      navSettings.classList.add('hidden');
+    }
+  }
+
+  // 2. Nút Cấu hình trên Mobile Bottom Navigation
+  const mNavSettings = document.getElementById('m-nav-settings');
+  if (mNavSettings) {
+    if (canConfig) {
+      mNavSettings.classList.remove('hidden');
+    } else {
+      mNavSettings.classList.add('hidden');
+    }
+  }
+
+  // 3. Nếu đang ở tab settings mà là tài khoản thành viên -> tự động chuyển về trang chủ
+  if (!canConfig && currentTab === 'settings') {
+    currentTab = 'dashboard';
+    switchTab('dashboard');
+  }
 }
 
 // ==========================================
@@ -8074,6 +8133,13 @@ function openCreateUserAccessModal() {
 }
 
 function openUserAccessModal(memberId) {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('⚠️ Bạn không có quyền cấp quyền truy cập hoặc sửa tài khoản!', 'warning');
+    return;
+  }
+
   const members = AppState.members || [];
   const member = members.find(m => m.id === memberId) || members[0];
   if (!member) return;
@@ -8346,23 +8412,7 @@ function handleResetPasswordSubmit(e) {
 // Cho phép tạo thêm CLB mới (Quỹ, Thành viên, Tài khoản Quản lý riêng) và chuyển đổi linh hoạt
 // ==========================================
 
-function renderAuthBadge() {
-  const container = document.getElementById('userAuthBadge');
-  if (!container) return;
-
-  const auth = AppState.auth || {};
-  const user = auth.user || {};
-  const role = user.role || 'ADMIN';
-  const roleDef = ROLE_DEFINITIONS[role] || { label: 'Quản lý', icon: '👑', color: 'amber' };
-  const displayName = user.name ? user.name.split(' (')[0] : (user.username || 'Admin');
-
-  container.innerHTML = `
-    <button type="button" onclick="switchTab('settings')" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200 transition cursor-pointer shadow-2xs" title="Tài khoản: ${user.name || user.username || 'Admin'} - Vai trò: ${roleDef.label}">
-      <span class="text-xs sm:text-sm">${roleDef.icon || '👑'}</span>
-      <span class="truncate max-w-[65px] sm:max-w-[110px]">${displayName}</span>
-    </button>
-  `;
-}
+// renderAuthBadge chính thức được khai báo tại mục 18 (XÁC THỰC & ĐĂNG NHẬP)
 
 function renderClubSwitcher() {
   const container = document.getElementById('headerClubSwitcherContainer');
@@ -12536,6 +12586,14 @@ function openConfigClubDirectLink() {
 }
 
 function renderSettingsTab() {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('⚠️ Tài khoản thành viên không có quyền truy cập Cấu hình và Sao lưu!', 'warning');
+    switchTab('dashboard');
+    return;
+  }
+
   const config = AppState.config;
   const activeClub = getActiveClub();
   if (document.getElementById('configClubName')) document.getElementById('configClubName').value = config.clubName || 'CLB CẦU LÔNG';
@@ -13003,6 +13061,12 @@ function saveDailyRateConfig() {
 
 // Sao lưu và khôi phục
 function exportDataBackup() {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('⚠️ Bạn không có quyền tải tệp sao lưu dữ liệu!', 'warning');
+    return;
+  }
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AppState, null, 2));
   const downloadAnchor = document.createElement('a');
   const now = new Date();
@@ -13017,6 +13081,12 @@ function exportDataBackup() {
 }
 
 function importDataBackup(event) {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('⚠️ Bạn không có quyền khôi phục dữ liệu CLB!', 'warning');
+    return;
+  }
   const file = event.target.files[0];
   if (!file) return;
 
@@ -13049,6 +13119,12 @@ function importDataBackup(event) {
 }
 
 function resetDefaultDemoData() {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('⚠️ Bạn không có quyền đặt lại dữ liệu CLB!', 'warning');
+    return;
+  }
   const activeClub = getActiveClub();
   const isSmash = activeClub.id === 'club_smash';
   const confirmed = confirm(`CẢNH BÁO: Thao tác này sẽ đưa toàn bộ dữ liệu của "${activeClub.name}" về trạng thái ban đầu.\nBạn có chắc chắn muốn đặt lại?`);
@@ -13095,6 +13171,7 @@ function renderAuthBadge() {
   }
 
   lucide.createIcons();
+  updateNavigationUI();
 }
 
 function openLoginModal() {
@@ -14028,6 +14105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderClubSwitcher();
   updateDevDemoToggleUI();
   updateDevAdminUI();
+  updateNavigationUI();
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();
@@ -14398,6 +14476,13 @@ function pushDataToCloud() {
 }
 
 function openCloudSyncModal() {
+  const role = getCurrentUserRole();
+  const isMember = role === 'MEMBER';
+  if (isMember || !canConfigSystem()) {
+    showToast('ℹ️ Bạn đang xem dữ liệu trực tuyến đồng bộ từ đám mây.', 'info');
+    return;
+  }
+
   const modal = document.getElementById('modalCloudSync');
   if (!modal) return;
 
