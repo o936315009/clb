@@ -3184,6 +3184,15 @@ function addNewGuestInline() {
     return;
   }
 
+  // Không cho phép đặt trùng tên thành viên / khách đã có trong CLB
+  const dupGuest = findDuplicateMemberName(rawName, null);
+  if (dupGuest) {
+    showToast(`⚠️ Tên "${rawName}" đã tồn tại trong danh sách CLB (${dupGuest.name})! Vui lòng chọn tên khác hoặc thêm biệt danh phân biệt.`, 'warning');
+    if (typeof validateInlineGuestName === 'function') validateInlineGuestName();
+    nameInput.focus();
+    return;
+  }
+
   let levelKey = levelSelect ? levelSelect.value : 'GUEST_C';
   if (levelKey === 'UNRANKED') levelKey = 'GUEST_C';
 
@@ -7019,6 +7028,134 @@ function handleFineSubmit(e) {
 // ==========================================
 let memberListFilter = 'ALL';
 
+/**
+ * Kiểm tra tên thành viên đã tồn tại trong danh sách CLB hay chưa (không phân biệt hoa thường, chuẩn hóa khoảng trắng)
+ * @param {string} name - Tên cần kiểm tra
+ * @param {string|null} excludeMemberId - ID thành viên bỏ qua (khi chỉnh sửa thông tin chính mình)
+ * @returns {object|null} - Trả về thành viên bị trùng hoặc null nếu không trùng
+ */
+function findDuplicateMemberName(name, excludeMemberId = null) {
+  if (!name || typeof name !== 'string') return null;
+  const cleanName = name.trim().replace(/\s+/g, ' ').toLowerCase();
+  if (!cleanName) return null;
+  return (AppState.members || []).find(m => {
+    if (excludeMemberId && String(m.id) === String(excludeMemberId)) return false;
+    const existingName = (m.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    return existingName === cleanName;
+  }) || null;
+}
+
+function validateMemberModalName() {
+  const input = document.getElementById('memberFullName');
+  const warning = document.getElementById('memberFullNameWarning');
+  const editId = document.getElementById('memberEditId')?.value || null;
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+    return;
+  }
+  const dup = findDuplicateMemberName(name, editId);
+  if (dup) {
+    input.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 shrink-0"></i> Tên "<b>${escapeHtml ? escapeHtml(dup.name) : dup.name}</b>" đã tồn tại trong CLB! Vui lòng chọn tên khác hoặc thêm biệt danh.`;
+      warning.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+  } else {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+  }
+}
+
+function validateGuestModalName() {
+  const input = document.getElementById('guestName');
+  const warning = document.getElementById('guestNameWarning');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+    return;
+  }
+  const dup = findDuplicateMemberName(name, null);
+  if (dup) {
+    input.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 shrink-0"></i> Tên khách "<b>${escapeHtml ? escapeHtml(dup.name) : dup.name}</b>" đã tồn tại trong CLB! Vui lòng đặt tên khác.`;
+      warning.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+  } else {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+  }
+}
+
+function validateQuickRenameName() {
+  const input = document.getElementById('quickRenameName');
+  const warning = document.getElementById('quickRenameWarning');
+  const editId = document.getElementById('quickRenameMemberId')?.value || null;
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+    return;
+  }
+  const dup = findDuplicateMemberName(name, editId);
+  if (dup) {
+    input.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 shrink-0"></i> Tên "<b>${escapeHtml ? escapeHtml(dup.name) : dup.name}</b>" đã tồn tại cho thành viên khác trong CLB!`;
+      warning.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+  } else {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    if (warning) {
+      warning.textContent = '';
+      warning.classList.add('hidden');
+    }
+  }
+}
+
+function validateInlineGuestName() {
+  const input = document.getElementById('newGuestNameInput');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    input.title = '';
+    return;
+  }
+  const dup = findDuplicateMemberName(name, null);
+  if (dup) {
+    input.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+    input.title = `⚠️ Tên "${dup.name}" đã tồn tại trong danh sách CLB!`;
+  } else {
+    input.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+    input.title = '';
+  }
+}
+
 function setMemberListFilter(filter) {
   memberListFilter = filter;
   document.querySelectorAll('.mem-filter-btn').forEach(btn => {
@@ -7142,6 +7279,13 @@ function openMemberModal(mode = 'official', memberId = null) {
   const usernameInput = document.getElementById('memberUsername');
   const passwordInput = document.getElementById('memberPassword');
   const initBalanceInput = document.getElementById('memberInitialBalance');
+  const warningEl = document.getElementById('memberFullNameWarning');
+
+  if (nameInput) nameInput.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+  if (warningEl) {
+    warningEl.textContent = '';
+    warningEl.classList.add('hidden');
+  }
 
   if (mode === 'edit' && memberId) {
     const member = AppState.members.find(m => m.id === memberId);
@@ -7183,6 +7327,16 @@ function handleMemberSubmit(e) {
 
   if (!name) {
     showToast('Vui lòng nhập họ và tên thành viên!', 'warning');
+    return;
+  }
+
+  // Không cho phép đặt tên trùng với thành viên khác đã có trong CLB
+  const dupMember = findDuplicateMemberName(name, editId || null);
+  if (dupMember) {
+    showToast(`⚠️ Tên thành viên "${name}" đã tồn tại trong CLB! Vui lòng chọn tên khác hoặc thêm biệt danh phân biệt.`, 'warning');
+    validateMemberModalName();
+    const nameInput = document.getElementById('memberFullName');
+    if (nameInput) nameInput.focus();
     return;
   }
 
@@ -7262,8 +7416,17 @@ function openAddGuestModal() {
   const nameEl = document.getElementById('guestName');
   const phoneEl = document.getElementById('guestPhone');
   const typeSelect = document.getElementById('guestTypeSelect');
-  if (nameEl) nameEl.value = '';
+  const warningEl = document.getElementById('guestNameWarning');
+
+  if (nameEl) {
+    nameEl.value = '';
+    nameEl.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+  }
   if (phoneEl) phoneEl.value = '';
+  if (warningEl) {
+    warningEl.textContent = '';
+    warningEl.classList.add('hidden');
+  }
 
   if (typeSelect) {
     const prices = (AppState.config && AppState.config.guestPrices) || { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 };
@@ -7298,6 +7461,16 @@ function handleAddGuestSubmit(e) {
 
   if (!name) {
     showToast('Vui lòng nhập tên khách giao lưu!', 'warning');
+    return;
+  }
+
+  // Không cho phép đặt trùng tên thành viên / khách đã có trong CLB
+  const dupGuest = findDuplicateMemberName(name, null);
+  if (dupGuest) {
+    showToast(`⚠️ Tên khách "${name}" đã tồn tại trong danh sách CLB! Vui lòng đặt tên khác hoặc thêm biệt danh phân biệt.`, 'warning');
+    validateGuestModalName();
+    const guestInput = document.getElementById('guestName');
+    if (guestInput) guestInput.focus();
     return;
   }
 
@@ -12700,6 +12873,14 @@ function openQuickRenameModal(memberId) {
     return;
   }
 
+  const nameInput = document.getElementById('quickRenameName');
+  const warningEl = document.getElementById('quickRenameWarning');
+  if (nameInput) nameInput.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+  if (warningEl) {
+    warningEl.textContent = '';
+    warningEl.classList.add('hidden');
+  }
+
   document.getElementById('quickRenameMemberId').value = member.id;
   document.getElementById('quickRenameName').value = member.name;
   document.getElementById('quickRenamePhone').value = member.phone || '';
@@ -12726,8 +12907,19 @@ function handleQuickRenameSubmit(e) {
     return;
   }
 
+  // Không cho phép đổi thành tên trùng với thành viên khác trong CLB
+  const dupRename = findDuplicateMemberName(newName, memberId);
+  if (dupRename) {
+    showToast(`⚠️ Tên "${newName}" đã tồn tại cho thành viên khác trong CLB! Vui lòng chọn tên khác hoặc thêm biệt danh phân biệt.`, 'warning');
+    validateQuickRenameName();
+    const renameInput = document.getElementById('quickRenameName');
+    if (renameInput) renameInput.focus();
+    return;
+  }
+
   const oldName = member.name;
   member.name = newName;
+  member.chipName = newName.trim().split(/\s+/).pop().toUpperCase();
   member.phone = newPhone;
   member.type = newType;
 
