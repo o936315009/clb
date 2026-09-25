@@ -616,27 +616,24 @@
 
           <!-- Sticky Split Bar -->
           <div class="p-2.5 bg-white border border-slate-200 rounded-2xl shadow-lg space-y-1.5">
-            <div class="grid grid-cols-4 gap-1 text-center text-xs">
+            <div class="grid grid-cols-3 gap-1 text-center text-xs">
               <div class="bg-emerald-50/70 p-1 rounded-lg border border-emerald-100">
-                <span class="text-[9px] text-emerald-800 font-bold block">🏸 Cầu</span>
+                <span class="text-[9px] text-emerald-800 font-bold block">🏸 Tiền Cầu</span>
                 <b id="preview-shuttle-paid" class="text-emerald-950 font-black text-[11px]">0đ</b>
-              </div>
-              <div class="bg-blue-50/70 p-1 rounded-lg border border-blue-100">
-                <span class="text-[9px] text-blue-800 font-bold block">🏟️ Sân bậc</span>
-                <b id="preview-court-paid" class="text-blue-950 font-black text-[11px]">0đ</b>
+                <span id="preview-court-paid" class="hidden">0đ</span>
               </div>
               <div class="bg-amber-50/70 p-1 rounded-lg border border-amber-100">
                 <span class="text-[9px] text-amber-800 font-bold block">🎟️ Khách</span>
                 <b id="preview-guest-paid" class="text-amber-950 font-black text-[11px]">0đ</b>
               </div>
-              <div class="bg-slate-50 p-1 rounded-lg border border-slate-200">
-                <span class="text-[9px] text-slate-600 font-bold block">⚡ Cần chia</span>
-                <b id="preview-need-split" class="text-slate-900 font-black text-[11px]">0đ</b>
+              <div class="bg-indigo-50/70 p-1 rounded-lg border border-indigo-100">
+                <span class="text-[9px] text-indigo-800 font-bold block">⚡ Cầu / TV</span>
+                <b id="preview-need-split" class="text-indigo-950 font-black text-[11px]">0đ</b>
               </div>
             </div>
             <div class="flex items-center gap-1.5">
               <button onclick="saveAndSplitPreviewSession()" class="flex-1 py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl flex items-center justify-between shadow-md cursor-pointer">
-                <span>Lưu & Chia Tạm Ứng</span>
+                <span>Chốt & Trừ Tiền Cầu</span>
                 <span id="preview-per-person" class="bg-emerald-800 px-2 py-0.5 rounded-lg text-[10px]">0đ / người</span>
               </button>
               <button onclick="openPreviewReportModal()" class="px-2.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-md shrink-0 flex items-center gap-1 cursor-pointer" title="Xuất ảnh báo cáo">
@@ -2322,23 +2319,23 @@
       const needSplitEl = document.getElementById('preview-need-split');
       if (needSplitEl) needSplitEl.innerText = needSplit.toLocaleString('vi-VN') + 'đ';
 
-      const perPersonShuttle = selectedMembers > 0 ? Math.ceil((needSplit / selectedMembers) / 1000) * 1000 : 0;
+      const perPersonShuttle = selectedMembers > 0 ? Math.round(needSplit / selectedMembers) : 0;
       
-      // 2. Tạm ứng tiền sân (theo bậc thiết lập trước: Bậc 1: 50.000đ/người)
-      const courtFeePerPerson = 50000;
-      const totalCourtFee = selectedMembers * courtFeePerPerson;
+      // 2. Không tính tiền sân tạm ứng trong hoạt động buổi (chỉ tính tiền cầu)
+      const courtFeePerPerson = 0;
+      const totalCourtFee = 0;
 
       const shuttlePaidEl = document.getElementById('preview-shuttle-paid');
       const courtPaidEl = document.getElementById('preview-court-paid');
       if (shuttlePaidEl) shuttlePaidEl.innerText = (perPersonShuttle * selectedMembers).toLocaleString('vi-VN') + 'đ';
-      if (courtPaidEl) courtPaidEl.innerText = totalCourtFee.toLocaleString('vi-VN') + 'đ';
+      if (courtPaidEl) courtPaidEl.innerText = '0đ';
 
-      const totalPerPerson = perPersonShuttle + courtFeePerPerson;
+      const totalPerPerson = perPersonShuttle;
       const perPersonEl = document.getElementById('preview-per-person');
-      if (perPersonEl) perPersonEl.innerText = `${totalPerPerson.toLocaleString('vi-VN')}đ / người (Cầu: ${perPersonShuttle.toLocaleString('vi-VN')}đ + Sân: ${courtFeePerPerson.toLocaleString('vi-VN')}đ)`;
+      if (perPersonEl) perPersonEl.innerText = `${totalPerPerson.toLocaleString('vi-VN')}đ / người (tiền cầu)`;
 
       // 3. Render bảng dự toán khấu trừ ví thành viên (cho phép ví âm!)
-      renderPreviewMemberBreakdown(selectedChips, perPersonShuttle, courtFeePerPerson);
+      renderPreviewMemberBreakdown(selectedChips, perPersonShuttle, 0);
 
       updatePreviewAttendanceSaveBarUI();
     }
@@ -2357,7 +2354,7 @@
 
       if (!previewFinanceData) initPreviewFinance();
 
-      const totalDeduct = perPersonShuttle + courtFeePerPerson;
+      const totalDeduct = perPersonShuttle;
       let rowsHtml = '';
       let negativeCount = 0;
 
@@ -2376,7 +2373,7 @@
               <div class="text-[9px] text-slate-500 flex items-center gap-1">
                 <span>Ví: <b>${oldBal.toLocaleString('vi-VN')}đ</b></span>
                 <span>→</span>
-                <span>Trừ: <b>-${totalDeduct.toLocaleString('vi-VN')}đ</b> (Cầu: ${perPersonShuttle.toLocaleString('vi-VN')}đ, Sân: ${courtFeePerPerson.toLocaleString('vi-VN')}đ)</span>
+                <span>Tiền cầu: <b>-${totalDeduct.toLocaleString('vi-VN')}đ</b></span>
               </div>
             </div>
             <div class="text-right">
@@ -2396,7 +2393,7 @@
             ${negativeCount > 0 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300">⚠️ ${negativeCount} TV âm ví</span>` : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">Đủ số dư</span>`}
           </div>
           <p class="text-[10px] text-amber-900 leading-tight">
-            Trừ thẳng vào Ví TV (hệ thống cho phép số dư âm / dư nợ). Cầu cộng vào Quỹ tạm ứng cầu, Sân cộng vào Quỹ tạm ứng sân.
+            Trừ thẳng vào Ví TV (hệ thống cho phép số dư âm / dư nợ). Tiền cầu tính theo đơn giá 28.333đ/quả cộng vào Quỹ tạm ứng cầu.
           </p>
           <div class="space-y-1 max-h-48 overflow-y-auto mobile-scroll pt-1">
             ${rowsHtml}
@@ -3625,11 +3622,11 @@
       const amountInp = document.getElementById('previewExpenseAmount');
       const totalShuttleCost = amountInp ? (Number(amountInp.value) || 340000) : 340000;
       const needSplit = Math.max(0, totalShuttleCost - guestPaid);
-      const perPersonShuttle = selectedMembers > 0 ? Math.ceil((needSplit / selectedMembers) / 1000) * 1000 : 0;
-      const courtFeePerPerson = 50000;
-      const totalDeduct = perPersonShuttle + courtFeePerPerson;
+      const perPersonShuttle = selectedMembers > 0 ? Math.round(needSplit / selectedMembers) : 0;
+      const courtFeePerPerson = 0;
+      const totalDeduct = perPersonShuttle;
       const totalMemberShuttleFee = perPersonShuttle * selectedMembers;
-      const totalMemberCourtFee = courtFeePerPerson * selectedMembers;
+      const totalMemberCourtFee = 0;
 
       let negativeCount = 0;
       selectedChips.forEach(chip => {
@@ -3775,7 +3772,7 @@
       guestList.forEach(g => guestPaid += g.fee);
       const needSplit = Math.max(0, totalCost - guestPaid);
       const memberCount = memberNames.length;
-      const perPerson = memberCount > 0 ? Math.ceil((needSplit / memberCount) / 1000) * 1000 : 0;
+      const perPerson = memberCount > 0 ? Math.round(needSplit / memberCount) : 0;
 
       const matches = previewMatches || [];
 

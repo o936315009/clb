@@ -3374,7 +3374,7 @@ function randomActivityMatch() {
   showToast(`🎲 Đã ghép Trận #${activityState.matches.length}: ${shuffled[0].chipName} ${shuffled[1].chipName} đấu với ${shuffled[2].chipName} ${shuffled[3].chipName}!`, 'success');
 }
 
-// --- 7. BỘ TÍNH TOÁN & CHIA TIỀN REAL-TIME (TẠM ỨNG CẦU & SÂN THEO BẬC) ---
+// --- 7. BỘ TÍNH TOÁN & CHIA TIỀN REAL-TIME (CHỈ TÍNH TIỀN CẦU, KHÔNG HIỂN THỊ TIỀN SÂN TẠM ỨNG) ---
 function renderActivityMemberBreakdown(list, shuttleFeePerMember, totalMemberCourtFee, totalMemberShuttleFee, guestPaid) {
   const container = document.getElementById('actMemberBreakdownContainer');
   if (!container) return;
@@ -3384,10 +3384,10 @@ function renderActivityMemberBreakdown(list, shuttleFeePerMember, totalMemberCou
       <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-center">
         <div class="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
           <span>📋</span>
-          <span>Dự toán Tạm Ứng Tiền Sân & Tiền Cầu Từng Người</span>
+          <span>Dự Toán Tiền Cầu Từng Người Điểm Danh</span>
         </div>
         <p class="text-[11px] text-slate-400 mt-1">
-          Chưa chọn thành viên nào. Hãy tích chọn thành viên bên trên để hệ thống tự động đếm buổi theo bậc và chia tiền cầu.
+          Chưa chọn thành viên nào. Hãy tích chọn thành viên bên trên để hệ thống tự động tính tiền cầu theo đơn giá 28.333đ/quả và chia đều.
         </p>
       </div>
     `;
@@ -3410,9 +3410,7 @@ function renderActivityMemberBreakdown(list, shuttleFeePerMember, totalMemberCou
             <span class="text-[10px] font-semibold text-slate-400">(${item.tierName})</span>
           </div>
           <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
-            <span>Sân: <b class="text-slate-700">${formatMoney(item.courtFee)}</b></span>
-            <span>•</span>
-            <span>Cầu: <b class="text-slate-700">${formatMoney(item.shuttleFee)}</b></span>
+            <span>Tiền cầu: <b class="text-emerald-700 font-bold">${formatMoney(item.shuttleFee)}</b></span>
             <span>•</span>
             <span>Ví trước: <span class="${item.currentBal < 0 ? 'text-rose-600 font-bold' : 'text-slate-600'}">${formatMoney(item.currentBal)}</span></span>
           </div>
@@ -3431,8 +3429,8 @@ function renderActivityMemberBreakdown(list, shuttleFeePerMember, totalMemberCou
         <div class="flex items-center gap-1.5">
           <span class="text-base">📋</span>
           <div>
-            <h4 class="font-black text-slate-900 text-xs leading-tight">Dự Toán Tạm Ứng Tiền Sân & Tiền Cầu Từng Người</h4>
-            <p class="text-[10px] text-slate-500">Tiền sân tự tính theo bậc số buổi • Tiền cầu chia đều • Cho phép ví âm</p>
+            <h4 class="font-black text-slate-900 text-xs leading-tight">Dự Toán Tiền Cầu Từng Người Điểm Danh</h4>
+            <p class="text-[10px] text-slate-500">Đơn giá theo quả = 28.333đ (1 hộp 12 quả = 340.000đ) • Tiền cầu chia đều • Cho phép ví âm</p>
           </div>
         </div>
         <div class="flex items-center gap-1.5 text-[10px] font-bold">
@@ -3443,15 +3441,15 @@ function renderActivityMemberBreakdown(list, shuttleFeePerMember, totalMemberCou
         </div>
       </div>
 
-      <!-- Quick KPI Strip -->
+      <!-- Quick KPI Strip (Chỉ hiển thị Tiền Cầu & Thu Khách, KHÔNG hiển thị tiền sân tạm ứng) -->
       <div class="grid grid-cols-3 gap-1.5 p-2 bg-white/80 backdrop-blur rounded-xl border border-slate-200 text-center text-xs">
         <div>
-          <span class="text-[10px] text-slate-500 block">Tạm ứng cầu (${list.length} TV)</span>
+          <span class="text-[10px] text-slate-500 block">Tổng tiền cầu (${list.length} TV)</span>
           <b class="text-slate-900 font-black text-xs sm:text-sm text-emerald-800">${formatMoney(totalMemberShuttleFee)}</b>
         </div>
         <div>
-          <span class="text-[10px] text-slate-500 block">Tạm ứng sân theo bậc</span>
-          <b class="text-slate-900 font-black text-xs sm:text-sm text-blue-800">${formatMoney(totalMemberCourtFee)}</b>
+          <span class="text-[10px] text-slate-500 block">Mỗi TV đóng</span>
+          <b class="text-slate-900 font-black text-xs sm:text-sm text-indigo-800">${formatMoney(shuttleFeePerMember)}</b>
         </div>
         <div>
           <span class="text-[10px] text-slate-500 block">Thu khách (${activityState.selectedGuestIds.size} khách)</span>
@@ -3508,25 +3506,23 @@ function recalculateActivitySplit() {
   // 3. Số thành viên tham gia
   const memberCount = (activityState.selectedMemberIds || new Set()).size;
 
-  // 4. Tiền cầu chia đều cho từng thành viên: Quỹ tạm ứng tiền cầu (A)
-  const shuttleFeePerMember = memberCount > 0 ? Math.ceil((shuttleTotal / memberCount) / 1000) * 1000 : 0;
+  // 4. Tiền cầu chia đều cho từng thành viên theo ĐƠN GIÁ THEO QUẢ = 28.333 đ (1 hộp 12 quả = 340.000 đ) - Làm tròn 1đ
+  const shuttleFeePerMember = memberCount > 0 ? Math.round(shuttleTotal / memberCount) : 0;
   const totalMemberShuttleFee = shuttleFeePerMember * memberCount;
 
-  // 5. Tiền sân tự động tính theo bậc số buổi trong tháng của từng thành viên: Quỹ tạm ứng tiền sân (B)
-  let totalMemberCourtFee = 0;
+  // 5. KHÔNG tính và KHÔNG hiển thị tiền sân tạm ứng trong hoạt động buổi (chỉ tính tiền cầu)
+  const totalMemberCourtFee = 0;
   const memberBreakdownList = [];
 
   (activityState.selectedMemberIds || new Set()).forEach(id => {
     const member = AppState.members.find(m => m.id === id);
     if (member) {
       const nextSession = (member.monthlySessions || 0) + 1;
-      const courtFee = calculateMemberCourtFee(member, true);
       const tierName = getTierNameForSession(nextSession);
-      const totalDeduct = courtFee + shuttleFeePerMember;
+      const totalDeduct = shuttleFeePerMember; // Chỉ tính tiền cầu, không tính tiền sân tạm ứng
       const currentBal = member.balance || 0;
       const nextBal = currentBal - totalDeduct;
 
-      totalMemberCourtFee += courtFee;
       memberBreakdownList.push({
         id: member.id,
         name: member.name,
@@ -3535,7 +3531,7 @@ function recalculateActivitySplit() {
         currentSessions: member.monthlySessions || 0,
         nextSession: nextSession,
         tierName: tierName,
-        courtFee: courtFee,
+        courtFee: 0,
         shuttleFee: shuttleFeePerMember,
         totalDeduct: totalDeduct,
         currentBal: currentBal,
@@ -3553,25 +3549,25 @@ function recalculateActivitySplit() {
   const shuttleTotalEl = document.getElementById('actSummaryShuttleTotal');
   const courtTotalEl = document.getElementById('actSummaryCourtTotal');
 
-  if (totalCostEl) totalCostEl.textContent = formatMoney(totalCost);
+  if (totalCostEl) totalCostEl.textContent = formatMoney(shuttleTotal);
   if (guestPaidEl) guestPaidEl.textContent = formatMoney(guestPaid);
-  if (needSplitEl) needSplitEl.textContent = formatMoney(totalMemberCourtFee + totalMemberShuttleFee);
+  if (needSplitEl) needSplitEl.textContent = formatMoney(totalMemberShuttleFee);
   if (shuttleTotalEl) shuttleTotalEl.textContent = formatMoney(totalMemberShuttleFee);
-  if (courtTotalEl) courtTotalEl.textContent = formatMoney(totalMemberCourtFee);
+  if (courtTotalEl) courtTotalEl.textContent = formatMoney(0);
 
   if (perPersonBadge) {
     if (memberCount > 0) {
-      perPersonBadge.textContent = `${formatMoney(shuttleFeePerMember)} (cầu) + Sân bậc`;
+      perPersonBadge.textContent = `${formatMoney(shuttleFeePerMember)} (cầu) / người`;
     } else {
       perPersonBadge.textContent = '0đ / mỗi người';
     }
   }
 
-  // Cập nhật bảng Chi tiết tạm ứng từng thành viên (Preview table)
-  renderActivityMemberBreakdown(memberBreakdownList, shuttleFeePerMember, totalMemberCourtFee, totalMemberShuttleFee, guestPaid);
+  // Cập nhật bảng Chi tiết tiền cầu từng thành viên (Preview table)
+  renderActivityMemberBreakdown(memberBreakdownList, shuttleFeePerMember, 0, totalMemberShuttleFee, guestPaid);
 }
 
-// --- 8. LƯU VÀ CHIA TIỀN (EXECUTION) ---
+// --- 8. LƯU VÀ CHIA TIỀN (EXECUTION - CHỈ TRỪ TIỀN CẦU, KHÔNG TRỪ TIỀN SÂN TẠM ỨNG) ---
 function saveAndSplitActivitySession() {
   if (!canPerformAttendance()) {
     showToast('⚠️ Bạn không có quyền chốt và chia tiền buổi sinh hoạt! Vui lòng liên hệ Trưởng nhóm.', 'warning');
@@ -3596,16 +3592,10 @@ function saveAndSplitActivitySession() {
     }
   });
 
-  const shuttleFeePerMember = memberCount > 0 ? Math.ceil((shuttleTotal / memberCount) / 1000) * 1000 : 0;
+  // Tiền cầu chia đều theo đơn giá quả (28.333đ/quả, 1 hộp 12 quả = 340.000đ) - Làm tròn 1đ
+  const shuttleFeePerMember = memberCount > 0 ? Math.round(shuttleTotal / memberCount) : 0;
   const totalMemberShuttleFee = shuttleFeePerMember * memberCount;
-
-  let totalMemberCourtFee = 0;
-  (activityState.selectedMemberIds || new Set()).forEach(id => {
-    const member = AppState.members.find(m => m.id === id);
-    if (member) {
-      totalMemberCourtFee += calculateMemberCourtFee(member, true);
-    }
-  });
+  const totalMemberCourtFee = 0; // Không tính tiền sân trong buổi hoạt động
 
   let guestPaid = 0;
   (activityState.selectedGuestIds || new Set()).forEach(id => {
@@ -3621,20 +3611,18 @@ function saveAndSplitActivitySession() {
   const nowTime = getNowTimestampString();
 
   const confirmMsg = `Xác nhận lưu buổi hoạt động ngày ${dateFormatted}?\n` +
-    `• Tạm ứng tiền cầu: ${formatMoney(totalMemberShuttleFee)} (${formatMoney(shuttleFeePerMember)}/người × ${memberCount} TV)\n` +
-    `• Tạm ứng tiền sân theo bậc: ${formatMoney(totalMemberCourtFee)} (${memberCount} TV)\n` +
+    `• Tiền cầu theo quả: ${formatMoney(totalMemberShuttleFee)} (${formatMoney(shuttleFeePerMember)}/người × ${memberCount} TV)\n` +
     `• Thu khách giao lưu theo hạng: ${formatMoney(guestPaid)} (${guestCount} khách)\n` +
-    `• Hệ thống trừ trực tiếp Ví TV (cho phép dư nợ ví âm) và cộng vào Quỹ Tạm Ứng.`;
+    `• Hệ thống trừ tiền cầu trực tiếp vào Ví TV (cho phép dư nợ ví âm) và cộng vào Quỹ Tạm Ứng Cầu.`;
 
   if (!confirm(confirmMsg)) return;
 
-  // 1. Trừ tiền ví và tăng số buổi tháng cho từng thành viên tham gia (Hỗ trợ số dư âm)
+  // 1. Trừ tiền ví (CHỈ TRỪ TIỀN CẦU) và tăng số buổi tháng cho từng thành viên tham gia (Hỗ trợ số dư âm)
   let negativeCount = 0;
   (activityState.selectedMemberIds || new Set()).forEach(id => {
     const member = AppState.members.find(m => m.id === id);
     if (member) {
-      const courtFee = calculateMemberCourtFee(member, true);
-      const totalDeduct = courtFee + shuttleFeePerMember;
+      const totalDeduct = shuttleFeePerMember; // Chỉ tính tiền cầu, không tính tiền sân tạm ứng
 
       // Cho phép ví thành viên dư nợ / âm số dư
       member.balance = (member.balance || 0) - totalDeduct;
@@ -3647,16 +3635,16 @@ function saveAndSplitActivitySession() {
       AppState.transactions.push({
         id: 'TX_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
         date: nowTime,
-        type: 'COURT_FEE',
-        categoryGroup: 'COURT_FEE',
-        subType: 'COURT_FEE',
-        categoryName: 'Trừ phí buổi chơi',
+        type: 'SHUTTLE_FEE',
+        categoryGroup: 'ADVANCE_SHUTTLE_IN',
+        subType: 'SHUTTLE_ADV_IN',
+        categoryName: 'Tiền cầu sinh hoạt',
         amount: -totalDeduct,
         walletImpact: -totalDeduct,
         fundImpact: 0,
         targetName: member.name,
         memberId: member.id,
-        description: `Trừ ví buổi ${dateFormatted}: Tiền sân ${formatMoney(courtFee)} (${tierName}) + Cầu ${formatMoney(shuttleFeePerMember)}`,
+        description: `Trừ tiền cầu ngày ${dateFormatted} (${formatMoney(shuttleFeePerMember)}/người, Buổi #${member.monthlySessions})`,
         operator: (AppState.auth && AppState.auth.user) ? AppState.auth.user.username : 'admin'
       });
 
@@ -3666,7 +3654,7 @@ function saveAndSplitActivitySession() {
         date: dateStr,
         memberId: member.id,
         memberName: member.name,
-        courtFee: courtFee,
+        courtFee: 0,
         shuttleFee: shuttleFeePerMember,
         fee: totalDeduct,
         sessionIndex: member.monthlySessions,
@@ -3683,7 +3671,7 @@ function saveAndSplitActivitySession() {
     }
   });
 
-  // 3. Ghi Sổ Quỹ Tạm Ứng (Tạm ứng tiền cầu + Tạm ứng tiền sân + Thu khách theo hạng)
+  // 3. Ghi Sổ Quỹ Tạm Ứng (Tạm ứng tiền cầu + Thu khách theo hạng, KHÔNG ghi tiền sân)
   // A. Tạm ứng tiền cầu: Trừ ví TV -> Cộng vào Quỹ tạm ứng tiền cầu
   if (totalMemberShuttleFee > 0) {
     AppState.transactions.push({
@@ -3851,7 +3839,7 @@ function generateActivityReportCanvas() {
   });
   const memberCount = memberList.length;
   const needSplit = Math.max(0, totalCost - guestPaid);
-  const perPerson = memberCount > 0 ? Math.ceil((needSplit / memberCount) / 1000) * 1000 : 0;
+  const perPerson = memberCount > 0 ? Math.round(needSplit / memberCount) : 0;
 
   // Người ứng tiền
   let frontText = null;

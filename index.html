@@ -559,40 +559,37 @@
               </div>
             </div>
 
-            <!-- 6B. BẢNG DỰ TOÁN TẠM ỨNG TIỀN SÂN BẬC & TIỀN CẦU TỪNG THÀNH VIÊN -->
+            <!-- 6B. BẢNG DỰ TOÁN TIỀN CẦU TỪNG THÀNH VIÊN (KHÔNG HIỂN THỊ TIỀN SÂN TẠM ỨNG) -->
             <div id="actMemberBreakdownContainer" class="pt-2 border-t border-slate-100">
               <!-- Rendered dynamically by renderActivityMemberBreakdown() -->
             </div>
 
           </div>
 
-          <!-- 7. THANH TỔNG KẾT & CHIA TIỀN (STICKY BOTTOM BAR DÍNH ĐÁY) -->
+          <!-- 7. THANH TỔNG KẾT & CHIA TIỀN (STICKY BOTTOM BAR DÍNH ĐÁY - KHÔNG HIỂN THỊ TIỀN SÂN TẠM ỨNG) -->
           <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200 p-3 sm:p-3.5 shadow-xl z-30">
-            <!-- 4 Chỉ số: Quỹ Cầu | Quỹ Sân | Khách Đóng | Cần chia -->
-            <div class="grid grid-cols-4 gap-1.5 pb-2 text-xs">
+            <!-- 3 Chỉ số: Tiền Cầu | Thu Khách | Cần chia -->
+            <div class="grid grid-cols-3 gap-1.5 pb-2 text-xs">
               <div class="bg-emerald-50/70 p-1.5 rounded-lg border border-emerald-100">
-                <span class="text-emerald-800 block text-[10px] font-bold">🏸 Tạm ứng Cầu</span>
+                <span class="text-emerald-800 block text-[10px] font-bold">🏸 Tiền Cầu</span>
                 <b id="actSummaryShuttleTotal" class="text-emerald-950 font-black text-xs sm:text-sm">0đ</b>
                 <span id="actSummaryTotalCost" class="hidden">0đ</span>
-              </div>
-              <div class="bg-blue-50/70 p-1.5 rounded-lg border border-blue-100">
-                <span class="text-blue-800 block text-[10px] font-bold">🏟️ Tạm ứng Sân</span>
-                <b id="actSummaryCourtTotal" class="text-blue-950 font-black text-xs sm:text-sm">0đ</b>
+                <span id="actSummaryCourtTotal" class="hidden">0đ</span>
               </div>
               <div class="bg-amber-50/70 p-1.5 rounded-lg border border-amber-100">
                 <span class="text-amber-800 block text-[10px] font-bold">🎟️ Thu Khách</span>
                 <b id="actSummaryGuestPaid" class="text-amber-950 font-black text-xs sm:text-sm">0đ</b>
               </div>
-              <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                <span class="text-slate-600 block text-[10px] font-bold">⚡ Cần Chia TV</span>
-                <b id="actSummaryNeedSplit" class="text-slate-900 font-black text-xs sm:text-sm">0đ</b>
+              <div class="bg-indigo-50/70 p-1.5 rounded-lg border border-indigo-100">
+                <span class="text-indigo-800 block text-[10px] font-bold">⚡ Tiền Cầu / TV</span>
+                <b id="actSummaryNeedSplit" class="text-indigo-950 font-black text-xs sm:text-sm">0đ</b>
               </div>
             </div>
 
-            <!-- Nút hành động: Lưu và chia tiền + Nút Xuất ảnh báo cáo -->
+            <!-- Nút hành động: Chốt & trừ tiền cầu + Nút Xuất ảnh báo cáo -->
             <div class="flex items-center gap-2">
               <button type="button" onclick="saveAndSplitActivitySession()" class="flex-1 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-black py-2.5 sm:py-3 px-3.5 rounded-xl shadow-lg shadow-emerald-700/20 flex items-center justify-between transition cursor-pointer">
-                <span class="text-xs sm:text-sm">Lưu & Chia Tạm Ứng</span>
+                <span class="text-xs sm:text-sm">Chốt & Trừ Tiền Cầu</span>
                 <span id="actSummaryPerPersonBadge" class="bg-emerald-800/80 border border-emerald-600/60 px-2.5 py-0.5 rounded-lg text-xs font-bold">
                   0đ / mỗi người
                 </span>
