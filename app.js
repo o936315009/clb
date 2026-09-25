@@ -1747,7 +1747,6 @@ function renderAttendanceRoleBanner() {
       </div>
     `;
   } else {
-    // Với thành viên thường hoặc chưa đăng nhập, ẩn role banner để dùng actSelfAttendanceBanner chuyên biệt
     banner.className = 'hidden';
     banner.innerHTML = '';
   }
@@ -1755,160 +1754,10 @@ function renderAttendanceRoleBanner() {
 
 function renderSelfAttendanceBanner() {
   const banner = document.getElementById('actSelfAttendanceBanner');
-  if (!banner) return;
-
-  const cutoffTime = getAttendanceCutoffTime();
-  const isPast = isPastAttendanceCutoff(activityState.date);
-  const isMgr = isAttendanceManager();
-  const isLoggedIn = AppState.auth && AppState.auth.isLoggedIn && AppState.auth.user;
-  const user = isLoggedIn ? AppState.auth.user : null;
-  const memberId = user?.id;
-  const isCheckedIn = memberId ? activityState.selectedMemberIds.has(memberId) : false;
-
-  // 1. Chưa đăng nhập
-  if (!isLoggedIn) {
-    banner.innerHTML = `
-      <div class="p-2.5 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-        <div class="flex items-center gap-2">
-          <span class="text-xl shrink-0">⏰</span>
-          <div>
-            <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-              <span>Điểm danh hôm nay trước <b>${cutoffTime}</b></span>
-              <span class="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded text-[10px] font-black">Chốt ${cutoffTime}</span>
-            </div>
-            <p class="text-[11px] text-amber-800 mt-0.5">
-              Thành viên vui lòng đăng nhập để tự điểm danh tham gia trước ${cutoffTime}. Quá giờ chỉ Ban quản lý mới có quyền chỉnh sửa.
-            </p>
-          </div>
-        </div>
-        <button type="button" onclick="openLoginModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer">
-          <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-          <span>Đăng nhập điểm danh</span>
-        </button>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
+  if (banner) {
+    banner.className = 'hidden';
+    banner.innerHTML = '';
   }
-
-  // 2. Ban Quản Lý (Admin, Dev Admin, người có quyền điểm danh)
-  if (isMgr) {
-    banner.innerHTML = `
-      <div class="p-2.5 rounded-xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-        <div class="flex items-center gap-2">
-          <span class="text-xl shrink-0">👑</span>
-          <div>
-            <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-              <span class="text-emerald-950 font-black">${user.name}</span>
-              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black border border-emerald-300">Ban Quản Lý</span>
-              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-bold border border-slate-200">Giờ chốt TV: ${cutoffTime}</span>
-            </div>
-            <p class="text-[11px] text-slate-600 mt-0.5">
-              Toàn quyền điểm danh, hủy hoặc chỉnh sửa danh sách mọi thành viên và khách bất kỳ lúc nào.
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-          <button type="button" onclick="switchTab('settings')" class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer" title="Cấu hình giờ chốt điểm danh trong Cài đặt">
-            <span>⚙️ Đổi giờ chốt (${cutoffTime})</span>
-          </button>
-        </div>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
-  }
-
-  // 3. Hội viên thường
-  if (isCheckedIn) {
-    if (!isPast) {
-      // Đã điểm danh & TRƯỚC giờ chốt -> được quyền hủy
-      banner.innerHTML = `
-        <div class="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-          <div class="flex items-center gap-2">
-            <span class="text-xl shrink-0">🏸</span>
-            <div>
-              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-                <span>✓ <b>${user.name}</b>: Đã điểm danh tham gia hôm nay!</span>
-                <span class="px-1.5 py-0.5 bg-emerald-200 text-emerald-900 rounded text-[10px] font-black">Đã xác nhận</span>
-              </div>
-              <p class="text-[11px] text-emerald-800 mt-0.5">
-                Bạn có thể hủy điểm danh trước <b>${cutoffTime}</b> nếu bận việc đột xuất.
-              </p>
-            </div>
-          </div>
-          <button type="button" onclick="memberSelfCancel('${memberId}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs">
-            <span>✕ Hủy điểm danh</span>
-          </button>
-        </div>
-      `;
-    } else {
-      // Đã điểm danh & QUÁ giờ chốt -> KHÓA, không thể tự hủy quá giờ
-      banner.innerHTML = `
-        <div class="p-2.5 rounded-xl border border-slate-300 bg-slate-100 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-          <div class="flex items-center gap-2">
-            <span class="text-xl shrink-0">🔒</span>
-            <div>
-              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-                <span><b>${user.name}</b>: Đã chốt danh sách thi đấu hôm nay</span>
-                <span class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded text-[10px] font-black">Khóa quá giờ ${cutoffTime}</span>
-              </div>
-              <p class="text-[11px] text-slate-600 mt-0.5">
-                Đã quá giờ chốt (${cutoffTime}). Thành viên không thể tự hủy điểm danh. Chỉ Ban Quản Lý mới có quyền sửa đổi thông tin.
-              </p>
-            </div>
-          </div>
-          <span class="px-3 py-1.5 bg-slate-200 text-slate-500 font-bold text-xs rounded-xl flex items-center justify-center gap-1 shrink-0 select-none">
-            <span>🔒 Đã chốt danh sách</span>
-          </span>
-        </div>
-      `;
-    }
-  } else {
-    if (!isPast) {
-      // Chưa điểm danh & TRƯỚC giờ chốt -> Nút tự điểm danh
-      banner.innerHTML = `
-        <div class="p-2.5 rounded-xl border border-sky-300 bg-sky-50 text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-          <div class="flex items-center gap-2">
-            <span class="text-xl shrink-0">👋</span>
-            <div>
-              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-                <span>Chào <b>${user.name}</b>! Bạn chưa điểm danh hôm nay.</span>
-                <span class="px-1.5 py-0.5 bg-sky-200 text-sky-900 rounded text-[10px] font-black">Chốt lúc ${cutoffTime}</span>
-              </div>
-              <p class="text-[11px] text-sky-800 mt-0.5">
-                Bấm nút dưới đây để đăng ký tham gia buổi sinh hoạt hôm nay trước ${cutoffTime}!
-              </p>
-            </div>
-          </div>
-          <button type="button" onclick="memberSelfCheckIn('${memberId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer active:scale-95">
-            <span>🏸</span>
-            <span>Điểm danh tham gia ngay</span>
-          </button>
-        </div>
-      `;
-    } else {
-      // Chưa điểm danh & QUÁ giờ chốt -> Hết giờ
-      banner.innerHTML = `
-        <div class="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-          <div class="flex items-center gap-2">
-            <span class="text-xl shrink-0">⏳</span>
-            <div>
-              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
-                <span><b>${user.name}</b>: Đã hết giờ tự điểm danh (${cutoffTime})</span>
-                <span class="px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded text-[10px] font-black">Hết giờ</span>
-              </div>
-              <p class="text-[11px] text-rose-800 mt-0.5">
-                Buổi sinh hoạt đã chốt danh sách lúc ${cutoffTime}. Vui lòng liên hệ Ban Quản Lý nếu bạn đến sân để được bổ sung.
-              </p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  lucide.createIcons();
 }
 
 function memberSelfCheckIn(memberId) {
@@ -2343,41 +2192,40 @@ function updateAttendanceSaveBarUI() {
   const guestCount = activityState.selectedGuestIds ? activityState.selectedGuestIds.size : 0;
   const total = memCount + guestCount;
 
+  if (noteText) noteText.className = 'hidden';
+
   if (activityState.temporaryAttendanceSaved) {
     if (activityState.isEditingAttendance) {
       // Đang ở chế độ chỉnh sửa / bổ sung
-      bar.className = 'mt-3 p-3 rounded-2xl border border-amber-300 bg-amber-50/80 flex items-center justify-between gap-2.5 flex-wrap shadow-2xs transition-all';
+      bar.className = 'mt-1.5 p-1.5 sm:p-2 rounded-xl border border-amber-300 bg-amber-50/90 flex items-center justify-between gap-1.5 flex-wrap shadow-2xs transition-all';
       if (badge) {
-        badge.className = 'px-2 py-1 rounded-lg text-[10px] font-black bg-amber-200 text-amber-900 tracking-tight shrink-0 transition-colors';
-        badge.textContent = 'Đang bổ sung...';
+        badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 shrink-0';
+        badge.textContent = 'Đang sửa...';
       }
-      if (countText) countText.textContent = `${total} người đang chọn (${memCount} TV, ${guestCount} Khách)`;
-      if (noteText) noteText.textContent = 'Chạm thêm người vừa đến rồi bấm "Lưu bổ sung" để cập nhật trận cầu';
-      if (btnLabel) btnLabel.textContent = 'Lưu bổ sung';
-      if (btnSave) btnSave.className = 'px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer';
+      if (countText) countText.textContent = `${total} người (${memCount} TV, ${guestCount} Khách)`;
+      if (btnLabel) btnLabel.textContent = 'Lưu sửa';
+      if (btnSave) btnSave.className = 'px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer';
     } else {
       // Đã lưu tạm thành công
-      bar.className = 'mt-3 p-3 rounded-2xl border border-emerald-300 bg-emerald-50/80 flex items-center justify-between gap-2.5 flex-wrap shadow-2xs transition-all';
+      bar.className = 'mt-1.5 p-1.5 sm:p-2 rounded-xl border border-emerald-300 bg-emerald-50/90 flex items-center justify-between gap-1.5 flex-wrap shadow-2xs transition-all';
       if (badge) {
-        badge.className = 'px-2 py-1 rounded-lg text-[10px] font-black bg-emerald-200 text-emerald-900 tracking-tight shrink-0 transition-colors';
-        badge.textContent = '✓ Đã lưu tạm';
+        badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 shrink-0';
+        badge.textContent = '✓ Đã lưu';
       }
-      if (countText) countText.textContent = `${total} người đã lưu (${memCount} TV, ${guestCount} Khách)`;
-      if (noteText) noteText.textContent = `Đã lưu tạm (${activityState.savedAttendanceTime || ''}) • Bấm "Chốt & Trừ Ví" để hoàn tất trừ quỹ`;
-      if (btnLabel) btnLabel.textContent = '✓ Đã lưu tạm';
-      if (btnSave) btnSave.className = 'px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer';
+      if (countText) countText.textContent = `${total} người (${memCount} TV, ${guestCount} Khách)`;
+      if (btnLabel) btnLabel.textContent = 'Đã lưu';
+      if (btnSave) btnSave.className = 'px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer';
     }
   } else {
     // Chưa lưu lần nào
-    bar.className = 'mt-3 p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2.5 flex-wrap shadow-2xs transition-all';
+    bar.className = 'mt-1.5 p-1.5 sm:p-2 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-1.5 flex-wrap shadow-2xs transition-all';
     if (badge) {
-      badge.className = 'px-2 py-1 rounded-lg text-[10px] font-black bg-slate-200 text-slate-700 tracking-tight shrink-0 transition-colors';
-      badge.textContent = 'Chưa lưu tạm';
+      badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0';
+      badge.textContent = 'Chưa lưu';
     }
-    if (countText) countText.textContent = `${total} người được chọn (${memCount} TV, ${guestCount} Khách)`;
-    if (noteText) noteText.textContent = 'Bấm "Lưu điểm danh" hoặc "Chốt & Trừ Ví" để áp dụng';
-    if (btnLabel) btnLabel.textContent = 'Lưu điểm danh';
-    if (btnSave) btnSave.className = 'px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer';
+    if (countText) countText.textContent = `${total} người (${memCount} TV, ${guestCount} Khách)`;
+    if (btnLabel) btnLabel.textContent = 'Lưu';
+    if (btnSave) btnSave.className = 'px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer';
   }
 }
 

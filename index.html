@@ -328,8 +328,8 @@
           <!-- FORM BODY (Cuộn mượt mà, độ rộng & khoảng cách các mục được thu gọn tối ưu) -->
           <div class="p-2.5 sm:p-3 space-y-2">
 
-            <!-- Banner Thành viên tự điểm danh / Khóa quá giờ & Banner Phân quyền Quản lý -->
-            <div id="actSelfAttendanceBanner"></div>
+            <!-- Banners ẩn hoàn toàn theo yêu cầu (chỉ quản lý giờ chốt trong Cấu hình) -->
+            <div id="actSelfAttendanceBanner" class="hidden"></div>
             <div id="actRolePermissionBanner" class="hidden"></div>
 
             <!-- 2. FIELDS: Ngày & Loại -->
@@ -422,40 +422,33 @@
                 </button>
               </div>
 
-              <!-- Checkbox lưu vào danh sách khách -->
-              <div class="mt-1.5">
-                <label class="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" id="saveGuestDebtCheckbox" onchange="toggleSaveGuestDebt(this.checked)" class="mt-0.5 w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
-                  <div>
-                    <span class="text-xs font-bold text-slate-800">Lưu vào danh sách khách</span>
-                    <p class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
-                      Không bật thì khách chỉ tính cho buổi này. Nếu khách còn nợ thì bật lưu để theo dõi công nợ.
-                    </p>
-                  </div>
+              <!-- Checkbox lưu vào danh sách khách (thu gọn 1 dòng) -->
+              <div class="mt-1">
+                <label class="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-600 font-semibold select-none">
+                  <input type="checkbox" id="saveGuestDebtCheckbox" onchange="toggleSaveGuestDebt(this.checked)" class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                  <span>Lưu vào danh sách khách (để theo dõi công nợ)</span>
                 </label>
               </div>
 
-              <!-- 4C. DÒNG LƯU VÀ SỬA ĐIỂM DANH TẠM THỜI (ÁP DỤNG CHO THỐNG KÊ CÁC TRẬN CẦU) -->
-              <div id="actAttendanceSaveBar" class="mt-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 flex-wrap shadow-2xs transition-all">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span id="actSaveStatusBadge" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-200 text-slate-700 tracking-tight shrink-0 transition-colors">
-                    Chưa lưu tạm
+              <!-- 4C. DÒNG LƯU VÀ SỬA ĐIỂM DANH TẠM THỜI (THU GỌN GỌN GÀNG, ĐẸP MẮT) -->
+              <div id="actAttendanceSaveBar" class="mt-1.5 p-1.5 sm:p-2 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-1.5 flex-wrap shadow-2xs transition-all">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span id="actSaveStatusBadge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0 transition-colors">
+                    Chưa lưu
                   </span>
-                  <div class="min-w-0">
-                    <div id="actSaveCountText" class="text-xs font-black text-slate-800 truncate">0 người được chọn</div>
-                    <div id="actSaveNoteText" class="text-[10px] text-slate-400 truncate">Bấm "Lưu điểm danh" để nạp vào thống kê các trận cầu</div>
-                  </div>
+                  <div id="actSaveCountText" class="text-xs font-bold text-slate-800 truncate">0 người (0 TV, 0 Khách)</div>
+                  <div id="actSaveNoteText" class="hidden"></div>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <button type="button" id="btnSaveTempAttendance" onclick="saveTemporaryAttendance()" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer">
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" id="btnSaveTempAttendance" onclick="saveTemporaryAttendance()" class="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer">
                     <span>💾</span>
-                    <span id="btnSaveTempAttendanceLabel">Lưu điểm danh</span>
+                    <span id="btnSaveTempAttendanceLabel">Lưu</span>
                   </button>
-                  <button type="button" id="btnEditTempAttendance" onclick="editAttendancePrompt()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer">
+                  <button type="button" id="btnEditTempAttendance" onclick="editAttendancePrompt()" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-[11px] shadow-2xs flex items-center gap-0.5 transition active:scale-95 cursor-pointer">
                     <span>✏️</span>
-                    <span>Sửa / Bổ sung</span>
+                    <span>Sửa</span>
                   </button>
-                  <button type="button" onclick="saveAndSplitActivitySession()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Chốt danh sách, trừ tiền ví thành viên và ghi sổ quỹ ngay">
+                  <button type="button" onclick="saveAndSplitActivitySession()" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-[11px] shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Chốt danh sách, trừ tiền ví thành viên và ghi sổ quỹ ngay">
                     <span>⚡</span>
                     <span>Chốt & Trừ Ví</span>
                   </button>
