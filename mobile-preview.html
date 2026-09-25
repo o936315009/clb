@@ -298,11 +298,14 @@
           <div class="flex items-center justify-between pb-1.5 border-b border-slate-100 flex-wrap gap-1.5">
             <div class="flex items-center gap-2">
               <button onclick="switchMobileTab('dashboard')" class="text-slate-600 hover:text-slate-900 text-sm font-bold">❮</button>
-              <h3 class="font-black text-sm text-slate-900">Hoạt động hôm nay</h3>
+              <h3 class="font-black text-sm text-slate-900">Hoạt động</h3>
             </div>
-            <div class="flex items-center gap-1.5">
-              <button type="button" onclick="alert('Đã tạo buổi hoạt động hôm nay mới!');" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer" title="Tạo buổi hoạt động hôm nay mới">
-                <span>➕</span> <span>Tạo HĐ mới</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="alert('Đã mở buổi hoạt động hôm nay để điểm danh!');" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer" title="Mặc định điểm danh hôm nay">
+                <span>➕</span> <span>HĐ hôm nay</span>
+              </button>
+              <button type="button" onclick="alert('Cho phép tạo buổi hoạt động cho bất kỳ ngày nào trong chu kỳ!');" class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer" title="Tạo hoạt động mới cho bất kỳ ngày nào">
+                <span>📅</span> <span>Tạo HĐ mới</span>
               </button>
               <button type="button" onclick="openPreviewReportModal()" class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer">
                 <span>📸</span> <span>Xuất ảnh</span>
@@ -465,9 +468,9 @@
               <input type="text" placeholder="Khách mới" class="flex-1 text-xs border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white" />
               <select class="text-xs border border-slate-200 rounded-xl px-2 py-1.5 bg-white">
                 <option>Chưa xếp hạng</option>
-                <option>Level C · 50k</option>
-                <option>Level B · 70k</option>
-                <option>Level A · 90k</option>
+                <option>Khách Loại A (Level A · 90k)</option>
+                <option>Khách Loại B (Level B · 70k)</option>
+                <option>Khách Loại C (Level C · 50k)</option>
               </select>
               <button onclick="alert('Đã thêm khách mới!')" class="w-8 h-8 bg-white border border-slate-200 text-slate-900 font-bold rounded-xl flex items-center justify-center text-sm shadow-sm">+</button>
             </div>

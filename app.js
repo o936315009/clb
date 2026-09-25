@@ -1081,9 +1081,12 @@ function getMemberRoleBadge(type) {
 function getMemberRoleTypeText(type) {
   if (type === 'OFFICIAL') return 'Chính thức';
   if (type === 'HONORARY' || type === 'UNOFFICIAL') return 'Danh dự';
-  if (type === 'GUEST_A') return 'Level A (90k)';
-  if (type === 'GUEST_B') return 'Level B (70k)';
-  if (type === 'GUEST_C') return 'Level C (50k)';
+  const pA = AppState.config?.guestPrices?.GUEST_A ? `${Math.round(AppState.config.guestPrices.GUEST_A / 1000)}k` : '90k';
+  const pB = AppState.config?.guestPrices?.GUEST_B ? `${Math.round(AppState.config.guestPrices.GUEST_B / 1000)}k` : '70k';
+  const pC = AppState.config?.guestPrices?.GUEST_C ? `${Math.round(AppState.config.guestPrices.GUEST_C / 1000)}k` : '50k';
+  if (type === 'GUEST_A') return `Khách Loại A (Level A - ${pA})`;
+  if (type === 'GUEST_B') return `Khách Loại B (Level B - ${pB})`;
+  if (type === 'GUEST_C') return `Khách Loại C (Level C - ${pC})`;
   return 'Hội viên';
 }
 
@@ -1466,26 +1469,130 @@ function saveAttendanceCutoffTimeConfig() {
   showToast(`✓ Đã lưu giờ chốt điểm danh hoạt động hôm nay: ${val}!`, 'success');
 }
 
-function createNewActivitySession() {
+// ==========================================
+// 2.4 ĐIỂM DANH HÔM NAY & TẠO BUỔI HOẠT ĐỘNG MỚI (BẤT KỲ NGÀY NÀO TRONG CHU KỲ)
+// ==========================================
+
+// 1. Nút mặc định điểm danh hôm nay ➕
+function openTodayActivitySession(askResetIfToday = false) {
+  switchTab('attendance');
+  const today = getTodayInputFormat();
+  const isAlreadyToday = (activityState.date === today);
+
+  if (!isAlreadyToday) {
+    activityState.date = today;
+    const dateInput = document.getElementById('actDateInput');
+    if (dateInput) dateInput.value = today;
+    saveActivitySessionState();
+    renderAttendanceTab();
+    showToast(`🏸 Đã chuyển sang hoạt động hôm nay (${getFormattedCurrentDate()})!`, 'success');
+  } else if (askResetIfToday && isAttendanceManager()) {
+    const confirmMsg = `Bạn đang ở buổi hoạt động hôm nay (${getFormattedCurrentDate()}).\n\nBạn có muốn LÀM MỚI danh sách điểm danh về 0 người để bắt đầu buổi mới không?`;
+    if (confirm(confirmMsg)) {
+      initActivitySessionData(true);
+      activityState.date = today;
+      activityState.selectedMemberIds = new Set();
+      activityState.selectedGuestIds = new Set();
+      activityState.matches = [];
+      activityState.temporaryAttendanceSaved = false;
+      activityState.savedAttendanceTime = null;
+      activityState.isEditingAttendance = false;
+      saveActivitySessionState();
+      renderAttendanceTab();
+      showToast('✓ Đã làm mới danh sách điểm danh hoạt động hôm nay thành công!', 'success');
+    }
+  } else {
+    // Nếu là thành viên, tự động cuộn đến nút điểm danh của họ
+    const user = AppState.auth?.user;
+    if (user && user.id) {
+      const chipEl = document.getElementById(`memChip_${user.id}`);
+      if (chipEl) {
+        chipEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    showToast(`🏸 Buổi hoạt động hôm nay (${getFormattedCurrentDate()}) đã sẵn sàng để điểm danh!`, 'info');
+  }
+}
+
+// 2. Nút Tạo HĐ mới (cho phép chọn bất kỳ ngày nào trong chu kỳ)
+function openCreateActivityModal() {
   if (!isAttendanceManager()) {
     showToast('⚠️ Chỉ Ban Quản lý mới có quyền tạo buổi hoạt động mới!', 'warning');
     return;
   }
-  const confirmMsg = 'Bạn có muốn tạo buổi hoạt động mới cho ngày hôm nay không?\n\n• Ngày sinh hoạt sẽ đặt về hôm nay\n• Danh sách điểm danh thành viên & khách sẽ được làm mới\n• Các trận đấu sẽ được đặt lại';
-  if (!confirm(confirmMsg)) return;
+  const dateInput = document.getElementById('newActSessionDate');
+  if (dateInput) {
+    dateInput.value = activityState.date || getTodayInputFormat();
+  }
+  const typeSelect = document.getElementById('newActSessionType');
+  if (typeSelect) {
+    typeSelect.value = activityState.type || 'Buổi cầu';
+  }
+  const resetCheck = document.getElementById('newActResetCheck');
+  if (resetCheck) {
+    resetCheck.checked = true;
+  }
+  openModal('createActivityModal');
+  if (window.lucide) lucide.createIcons();
+}
 
-  initActivitySessionData(true);
-  activityState.date = getTodayInputFormat();
-  activityState.selectedMemberIds = new Set();
-  activityState.selectedGuestIds = new Set();
-  activityState.matches = [];
-  activityState.temporaryAttendanceSaved = false;
-  activityState.savedAttendanceTime = null;
-  activityState.isEditingAttendance = false;
+function setNewActDateQuick(type) {
+  const dateInput = document.getElementById('newActSessionDate');
+  if (!dateInput) return;
+  const now = new Date();
+  if (type === 'TODAY') {
+    // Ngày hiện tại
+  } else if (type === 'YESTERDAY') {
+    now.setDate(now.getDate() - 1);
+  } else if (type === 'TOMORROW') {
+    now.setDate(now.getDate() + 1);
+  }
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  dateInput.value = `${y}-${m}-${d}`;
+}
+
+function submitCreateActivitySession(e) {
+  if (e) e.preventDefault();
+  if (!isAttendanceManager()) {
+    showToast('⚠️ Chỉ Ban Quản lý mới có quyền tạo buổi hoạt động mới!', 'warning');
+    return;
+  }
+  const dateInput = document.getElementById('newActSessionDate');
+  const typeSelect = document.getElementById('newActSessionType');
+  const resetCheck = document.getElementById('newActResetCheck');
+
+  const chosenDate = dateInput?.value || getTodayInputFormat();
+  const chosenType = typeSelect?.value || 'Buổi cầu';
+  const shouldReset = resetCheck ? resetCheck.checked : true;
+
+  if (shouldReset) {
+    initActivitySessionData(true);
+  }
+  activityState.date = chosenDate;
+  activityState.type = chosenType;
+  if (shouldReset) {
+    activityState.selectedMemberIds = new Set();
+    activityState.selectedGuestIds = new Set();
+    activityState.matches = [];
+    activityState.temporaryAttendanceSaved = false;
+    activityState.savedAttendanceTime = null;
+    activityState.isEditingAttendance = false;
+  }
   saveActivitySessionState();
 
+  closeModal('createActivityModal');
+  switchTab('attendance');
   renderAttendanceTab();
-  showToast('✓ Đã tạo buổi hoạt động hôm nay mới thành công! Danh sách điểm danh đã sẵn sàng.', 'success');
+
+  const formattedDate = chosenDate.split('-').reverse().join('/');
+  showToast(`✓ Đã tạo buổi hoạt động ngày ${formattedDate} (${chosenType}) thành công! Danh sách điểm danh đã sẵn sàng.`, 'success');
+}
+
+// Giữ lại createNewActivitySession làm alias
+function createNewActivitySession() {
+  openCreateActivityModal();
 }
 
 function hasUserPermission(permKey) {
@@ -2054,10 +2161,13 @@ function renderActivityGuestChips() {
     return;
   }
 
+  const pA = AppState.config?.guestPrices?.GUEST_A || 90000;
+  const pB = AppState.config?.guestPrices?.GUEST_B || 70000;
+  const pC = AppState.config?.guestPrices?.GUEST_C || 50000;
   const levels = [
-    { key: 'GUEST_A', label: 'Level A', price: 90000, color: 'text-emerald-800' },
-    { key: 'GUEST_B', label: 'Level B', price: 70000, color: 'text-amber-800' },
-    { key: 'GUEST_C', label: 'Level C', price: 50000, color: 'text-blue-800' }
+    { key: 'GUEST_A', label: 'Level A', price: pA, color: 'text-emerald-800' },
+    { key: 'GUEST_B', label: 'Level B', price: pB, color: 'text-amber-800' },
+    { key: 'GUEST_C', label: 'Level C', price: pC, color: 'text-blue-800' }
   ];
 
   container.className = "space-y-2";
@@ -2136,7 +2246,7 @@ function addNewGuestInline() {
   let levelKey = levelSelect ? levelSelect.value : 'GUEST_C';
   if (levelKey === 'UNRANKED') levelKey = 'GUEST_C';
 
-  const fee = levelKey === 'GUEST_A' ? 90000 : (levelKey === 'GUEST_B' ? 70000 : 50000);
+  const fee = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices[levelKey]) || (levelKey === 'GUEST_A' ? 90000 : (levelKey === 'GUEST_B' ? 70000 : 50000));
   const levelLetter = levelKey.replace('GUEST_', '');
 
   const newGuest = {
@@ -6057,16 +6167,33 @@ function deleteMember(memberId) {
 
 // Khách giao lưu nhanh
 function openAddGuestModal() {
-  document.getElementById('guestName').value = '';
-  document.getElementById('guestPhone').value = '';
-  document.getElementById('guestTypeSelect').value = 'GUEST_B';
+  const nameEl = document.getElementById('guestName');
+  const phoneEl = document.getElementById('guestPhone');
+  const typeSelect = document.getElementById('guestTypeSelect');
+  if (nameEl) nameEl.value = '';
+  if (phoneEl) phoneEl.value = '';
+
+  if (typeSelect) {
+    const prices = (AppState.config && AppState.config.guestPrices) || { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 };
+    const pA = prices.GUEST_A || 90000;
+    const pB = prices.GUEST_B || 70000;
+    const pC = prices.GUEST_C || 50000;
+    typeSelect.innerHTML = `
+      <option value="GUEST_A">Khách Loại A (Level A · ${formatMoney(pA)})</option>
+      <option value="GUEST_B" selected>Khách Loại B (Level B · ${formatMoney(pB)})</option>
+      <option value="GUEST_C">Khách Loại C (Level C · ${formatMoney(pC)})</option>
+    `;
+    typeSelect.value = 'GUEST_B';
+  }
   updateGuestPricePreview();
   openModal('addGuestModal');
 }
 
 function updateGuestPricePreview() {
-  const type = document.getElementById('guestTypeSelect').value;
-  const price = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices[type]) || 100000;
+  const select = document.getElementById('guestTypeSelect');
+  const type = select ? select.value : 'GUEST_B';
+  const defaultPrices = { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 };
+  const price = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices[type]) || defaultPrices[type] || 70000;
   const preview = document.getElementById('guestPricePreview');
   if (preview) preview.textContent = formatMoney(price);
 }
@@ -6083,12 +6210,18 @@ function handleAddGuestSubmit(e) {
   }
 
   const chip = name.trim().split(/\s+/).pop().toUpperCase();
+  const levelLetter = type.replace('GUEST_', '');
+  const prices = (AppState.config && AppState.config.guestPrices) || { GUEST_A: 90000, GUEST_B: 70000, GUEST_C: 50000 };
+  const fee = prices[type] || (type === 'GUEST_A' ? 90000 : (type === 'GUEST_B' ? 70000 : 50000));
+
   const newGuest = {
     id: 'GUEST_' + Date.now(),
     name: name,
     chipName: chip,
     phone: phone,
     type: type,
+    level: levelLetter,
+    fee: fee,
     username: '',
     password: '',
     balance: 0,
@@ -6104,7 +6237,7 @@ function handleAddGuestSubmit(e) {
   renderDashboard();
   renderAttendanceChecklist();
   renderMemberManagementList();
-  showToast(`Đã thêm khách giao lưu ${name} thành công!`, 'success');
+  showToast(`Đã thêm khách giao lưu ${name} (Level ${levelLetter}) thành công!`, 'success');
 }
 
 // ==========================================
@@ -11193,10 +11326,12 @@ function saveGeneralConfig() {
 }
 
 function saveGuestPricingConfig() {
-  AppState.config.guestPrices.GUEST_A = Number(document.getElementById('guestPriceA').value || 70000);
-  AppState.config.guestPrices.GUEST_B = Number(document.getElementById('guestPriceB').value || 100000);
-  AppState.config.guestPrices.GUEST_C = Number(document.getElementById('guestPriceC').value || 150000);
+  AppState.config.guestPrices.GUEST_A = Number(document.getElementById('guestPriceA').value || 90000);
+  AppState.config.guestPrices.GUEST_B = Number(document.getElementById('guestPriceB').value || 70000);
+  AppState.config.guestPrices.GUEST_C = Number(document.getElementById('guestPriceC').value || 50000);
   saveData();
+  renderActivityGuestChips();
+  renderAttendanceChecklist();
   showToast('Đã lưu đơn giá khách giao lưu!', 'success');
 }
 

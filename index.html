@@ -133,9 +133,9 @@
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Trang chủ</span>
           </button>
-          <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+          <button onclick="openTodayActivitySession()" id="nav-attendance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100" title="Mặc định điểm danh hoạt động hôm nay">
             <i data-lucide="user-check" class="w-4 h-4"></i>
-            <span>Hoạt động hôm nay</span>
+            <span>Hoạt động hôm nay ➕</span>
           </button>
           <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
             <i data-lucide="wallet" class="w-4 h-4"></i>
@@ -210,13 +210,17 @@
           </div>
         </div>
 
-        <!-- QUICK ACTIONS BAR (LƯỚI 2 CỘT TIỆN BẤM TAY TRÊN ĐIỆN THOẠI) -->
+        <!-- QUICK ACTIONS BAR (LƯỚI TIỆN BẤM TAY TRÊN ĐIỆN THOẠI & MÁY TÍNH) -->
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-2.5">
-          <button onclick="switchTab('attendance')" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer">
+          <button onclick="openTodayActivitySession()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer" title="Mặc định điểm danh cho hoạt động hôm nay">
             <i data-lucide="user-check" class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0"></i>
-            <span class="truncate">Điểm danh & Sân</span>
+            <span class="truncate">HĐ hôm nay ➕</span>
           </button>
-          <button onclick="openTopUpModal()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer">
+          <button onclick="openCreateActivityModal()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer" title="Tạo buổi hoạt động cho bất kỳ ngày nào trong chu kỳ">
+            <i data-lucide="calendar-plus" class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0"></i>
+            <span class="truncate">Tạo HĐ mới</span>
+          </button>
+          <button onclick="openTopUpModal()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer">
             <i data-lucide="plus-circle" class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0"></i>
             <span class="truncate">Nạp tiền vào ví</span>
           </button>
@@ -295,7 +299,7 @@
       <section id="tab-attendance" class="tab-pane hidden pb-24 md:pb-8">
         <div class="max-w-md sm:max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
           
-          <!-- 1. TOP HEADER: < Hoạt động hôm nay  [➕ Tạo HĐ mới]  [📸 Xuất ảnh]  [ VI | EN ] -->
+          <!-- 1. TOP HEADER: < Hoạt động  [➕ HĐ hôm nay]  [📅 Tạo HĐ mới]  [📸 Xuất ảnh]  [ VI | EN ] -->
           <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-20 flex-wrap gap-1.5">
             <div class="flex items-center gap-1.5">
               <button type="button" onclick="switchTab('dashboard')" class="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 transition" title="Quay lại Trang chủ">
@@ -303,14 +307,18 @@
               </button>
               <h2 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
                 <span>🏸</span>
-                <span>Hoạt động hôm nay</span>
+                <span class="hidden xs:inline">Hoạt động</span>
               </h2>
             </div>
 
-            <!-- Actions: Nút tạo hoạt động mới + Nút xuất ảnh + VI | EN -->
+            <!-- Actions: Nút HĐ Hôm nay ➕ (mặc định hôm nay) + Nút Tạo HĐ mới (bất kỳ ngày nào trong chu kỳ) + Nút xuất ảnh + VI | EN -->
             <div class="flex items-center gap-1.5 flex-wrap">
-              <button type="button" onclick="createNewActivitySession()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Tạo buổi hoạt động hôm nay mới (làm mới danh sách điểm danh)">
+              <button type="button" onclick="openTodayActivitySession(true)" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Mặc định điểm danh cho hoạt động hôm nay">
                 <span>➕</span>
+                <span>HĐ hôm nay</span>
+              </button>
+              <button type="button" onclick="openCreateActivityModal()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Tạo buổi hoạt động cho bất kỳ ngày nào trong chu kỳ">
+                <span>📅</span>
                 <span>Tạo HĐ mới</span>
               </button>
               <button type="button" onclick="openActivityReportModal()" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Xuất báo cáo dạng ảnh chia sẻ Zalo / Facebook">
@@ -413,9 +421,9 @@
                 <input type="text" id="newGuestNameInput" placeholder="Khách mới" class="flex-1 text-xs border border-slate-200 rounded-xl px-2.5 py-1.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium" />
                 <select id="newGuestLevelSelect" class="text-xs border border-slate-200 rounded-xl px-2 py-1.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold">
                   <option value="UNRANKED">Chưa xếp hạng</option>
-                  <option value="GUEST_C">LEVEL C · 50.000đ</option>
-                  <option value="GUEST_B">LEVEL B · 70.000đ</option>
-                  <option value="GUEST_A">LEVEL A · 90.000đ</option>
+                  <option value="GUEST_A">Khách Loại A (Level A · 90.000đ)</option>
+                  <option value="GUEST_B">Khách Loại B (Level B · 70.000đ)</option>
+                  <option value="GUEST_C">Khách Loại C (Level C · 50.000đ)</option>
                 </select>
                 <button type="button" onclick="addNewGuestInline()" class="w-8 h-8 shrink-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 font-black rounded-xl flex items-center justify-center text-base transition shadow-xs cursor-pointer">
                   +
@@ -2798,16 +2806,16 @@
 
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách giao lưu Loại A (VNĐ/buổi):</label>
-              <input type="number" id="guestPriceA" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="70000" step="10000" />
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách Loại A (Level A - VNĐ/buổi):</label>
+              <input type="number" id="guestPriceA" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="90000" step="10000" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách giao lưu Loại B (VNĐ/buổi):</label>
-              <input type="number" id="guestPriceB" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="100000" step="10000" />
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách Loại B (Level B - VNĐ/buổi):</label>
+              <input type="number" id="guestPriceB" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="70000" step="10000" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách giao lưu Loại C (VNĐ/buổi):</label>
-              <input type="number" id="guestPriceC" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="150000" step="10000" />
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Khách Loại C (Level C - VNĐ/buổi):</label>
+              <input type="number" id="guestPriceC" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-bold" value="50000" step="10000" />
             </div>
           </div>
 
@@ -4206,6 +4214,87 @@
     </div>
   </div>
 
+  <!-- 6.5. MODAL TẠO BUỔI HOẠT ĐỘNG MỚI (BẤT KỲ NGÀY NÀO TRONG CHU KỲ) -->
+  <div id="createActivityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="calendar-plus" class="w-5 h-5 text-indigo-600"></i>
+          Tạo Buổi Hoạt Động Mới
+        </h3>
+        <button type="button" onclick="closeModal('createActivityModal')" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitCreateActivitySession(event)" class="space-y-4">
+        <p class="text-xs text-slate-500">
+          Tạo buổi sinh hoạt cho bất kỳ ngày nào trong chu kỳ hoạt động của CLB để điểm danh và tính tiền sân.
+        </p>
+
+        <!-- 1. Chọn ngày sinh hoạt -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Ngày sinh hoạt (*):
+          </label>
+          <input type="date" id="newActSessionDate" required class="w-full px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+          
+          <!-- Phím chọn nhanh ngày: Hôm nay, Hôm qua, Ngày mai -->
+          <div class="flex items-center gap-1.5 mt-2">
+            <span class="text-[11px] text-slate-400 font-medium">Chọn nhanh:</span>
+            <button type="button" onclick="setNewActDateQuick('TODAY')" class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition cursor-pointer">
+              Hôm nay
+            </button>
+            <button type="button" onclick="setNewActDateQuick('YESTERDAY')" class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer">
+              Hôm qua
+            </button>
+            <button type="button" onclick="setNewActDateQuick('TOMORROW')" class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer">
+              Ngày mai
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Loại hoạt động -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Loại hoạt động:
+          </label>
+          <div class="relative">
+            <select id="newActSessionType" class="w-full px-3 py-2 text-xs font-semibold border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none">
+              <option value="Buổi cầu" selected>Buổi cầu (sinh hoạt định kỳ)</option>
+              <option value="Giao lưu">Giao lưu (khách mời / giao hữu)</option>
+              <option value="Giải đấu">Giải đấu (nội bộ / mở rộng)</option>
+              <option value="Tập luyện">Tập luyện (nâng cao thể lực & kỹ thuật)</option>
+            </select>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- 3. Tùy chọn làm mới danh sách điểm danh -->
+        <div class="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl">
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-indigo-900 select-none">
+            <input type="checkbox" id="newActResetCheck" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+            <span>Làm mới danh sách điểm danh cho buổi này</span>
+          </label>
+          <p class="text-[11px] text-indigo-700 mt-1 pl-6">
+            Danh sách sẽ được đặt về 0 người để sẵn sàng cho các thành viên và khách điểm danh tham gia.
+          </p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeModal('createActivityModal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">
+            Hủy
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>➕</span>
+            <span>Tạo hoạt động</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 7. MODAL THÊM KHÁCH GIAO LƯU (A/B/C) -->
   <div id="addGuestModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100">
@@ -4231,15 +4320,15 @@
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Loại khách giao lưu:</label>
           <select id="guestTypeSelect" onchange="updateGuestPricePreview()" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-medium">
-            <option value="GUEST_A">Khách Loại A - Khách quen / Sinh viên</option>
-            <option value="GUEST_B" selected>Khách Loại B - Khách giao lưu tiêu chuẩn</option>
-            <option value="GUEST_C">Khách Loại C - Khách VIP / Giao lưu đặc biệt</option>
+            <option value="GUEST_A">Khách Loại A (Level A · 90.000đ)</option>
+            <option value="GUEST_B" selected>Khách Loại B (Level B · 70.000đ)</option>
+            <option value="GUEST_C">Khách Loại C (Level C · 50.000đ)</option>
           </select>
         </div>
 
         <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between text-xs">
           <span class="text-indigo-800 font-medium">Đơn giá tiền sân tính cho khách:</span>
-          <b id="guestPricePreview" class="text-indigo-900 font-bold text-sm">100.000 đ</b>
+          <b id="guestPricePreview" class="text-indigo-900 font-bold text-sm">70.000 đ</b>
         </div>
 
         <div class="pt-2 flex gap-3">
@@ -4821,9 +4910,9 @@
           <select id="quickRenameType" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none font-medium">
             <option value="OFFICIAL">Thành viên chính thức (Official)</option>
             <option value="HONORARY">Thành viên danh dự (Honorary)</option>
-            <option value="GUEST_A">Khách giao lưu Loại A</option>
-            <option value="GUEST_B">Khách giao lưu Loại B</option>
-            <option value="GUEST_C">Khách giao lưu Loại C</option>
+            <option value="GUEST_A">Khách Loại A (Level A)</option>
+            <option value="GUEST_B">Khách Loại B (Level B)</option>
+            <option value="GUEST_C">Khách Loại C (Level C)</option>
           </select>
         </div>
 
@@ -5221,9 +5310,9 @@ const firebaseConfig = {
       <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[10px] font-bold">Trang chủ</span>
     </button>
-    <button type="button" onclick="switchTab('attendance')" id="m-nav-attendance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
+    <button type="button" onclick="openTodayActivitySession()" id="m-nav-attendance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer" title="Mặc định điểm danh hoạt động hôm nay">
       <i data-lucide="user-check" class="w-5 h-5 mb-0.5"></i>
-      <span class="text-[10px] font-bold">HĐ hôm nay</span>
+      <span class="text-[10px] font-bold">Hôm nay ➕</span>
     </button>
     <button type="button" onclick="switchTab('finance')" id="m-nav-finance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
       <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>
