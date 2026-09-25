@@ -133,9 +133,9 @@
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Trang chủ</span>
           </button>
-          <button onclick="openTodayActivitySession()" id="nav-attendance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100" title="Mặc định điểm danh hoạt động hôm nay">
+          <button onclick="openTodayActivitySession()" id="nav-attendance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100" title="Điểm danh hoạt động">
             <i data-lucide="user-check" class="w-4 h-4"></i>
-            <span>Hoạt động hôm nay ➕</span>
+            <span>Điểm danh</span>
           </button>
           <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
             <i data-lucide="wallet" class="w-4 h-4"></i>
@@ -212,9 +212,9 @@
 
         <!-- QUICK ACTIONS BAR (LƯỚI TIỆN BẤM TAY TRÊN ĐIỆN THOẠI & MÁY TÍNH) -->
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-2.5">
-          <button onclick="openTodayActivitySession()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer" title="Mặc định điểm danh cho hoạt động hôm nay">
+          <button onclick="openTodayActivitySession()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer" title="Điểm danh hoạt động">
             <i data-lucide="user-check" class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0"></i>
-            <span class="truncate">HĐ hôm nay ➕</span>
+            <span class="truncate">Điểm danh</span>
           </button>
           <button onclick="openCreateActivityModal()" class="inline-flex items-center justify-center px-3 sm:px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer" title="Tạo buổi hoạt động cho bất kỳ ngày nào trong chu kỳ">
             <i data-lucide="calendar-plus" class="w-4 h-4 mr-1.5 sm:mr-2 shrink-0"></i>
@@ -5397,9 +5397,9 @@ const firebaseConfig = {
       <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[10px] font-bold">Trang chủ</span>
     </button>
-    <button type="button" onclick="openTodayActivitySession()" id="m-nav-attendance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer" title="Mặc định điểm danh hoạt động hôm nay">
+    <button type="button" onclick="openTodayActivitySession()" id="m-nav-attendance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer" title="Điểm danh hoạt động">
       <i data-lucide="user-check" class="w-5 h-5 mb-0.5"></i>
-      <span class="text-[10px] font-bold">Hôm nay ➕</span>
+      <span class="text-[10px] font-bold">Điểm danh</span>
     </button>
     <button type="button" onclick="switchTab('finance')" id="m-nav-finance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
       <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>
