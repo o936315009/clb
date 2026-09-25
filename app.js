@@ -8112,13 +8112,6 @@ function openCreateUserAccessModal() {
 }
 
 function openUserAccessModal(memberId) {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('⚠️ Bạn không có quyền cấp quyền truy cập hoặc sửa tài khoản!', 'warning');
-    return;
-  }
-
   const members = AppState.members || [];
   const member = members.find(m => m.id === memberId) || members[0];
   if (!member) return;
