@@ -237,41 +237,55 @@
         <!-- 2 COLUMNS: THEO DÕI VÍ TỪNG THÀNH VIÊN + GIAO DỊCH GẦN ĐÂY -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          <!-- Column 1: Theo dõi ví từng thành viên (7 cols) -->
-          <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                  <i data-lucide="wallet" class="w-4 h-4 text-brand-600"></i>
-                  Theo dõi ví từng thành viên
-                </h3>
-                <p class="text-xs text-slate-500">Số dư thực tế & số buổi đã tham gia trong tháng</p>
+          <!-- Column 1: THỐNG KÊ HOẠT ĐỘNG THEO BUỔI & CHI PHÍ KỲ NÀY (7 cols) -->
+          <div class="lg:col-span-7 space-y-4">
+            
+            <!-- 1. CARD: HOẠT ĐỘNG GẦN ĐÂY -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold text-slate-900 text-base">Hoạt động gần đây</h3>
+                <button type="button" onclick="openActivityHistoryModal()" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs sm:text-sm hover:underline cursor-pointer">Xem tất cả</button>
               </div>
-              <span id="memberCountBadge" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">0 TV</span>
+
+              <!-- List of recent sessions -->
+              <div id="dashboardRecentActivitiesList" class="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
+                <!-- Rendered dynamically by renderDashboardActivityStats() -->
+              </div>
             </div>
 
-            <!-- Search box for members -->
-            <div class="relative mb-3">
-              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-              <input type="text" id="searchMemberWallet" oninput="renderDashboardWalletList()" placeholder="Tìm theo tên thành viên hoặc SĐT..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition" />
+            <!-- 2. CARD: THÁNG NÀY CỦA BẠN -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <h3 id="statCardHeaderTitle" class="font-bold text-slate-900 text-base">Tháng này của bạn</h3>
+                  <select id="statMemberFilterSelect" onchange="onStatMemberFilterChange(this.value)" class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-0.5 font-semibold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+                <button type="button" onclick="openSettlementReportModal()" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs sm:text-sm hover:underline cursor-pointer">Thống kê</button>
+              </div>
+
+              <!-- Summary Table / Rows -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
+                  <span class="text-xs sm:text-sm text-slate-400 font-medium">buổi</span>
+                  <span id="statSummarySessionsCount" class="text-xs sm:text-sm font-bold text-slate-900">0</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
+                  <span class="text-xs sm:text-sm text-slate-900 font-bold">Chi phí mỗi buổi</span>
+                  <span id="statSummaryShuttleCost" class="text-xs sm:text-sm font-bold text-slate-900">0đ</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
+                  <span class="text-xs sm:text-sm text-slate-900 font-bold">Tiền sân</span>
+                  <span id="statSummaryCourtFee" class="text-xs sm:text-sm font-bold text-slate-900">0đ</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3.5 bg-slate-100/70 border-t border-slate-200">
+                  <span class="text-xs sm:text-sm text-slate-900 font-black">Tổng phí kỳ này</span>
+                  <span id="statSummaryTotalFee" class="text-xs sm:text-sm font-black text-slate-900">0đ</span>
+                </div>
+              </div>
             </div>
 
-            <div class="overflow-x-auto max-h-[380px] overflow-y-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-500 font-semibold sticky top-0 border-b border-slate-100 z-10">
-                  <tr>
-                    <th class="py-2.5 px-3">Thành viên</th>
-                    <th class="py-2.5 px-2">Phân loại</th>
-                    <th class="py-2.5 px-2 text-center">Buổi/Tháng</th>
-                    <th class="py-2.5 px-3 text-right">Số dư ví</th>
-                    <th class="py-2.5 px-2 text-center">Nạp ví</th>
-                  </tr>
-                </thead>
-                <tbody id="dashboardWalletTableBody" class="divide-y divide-slate-100">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <!-- Column 2: Giao dịch gần đây (5 cols) -->
@@ -3409,6 +3423,60 @@
         <div id="settlementDebtMemberListContainer" class="pt-2 border-t border-slate-100">
           <!-- Rendered dynamically by renderSettlementDebtMemberList() -->
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LỊCH SỬ HOẠT ĐỘNG CÁC BUỔI CẦU -->
+  <div id="activityHistoryModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-4 sm:p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
+            <i data-lucide="clock" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900 leading-tight">Lịch Sử Tất Cả Các Buổi Cầu</h3>
+            <p class="text-xs text-slate-500">Danh sách các buổi hoạt động, số người tham gia & chi phí chia đều</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('activityHistoryModal')" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <span id="activityHistoryTotalBadge" class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">0 buổi</span>
+        <button type="button" onclick="closeModal('activityHistoryModal'); openCreateActivityModal();" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs">
+          <span>➕</span>
+          <span>Tạo buổi mới</span>
+        </button>
+      </div>
+
+      <div id="activityHistoryListContainer" class="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-[60vh]">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHI TIẾT BUỔI HOẠT ĐỘNG -->
+  <div id="activitySessionDetailModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">🏸</div>
+          <div>
+            <h3 id="sessionDetailModalTitle" class="text-sm font-black text-slate-900 leading-tight">Chi Tiết Buổi Cầu</h3>
+            <p id="sessionDetailModalSub" class="text-[11px] text-slate-500">Thông tin chi tiết chi phí và thành viên tham gia</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('activitySessionDetailModal')" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition cursor-pointer">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+
+      <div id="sessionDetailModalBody" class="space-y-3 overflow-y-auto flex-1 text-xs">
+        <!-- Rendered dynamically -->
       </div>
     </div>
   </div>

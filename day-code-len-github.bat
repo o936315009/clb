@@ -18,7 +18,7 @@ git add .
 
 echo.
 echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Xoa bang du toan tien cau khoi hoat dong diem danh theo yeu cau"
+git commit -m "Thiet lap thong ke hoat dong gan day va thang nay cua ban thay the theo doi vi"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

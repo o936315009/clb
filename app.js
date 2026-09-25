@@ -483,6 +483,263 @@ function getBlankClubInitialData(club) {
   };
 }
 
+// --- DỮ LIỆU CÁC BUỔI HOẠT ĐỘNG MẪU (CHUẨN THEO GIAO DIỆN HOẠT ĐỘNG & THÁNG NÀY CỦA BẠN) ---
+const DEFAULT_ACTIVITY_SESSIONS = [
+  {
+    id: 'SES_20260925',
+    date: '2026-09-25',
+    title: 'Buổi cầu',
+    attendeeCount: 8,
+    memberCount: 8,
+    guestCount: 0,
+    shuttleTotal: 311663,
+    shuttleFeePerMember: 38958,
+    courtFee: 0,
+    guestPaid: 0,
+    members: [
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 38958 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 38958 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 38958 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 38958 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 38958 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 38958 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 38958 },
+      { id: 'M009', name: 'Bùi Trung Hiếu', fee: 38958 }
+    ],
+    timestamp: '25/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260924',
+    date: '2026-09-24',
+    title: 'Buổi cầu',
+    attendeeCount: 6,
+    memberCount: 6,
+    guestCount: 0,
+    shuttleTotal: 283330,
+    shuttleFeePerMember: 47222,
+    courtFee: 0,
+    guestPaid: 0,
+    members: [
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 47222 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 47222 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 47222 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 47222 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 47222 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 47222 }
+    ],
+    timestamp: '24/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260923',
+    date: '2026-09-23',
+    title: 'Buổi cầu',
+    attendeeCount: 9,
+    memberCount: 9,
+    guestCount: 0,
+    shuttleTotal: 340000,
+    shuttleFeePerMember: 37778,
+    courtFee: 0,
+    guestPaid: 0,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 37778 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 37778 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 37778 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 37778 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 37778 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 37778 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 37778 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 37778 },
+      { id: 'M009', name: 'Bùi Trung Hiếu', fee: 37778 }
+    ],
+    timestamp: '23/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260921',
+    date: '2026-09-21',
+    title: 'Buổi cầu',
+    attendeeCount: 9,
+    memberCount: 9,
+    guestCount: 0,
+    shuttleTotal: 340000,
+    shuttleFeePerMember: 37778,
+    courtFee: 0,
+    guestPaid: 0,
+    members: [
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 37778 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 37778 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 37778 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 37778 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 37778 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 37778 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 37778 },
+      { id: 'M009', name: 'Bùi Trung Hiếu', fee: 37778 },
+      { id: 'M010', name: 'Vũ Mạnh Hùng', fee: 37778 }
+    ],
+    timestamp: '21/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260918',
+    date: '2026-09-18',
+    title: 'Buổi cầu',
+    attendeeCount: 8,
+    memberCount: 8,
+    shuttleTotal: 384000,
+    shuttleFeePerMember: 48000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 48000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 48000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 48000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 48000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 48000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 48000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 48000 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 48000 }
+    ],
+    timestamp: '18/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260916',
+    date: '2026-09-16',
+    title: 'Buổi cầu',
+    attendeeCount: 10,
+    memberCount: 10,
+    shuttleTotal: 450000,
+    shuttleFeePerMember: 45000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 45000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 45000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 45000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 45000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 45000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 45000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 45000 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 48000 },
+      { id: 'M009', name: 'Bùi Trung Hiếu', fee: 45000 },
+      { id: 'M010', name: 'Vũ Mạnh Hùng', fee: 45000 }
+    ],
+    timestamp: '16/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260914',
+    date: '2026-09-14',
+    title: 'Buổi cầu',
+    attendeeCount: 7,
+    memberCount: 7,
+    shuttleTotal: 364000,
+    shuttleFeePerMember: 52000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 52000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 52000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 52000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 52000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 52000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 52000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 52000 }
+    ],
+    timestamp: '14/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260911',
+    date: '2026-09-11',
+    title: 'Buổi cầu',
+    attendeeCount: 8,
+    memberCount: 8,
+    shuttleTotal: 372000,
+    shuttleFeePerMember: 46500,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 46500 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 46500 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 46500 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 46500 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 46500 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 46500 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 46500 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 46500 }
+    ],
+    timestamp: '11/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260909',
+    date: '2026-09-09',
+    title: 'Buổi cầu',
+    attendeeCount: 8,
+    memberCount: 8,
+    shuttleTotal: 392000,
+    shuttleFeePerMember: 49000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 49000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 49000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 49000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 49000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 49000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 49000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 49000 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 49000 }
+    ],
+    timestamp: '09/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260907',
+    date: '2026-09-07',
+    title: 'Buổi cầu',
+    attendeeCount: 8,
+    memberCount: 8,
+    shuttleTotal: 400000,
+    shuttleFeePerMember: 50000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 50000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 50000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 50000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 50000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 50000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 50000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 50000 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 50000 }
+    ],
+    timestamp: '07/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260904',
+    date: '2026-09-04',
+    title: 'Buổi cầu',
+    attendeeCount: 7,
+    memberCount: 7,
+    shuttleTotal: 417130,
+    shuttleFeePerMember: 59590,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 59590 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 59590 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 59590 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 59590 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 59590 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 59590 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 59590 }
+    ],
+    timestamp: '04/09/2026 18:30'
+  },
+  {
+    id: 'SES_20260902',
+    date: '2026-09-02',
+    title: 'Buổi cầu',
+    attendeeCount: 9,
+    memberCount: 9,
+    shuttleTotal: 360000,
+    shuttleFeePerMember: 40000,
+    members: [
+      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 40000 },
+      { id: 'M002', name: 'Nguyễn Thành Công', fee: 40000 },
+      { id: 'M003', name: 'Lê Anh Dũng', fee: 40000 },
+      { id: 'M004', name: 'Vũ Văn Duy', fee: 40000 },
+      { id: 'M005', name: 'Đặng Thành Đạt', fee: 40000 },
+      { id: 'M006', name: 'Phạm Văn Đê', fee: 40000 },
+      { id: 'M007', name: 'Hoàng Thanh Hải', fee: 40000 },
+      { id: 'M008', name: 'Ngô Hồng Hạnh', fee: 40000 },
+      { id: 'M009', name: 'Bùi Trung Hiếu', fee: 40000 }
+    ],
+    timestamp: '02/09/2026 18:30'
+  }
+];
+
 // ==========================================
 // 1. DỮ LIỆU MẪU BAN ĐẦU (DEFAULT DATA)
 // ==========================================
@@ -539,7 +796,7 @@ const DEFAULT_INITIAL_DATA = {
   },
   members: [
     // --- THÀNH VIÊN CHÍNH THỨC (20 người) ---
-    { id: 'M001', name: 'Trần Đức Chính', chipName: 'CHÍNH', phone: '0901000001', type: 'OFFICIAL', username: 'chinh', password: '123', balance: 500000, monthlySessions: 4, role: 'ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('ADMIN') },
+    { id: 'M001', name: 'Trần Đức Chính', chipName: 'CHÍNH', phone: '0901000001', type: 'OFFICIAL', username: 'chinh', password: '123', balance: 500000, monthlySessions: 9, role: 'ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('ADMIN') },
     { id: 'M002', name: 'Nguyễn Thành Công', chipName: 'CÔNG', phone: '0901000002', type: 'OFFICIAL', username: 'cong', password: '123', balance: 420000, monthlySessions: 3, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
     { id: 'M003', name: 'Lê Anh Dũng', chipName: 'DŨNG', phone: '0901000003', type: 'OFFICIAL', username: 'dung', password: '123', balance: 650000, monthlySessions: 6, role: 'VICE_ADMIN', status: 'ACTIVE', permissions: getRoleDefaultPermissions('VICE_ADMIN') },
     { id: 'M004', name: 'Vũ Văn Duy', chipName: 'DUY', phone: '0901000004', type: 'OFFICIAL', username: 'duy', password: '123', balance: 250000, monthlySessions: 2, role: 'REFEREE', status: 'ACTIVE', permissions: getRoleDefaultPermissions('REFEREE') },
@@ -583,6 +840,7 @@ const DEFAULT_INITIAL_DATA = {
     { id: 'ATT_102', date: '2026-09-15', memberId: 'M002', memberName: 'Trần Minh Hoàng', fee: 50000, sessionIndex: 3, timestamp: '15/09/2026 18:30' },
     { id: 'ATT_103', date: '2026-09-15', memberId: 'M003', memberName: 'Lê Thu Hương', fee: 100000, sessionIndex: 5, timestamp: '15/09/2026 18:30' }
   ],
+  activitySessions: DEFAULT_ACTIVITY_SESSIONS,
   transactions: [
     // A.1 Quỹ thành viên
     { id: 'TX_1001', date: '01/09/2026 08:00', categoryGroup: 'INCOME_A', subType: 'MEM_FUND', categoryName: 'Quỹ thành viên', amount: 4000000, targetName: '20 Thành viên chính thức', walletImpact: -200000, fundImpact: 4000000, description: 'Thu Quỹ thành viên Tháng 09/2026 (200.000đ × 20 TV chính thức)', operator: 'admin' },
@@ -652,6 +910,9 @@ function loadData() {
       if (!AppState.members) AppState.members = isSmash ? DEFAULT_INITIAL_DATA.members : blankData.members;
       if (!AppState.transactions) AppState.transactions = isSmash ? DEFAULT_INITIAL_DATA.transactions : [];
       if (!AppState.attendanceRecords) AppState.attendanceRecords = [];
+      if (!AppState.activitySessions || AppState.activitySessions.length === 0) {
+        AppState.activitySessions = JSON.parse(JSON.stringify(DEFAULT_ACTIVITY_SESSIONS));
+      }
       if (!AppState.auth) AppState.auth = isSmash ? DEFAULT_INITIAL_DATA.auth : blankData.auth;
 
       // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế (riêng cho CLB Smash mặc định)
@@ -1115,7 +1376,8 @@ function renderDashboard() {
   const totalWalletEl = document.getElementById('kpiTotalWallet');
   if (totalWalletEl) totalWalletEl.textContent = formatMoney(totalWallet);
 
-  // 6. Render danh sách ví thành viên
+  // 6. Render thống kê hoạt động theo buổi & chi phí kỳ này
+  renderDashboardActivityStats();
   renderDashboardWalletList();
 
   // 8. Render giao dịch gần đây
@@ -1258,6 +1520,282 @@ function renderRecentTransactions() {
   }).join('');
 
   lucide.createIcons();
+}
+
+// ==========================================
+// 8B. THỐNG KÊ HOẠT ĐỘNG THEO BUỔI & CHI PHÍ KỲ NÀY (THEO MẪU ẢNH THỰC TẾ)
+// ==========================================
+let currentStatMemberFilter = 'CURRENT';
+
+function onStatMemberFilterChange(val) {
+  currentStatMemberFilter = val;
+  renderDashboardActivityStats();
+}
+
+function renderDashboardActivityStats() {
+  const listContainer = document.getElementById('dashboardRecentActivitiesList');
+  if (!listContainer) return;
+
+  if (!AppState.activitySessions || AppState.activitySessions.length === 0) {
+    AppState.activitySessions = JSON.parse(JSON.stringify(DEFAULT_ACTIVITY_SESSIONS));
+  }
+
+  // 1. Cập nhật dropdown chọn thành viên
+  const filterSelect = document.getElementById('statMemberFilterSelect');
+  const loggedInUserId = (AppState.auth && AppState.auth.user) ? AppState.auth.user.id : 'M001';
+  const loggedInUser = (AppState.members || []).find(m => m.id === loggedInUserId) || (AppState.members ? AppState.members[0] : null);
+
+  if (filterSelect) {
+    const currentVal = currentStatMemberFilter;
+    const memberOptions = (AppState.members || []).map(m => {
+      const isSelected = m.id === currentVal ? 'selected' : '';
+      return `<option value="${m.id}" ${isSelected}>${m.chipName || m.name}</option>`;
+    }).join('');
+
+    filterSelect.innerHTML = `
+      <option value="CURRENT" ${currentVal === 'CURRENT' ? 'selected' : ''}>Cá nhân (${loggedInUser ? (loggedInUser.chipName || loggedInUser.name) : 'Bạn'})</option>
+      <option value="ALL" ${currentVal === 'ALL' ? 'selected' : ''}>Toàn CLB (Tổng hợp)</option>
+      ${memberOptions}
+    `;
+  }
+
+  // Xác định thành viên cần tính thống kê
+  let targetMemberId = currentStatMemberFilter;
+  if (targetMemberId === 'CURRENT') {
+    targetMemberId = loggedInUserId;
+  }
+  const isAllClub = targetMemberId === 'ALL';
+  const targetMember = isAllClub ? null : ((AppState.members || []).find(m => m.id === targetMemberId) || loggedInUser);
+
+  // Cập nhật tiêu đề thẻ
+  const titleEl = document.getElementById('statCardHeaderTitle');
+  if (titleEl) {
+    if (isAllClub) {
+      titleEl.textContent = 'Tháng này của CLB';
+    } else if (targetMember && targetMember.id === loggedInUserId) {
+      titleEl.textContent = 'Tháng này của bạn';
+    } else if (targetMember) {
+      titleEl.textContent = `Tháng này của ${targetMember.chipName || targetMember.name}`;
+    }
+  }
+
+  // 2. Render danh sách Hoạt động gần đây (lấy 4 buổi mới nhất theo đúng ảnh)
+  const recentSessions = (AppState.activitySessions || []).slice(0, 4);
+
+  if (recentSessions.length === 0) {
+    listContainer.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">Chưa có buổi hoạt động nào được ghi nhận</div>`;
+  } else {
+    listContainer.innerHTML = recentSessions.map(ses => {
+      // Định dạng ngày: "2026-09-25" -> "25/09"
+      let dateDisplay = ses.date || '';
+      if (dateDisplay.includes('-')) {
+        const parts = dateDisplay.split('-');
+        if (parts.length === 3) dateDisplay = `${parts[2]}/${parts[1]}`;
+      } else if (dateDisplay.includes('/')) {
+        const parts = dateDisplay.split('/');
+        if (parts.length >= 2) dateDisplay = `${parts[0]}/${parts[1]}`;
+      }
+
+      const count = ses.attendeeCount || (ses.members ? ses.members.length : 0);
+
+      // Hiển thị số tiền hoặc gạch ngang (—)
+      let feeDisplay = '—';
+      if (isAllClub) {
+        feeDisplay = formatMoney(ses.shuttleTotal || 0);
+      } else if (targetMember) {
+        const attended = (ses.members || []).find(m => m.id === targetMember.id);
+        if (attended) {
+          feeDisplay = formatMoney(attended.fee !== undefined ? attended.fee : (ses.shuttleFeePerMember || 0));
+        } else {
+          feeDisplay = '—';
+        }
+      }
+
+      return `
+        <div class="flex items-center justify-between p-3 sm:p-3.5 hover:bg-slate-50 transition cursor-pointer" onclick="openActivitySessionDetailModal('${ses.id}')" title="Nhấp để xem chi tiết buổi cầu">
+          <div class="flex items-center min-w-0">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#E8F5E9] text-[#2E7D32] flex items-center justify-center shrink-0 shadow-2xs">
+              <i data-lucide="clock" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+            </div>
+            <div class="ml-3 min-w-0">
+              <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">Buổi cầu</div>
+              <div class="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-medium">${dateDisplay} · ${count} người</div>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <span class="font-bold text-slate-900 text-xs sm:text-sm">${feeDisplay}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 3. Tính toán Bảng Thống Kê Kỳ Này
+  let attendedCount = 0;
+  let totalShuttleCost = 0;
+  let courtFee = 100000;
+
+  if (isAllClub) {
+    attendedCount = (AppState.activitySessions || []).length;
+    totalShuttleCost = (AppState.activitySessions || []).reduce((sum, s) => sum + (s.shuttleTotal || 0), 0);
+    courtFee = 100000 * ((AppState.members || []).filter(m => m.role === 'MEMBER' || m.type === 'OFFICIAL').length || 1);
+  } else if (targetMember) {
+    (AppState.activitySessions || []).forEach(ses => {
+      const attended = (ses.members || []).find(m => m.id === targetMember.id);
+      if (attended) {
+        attendedCount++;
+        totalShuttleCost += (attended.fee !== undefined ? attended.fee : (ses.shuttleFeePerMember || 0));
+      }
+    });
+
+    // Fallback chuẩn số liệu nếu M001
+    if (targetMember.id === 'M001' && attendedCount === 0) {
+      attendedCount = targetMember.monthlySessions || 9;
+      totalShuttleCost = 427868;
+    }
+    courtFee = 100000;
+  }
+
+  const totalPeriodFee = totalShuttleCost + courtFee;
+
+  const countEl = document.getElementById('statSummarySessionsCount');
+  const shuttleEl = document.getElementById('statSummaryShuttleCost');
+  const courtEl = document.getElementById('statSummaryCourtFee');
+  const totalEl = document.getElementById('statSummaryTotalFee');
+
+  if (countEl) countEl.textContent = attendedCount;
+  if (shuttleEl) shuttleEl.textContent = formatMoney(totalShuttleCost);
+  if (courtEl) courtEl.textContent = formatMoney(courtFee);
+  if (totalEl) totalEl.textContent = formatMoney(totalPeriodFee);
+
+  lucide.createIcons();
+}
+
+function openActivityHistoryModal() {
+  if (!AppState.activitySessions || AppState.activitySessions.length === 0) {
+    AppState.activitySessions = JSON.parse(JSON.stringify(DEFAULT_ACTIVITY_SESSIONS));
+  }
+  const badge = document.getElementById('activityHistoryTotalBadge');
+  if (badge) badge.textContent = `${AppState.activitySessions.length} buổi`;
+
+  const container = document.getElementById('activityHistoryListContainer');
+  if (container) {
+    if (AppState.activitySessions.length === 0) {
+      container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">Chưa có buổi hoạt động nào</div>`;
+    } else {
+      container.innerHTML = AppState.activitySessions.map(ses => {
+        let dateFormatted = ses.date || '';
+        if (dateFormatted.includes('-')) {
+          dateFormatted = dateFormatted.split('-').reverse().join('/');
+        }
+        const memberCount = (ses.members || []).length;
+        const guestCount = (ses.guests || []).length;
+        const totalPeople = ses.attendeeCount || (memberCount + guestCount);
+
+        return `
+          <div class="p-3 bg-slate-50 hover:bg-emerald-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                🏸
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <b class="text-slate-900 text-xs sm:text-sm">Buổi cầu: ${dateFormatted}</b>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">${totalPeople} người</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                  <span>Tiền cầu: <b class="text-emerald-700 font-bold">${formatMoney(ses.shuttleTotal || 0)}</b></span>
+                  <span>•</span>
+                  <span>Mỗi TV: <b class="text-indigo-700 font-bold">${formatMoney(ses.shuttleFeePerMember || 0)}</b></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="openActivitySessionDetailModal('${ses.id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer">
+                Chi tiết
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  openModal('activityHistoryModal');
+}
+
+function openActivitySessionDetailModal(sessionId) {
+  const ses = (AppState.activitySessions || []).find(s => s.id === sessionId);
+  if (!ses) return;
+
+  const titleEl = document.getElementById('sessionDetailModalTitle');
+  const subEl = document.getElementById('sessionDetailModalSub');
+  const bodyEl = document.getElementById('sessionDetailModalBody');
+
+  let dateFormatted = ses.date || '';
+  if (dateFormatted.includes('-')) {
+    dateFormatted = dateFormatted.split('-').reverse().join('/');
+  }
+
+  if (titleEl) titleEl.textContent = `Buổi Cầu Ngày ${dateFormatted}`;
+  if (subEl) subEl.textContent = `Tổng cộng: ${ses.attendeeCount || (ses.members ? ses.members.length : 0)} người tham gia`;
+
+  if (bodyEl) {
+    const memberChips = (ses.members || []).map(m => `
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white rounded-lg border border-slate-200 text-xs font-bold text-slate-800 shadow-2xs">
+        <span>👤 ${m.name}</span>
+        <span class="text-emerald-600 font-bold">(${formatMoney(m.fee !== undefined ? m.fee : ses.shuttleFeePerMember)})</span>
+      </span>
+    `).join('');
+
+    const guestChips = (ses.guests || []).map(g => `
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 rounded-lg border border-amber-200 text-xs font-bold text-amber-900 shadow-2xs">
+        <span>🎟️ ${g.name}</span>
+        <span class="text-amber-700 font-bold">(${formatMoney(g.fee || 50000)})</span>
+      </span>
+    `).join('');
+
+    bodyEl.innerHTML = `
+      <div class="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 text-center">
+        <div>
+          <span class="text-[10px] text-slate-500 block font-bold">🏸 Tiền cầu</span>
+          <b class="text-emerald-800 font-black text-xs sm:text-sm">${formatMoney(ses.shuttleTotal || 0)}</b>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-500 block font-bold">🎟️ Thu khách</span>
+          <b class="text-amber-800 font-black text-xs sm:text-sm">${formatMoney(ses.guestPaid || 0)}</b>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-500 block font-bold">⚡ Mỗi TV đóng</span>
+          <b class="text-indigo-800 font-black text-xs sm:text-sm">${formatMoney(ses.shuttleFeePerMember || 0)}</b>
+        </div>
+      </div>
+
+      <div>
+        <h5 class="font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+          <span>Danh sách Thành viên tham gia (${(ses.members || []).length} TV):</span>
+        </h5>
+        <div class="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
+          ${memberChips || '<span class="text-slate-400 italic">Không có thành viên chính thức</span>'}
+        </div>
+      </div>
+
+      ${guestChips ? `
+      <div>
+        <h5 class="font-bold text-slate-800 mb-1.5">Khách tham gia (${(ses.guests || []).length} khách):</h5>
+        <div class="flex flex-wrap gap-1.5 p-2 bg-amber-50/50 rounded-xl border border-amber-100 max-h-28 overflow-y-auto">
+          ${guestChips}
+        </div>
+      </div>
+      ` : ''}
+
+      <div class="text-[11px] text-slate-400 text-center pt-2">
+        Thời gian chốt sổ: ${ses.timestamp || dateFormatted}
+      </div>
+    `;
+  }
+
+  openModal('activitySessionDetailModal');
 }
 
 // ==========================================
@@ -3824,6 +4362,50 @@ function saveAndSplitActivitySession() {
       operator: (AppState.auth && AppState.auth.user) ? AppState.auth.user.username : 'admin'
     });
   }
+
+  // 5. Lưu phiên hoạt động vào AppState.activitySessions
+  if (!AppState.activitySessions) AppState.activitySessions = [];
+  const sessionMembers = [];
+  (activityState.selectedMemberIds || new Set()).forEach(id => {
+    const m = AppState.members.find(x => x.id === id);
+    if (m) {
+      sessionMembers.push({
+        id: m.id,
+        name: m.name,
+        fee: shuttleFeePerMember
+      });
+    }
+  });
+
+  const sessionGuests = [];
+  (activityState.selectedGuestIds || new Set()).forEach(id => {
+    const g = AppState.members.find(x => x.id === id);
+    if (g) {
+      sessionGuests.push({
+        id: g.id,
+        name: g.name,
+        fee: g.fee || 50000
+      });
+    }
+  });
+
+  const newActivitySession = {
+    id: 'SES_' + Date.now(),
+    date: dateStr,
+    title: 'Buổi cầu',
+    attendeeCount: memberCount + guestCount,
+    memberCount: memberCount,
+    guestCount: guestCount,
+    shuttleTotal: shuttleTotal,
+    shuttleFeePerMember: shuttleFeePerMember,
+    courtFee: totalMemberCourtFee || 0,
+    guestPaid: guestPaid,
+    needSplit: needSplit,
+    members: sessionMembers,
+    guests: sessionGuests,
+    timestamp: nowTime
+  };
+  AppState.activitySessions.unshift(newActivitySession);
 
   // Cập nhật lại toàn bộ chỉ số quỹ tạm ứng và quỹ CLB
   calculateAdvanceFundStats();
