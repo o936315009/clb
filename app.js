@@ -525,7 +525,8 @@ const DEFAULT_INITIAL_DATA = {
     ],
     allowNegativeWallet: true,          // Cho phép ví thành viên dư nợ / âm số dư (không chặn giao dịch)
     settlementMode: 'MONTHLY',          // 'DAILY' (Cuối ngày) hoặc 'MONTHLY' (Cuối tháng)
-    defaultSettlementDay: 'END_OF_MONTH' // Ngày tất toán mặc định: cuối tháng
+    defaultSettlementDay: 'END_OF_MONTH', // Ngày tất toán mặc định: cuối tháng
+    attendanceCutoffTime: '17:00'       // Giờ chốt tự điểm danh thành viên (mặc định 17:00)
   },
   funds: {
     clubFund: 5200000,                  // 5.200.000 đ quỹ CLB
@@ -1408,15 +1409,88 @@ function initActivitySessionData(forceReset = false) {
 // 2.5 HỆ THỐNG PHÂN QUYỀN & QUẢN LÝ TRUY CẬP (ACCESS CONTROL & ROLES)
 // ==========================================
 function getCurrentUserRole() {
-  if (AppState.auth && AppState.auth.user && AppState.auth.user.role) {
+  if (AppState.auth && AppState.auth.isLoggedIn && AppState.auth.user && AppState.auth.user.role) {
     return AppState.auth.user.role;
+  }
+  if (AppState.auth && AppState.auth.isLoggedIn === false) {
+    return 'GUEST';
   }
   return 'ADMIN'; // Mặc định là Chủ nhiệm toàn quyền
 }
 
+function isAttendanceManager() {
+  if (!AppState.auth || !AppState.auth.isLoggedIn || !AppState.auth.user) {
+    return false;
+  }
+  const role = AppState.auth.user.role;
+  if (role === 'DEV_ADMIN' || role === 'ADMIN') return true;
+  return hasUserPermission('attendance');
+}
+
+function getAttendanceCutoffTime() {
+  return AppState.config?.attendanceCutoffTime || '17:00';
+}
+
+function isPastAttendanceCutoff(activityDateStr) {
+  const targetDateStr = activityDateStr || activityState.date || getTodayInputFormat();
+  const todayStr = getTodayInputFormat();
+  if (targetDateStr < todayStr) return true; // Buổi trong quá khứ -> coi như đã quá giờ chốt
+  if (targetDateStr > todayStr) return false; // Buổi trong tương lai -> chưa đến giờ chốt
+
+  const cutoff = getAttendanceCutoffTime();
+  const parts = cutoff.split(':');
+  const cutoffH = parseInt(parts[0], 10) || 17;
+  const cutoffM = parseInt(parts[1], 10) || 0;
+
+  const now = new Date();
+  const curMinutes = now.getHours() * 60 + now.getMinutes();
+  const cutoffMinutes = cutoffH * 60 + cutoffM;
+  return curMinutes >= cutoffMinutes;
+}
+
+function onAttendanceCutoffTimeChanged(val) {
+  if (!val) val = '17:00';
+  if (!AppState.config) AppState.config = {};
+  AppState.config.attendanceCutoffTime = val;
+  saveData();
+  renderSelfAttendanceBanner();
+}
+
+function saveAttendanceCutoffTimeConfig() {
+  const input = document.getElementById('configAttendanceCutoffTime');
+  const val = input?.value || '17:00';
+  if (!AppState.config) AppState.config = {};
+  AppState.config.attendanceCutoffTime = val;
+  saveData();
+  renderSelfAttendanceBanner();
+  showToast(`✓ Đã lưu giờ chốt điểm danh hoạt động hôm nay: ${val}!`, 'success');
+}
+
+function createNewActivitySession() {
+  if (!isAttendanceManager()) {
+    showToast('⚠️ Chỉ Ban Quản lý mới có quyền tạo buổi hoạt động mới!', 'warning');
+    return;
+  }
+  const confirmMsg = 'Bạn có muốn tạo buổi hoạt động mới cho ngày hôm nay không?\n\n• Ngày sinh hoạt sẽ đặt về hôm nay\n• Danh sách điểm danh thành viên & khách sẽ được làm mới\n• Các trận đấu sẽ được đặt lại';
+  if (!confirm(confirmMsg)) return;
+
+  initActivitySessionData(true);
+  activityState.date = getTodayInputFormat();
+  activityState.selectedMemberIds = new Set();
+  activityState.selectedGuestIds = new Set();
+  activityState.matches = [];
+  activityState.temporaryAttendanceSaved = false;
+  activityState.savedAttendanceTime = null;
+  activityState.isEditingAttendance = false;
+  saveActivitySessionState();
+
+  renderAttendanceTab();
+  showToast('✓ Đã tạo buổi hoạt động hôm nay mới thành công! Danh sách điểm danh đã sẵn sàng.', 'success');
+}
+
 function hasUserPermission(permKey) {
   const role = getCurrentUserRole();
-  if (role === 'ADMIN') return true;
+  if (role === 'ADMIN' || role === 'DEV_ADMIN') return true;
 
   const user = AppState.auth?.user;
   if (user && user.permissions && typeof user.permissions[permKey] === 'boolean') {
@@ -1673,26 +1747,236 @@ function renderAttendanceRoleBanner() {
       </div>
     `;
   } else {
-    banner.className = 'p-3 rounded-2xl border text-xs flex items-center justify-between transition shadow-2xs bg-slate-100 border-slate-300 text-slate-800 flex-wrap gap-2';
+    // Với thành viên thường hoặc chưa đăng nhập, ẩn role banner để dùng actSelfAttendanceBanner chuyên biệt
+    banner.className = 'hidden';
+    banner.innerHTML = '';
+  }
+}
+
+function renderSelfAttendanceBanner() {
+  const banner = document.getElementById('actSelfAttendanceBanner');
+  if (!banner) return;
+
+  const cutoffTime = getAttendanceCutoffTime();
+  const isPast = isPastAttendanceCutoff(activityState.date);
+  const isMgr = isAttendanceManager();
+  const isLoggedIn = AppState.auth && AppState.auth.isLoggedIn && AppState.auth.user;
+  const user = isLoggedIn ? AppState.auth.user : null;
+  const memberId = user?.id;
+  const isCheckedIn = memberId ? activityState.selectedMemberIds.has(memberId) : false;
+
+  // 1. Chưa đăng nhập
+  if (!isLoggedIn) {
     banner.innerHTML = `
-      <div class="flex items-center gap-2.5">
-        <span class="text-2xl select-none">👤</span>
-        <div>
-          <div class="font-extrabold text-xs text-slate-900 flex items-center gap-1.5 flex-wrap">
-            <span>Tài khoản: ${userName}</span>
-            <span class="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full text-[10px] font-black uppercase">${canAttend ? 'Được cấp quyền điểm danh' : 'Chế độ xem'}</span>
+      <div class="p-2.5 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2">
+          <span class="text-xl shrink-0">⏰</span>
+          <div>
+            <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+              <span>Điểm danh hôm nay trước <b>${cutoffTime}</b></span>
+              <span class="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded text-[10px] font-black">Chốt ${cutoffTime}</span>
+            </div>
+            <p class="text-[11px] text-amber-800 mt-0.5">
+              Thành viên vui lòng đăng nhập để tự điểm danh tham gia trước ${cutoffTime}. Quá giờ chỉ Ban quản lý mới có quyền chỉnh sửa.
+            </p>
           </div>
-          <div class="text-[11px] text-slate-600 mt-0.5">${canAttend ? '✓ Bạn được cấp quyền điểm danh buổi chơi.' : 'Chỉ xem thông tin điểm danh và danh sách người chơi. Không có quyền sửa đổi.'}</div>
         </div>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <button type="button" onclick="switchActiveUserRole('ADMIN')" class="px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-[11px] shadow-xs transition cursor-pointer flex items-center gap-1">
-          <span>👑</span>
-          <span>Đăng nhập Chủ nhiệm</span>
+        <button type="button" onclick="openLoginModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer">
+          <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+          <span>Đăng nhập điểm danh</span>
         </button>
       </div>
     `;
+    lucide.createIcons();
+    return;
   }
+
+  // 2. Ban Quản Lý (Admin, Dev Admin, người có quyền điểm danh)
+  if (isMgr) {
+    banner.innerHTML = `
+      <div class="p-2.5 rounded-xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2">
+          <span class="text-xl shrink-0">👑</span>
+          <div>
+            <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+              <span class="text-emerald-950 font-black">${user.name}</span>
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black border border-emerald-300">Ban Quản Lý</span>
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-bold border border-slate-200">Giờ chốt TV: ${cutoffTime}</span>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-0.5">
+              Toàn quyền điểm danh, hủy hoặc chỉnh sửa danh sách mọi thành viên và khách bất kỳ lúc nào.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+          <button type="button" onclick="switchTab('settings')" class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer" title="Cấu hình giờ chốt điểm danh trong Cài đặt">
+            <span>⚙️ Đổi giờ chốt (${cutoffTime})</span>
+          </button>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  // 3. Hội viên thường
+  if (isCheckedIn) {
+    if (!isPast) {
+      // Đã điểm danh & TRƯỚC giờ chốt -> được quyền hủy
+      banner.innerHTML = `
+        <div class="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+          <div class="flex items-center gap-2">
+            <span class="text-xl shrink-0">🏸</span>
+            <div>
+              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                <span>✓ <b>${user.name}</b>: Đã điểm danh tham gia hôm nay!</span>
+                <span class="px-1.5 py-0.5 bg-emerald-200 text-emerald-900 rounded text-[10px] font-black">Đã xác nhận</span>
+              </div>
+              <p class="text-[11px] text-emerald-800 mt-0.5">
+                Bạn có thể hủy điểm danh trước <b>${cutoffTime}</b> nếu bận việc đột xuất.
+              </p>
+            </div>
+          </div>
+          <button type="button" onclick="memberSelfCancel('${memberId}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs">
+            <span>✕ Hủy điểm danh</span>
+          </button>
+        </div>
+      `;
+    } else {
+      // Đã điểm danh & QUÁ giờ chốt -> KHÓA, không thể tự hủy quá giờ
+      banner.innerHTML = `
+        <div class="p-2.5 rounded-xl border border-slate-300 bg-slate-100 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+          <div class="flex items-center gap-2">
+            <span class="text-xl shrink-0">🔒</span>
+            <div>
+              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                <span><b>${user.name}</b>: Đã chốt danh sách thi đấu hôm nay</span>
+                <span class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded text-[10px] font-black">Khóa quá giờ ${cutoffTime}</span>
+              </div>
+              <p class="text-[11px] text-slate-600 mt-0.5">
+                Đã quá giờ chốt (${cutoffTime}). Thành viên không thể tự hủy điểm danh. Chỉ Ban Quản Lý mới có quyền sửa đổi thông tin.
+              </p>
+            </div>
+          </div>
+          <span class="px-3 py-1.5 bg-slate-200 text-slate-500 font-bold text-xs rounded-xl flex items-center justify-center gap-1 shrink-0 select-none">
+            <span>🔒 Đã chốt danh sách</span>
+          </span>
+        </div>
+      `;
+    }
+  } else {
+    if (!isPast) {
+      // Chưa điểm danh & TRƯỚC giờ chốt -> Nút tự điểm danh
+      banner.innerHTML = `
+        <div class="p-2.5 rounded-xl border border-sky-300 bg-sky-50 text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+          <div class="flex items-center gap-2">
+            <span class="text-xl shrink-0">👋</span>
+            <div>
+              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                <span>Chào <b>${user.name}</b>! Bạn chưa điểm danh hôm nay.</span>
+                <span class="px-1.5 py-0.5 bg-sky-200 text-sky-900 rounded text-[10px] font-black">Chốt lúc ${cutoffTime}</span>
+              </div>
+              <p class="text-[11px] text-sky-800 mt-0.5">
+                Bấm nút dưới đây để đăng ký tham gia buổi sinh hoạt hôm nay trước ${cutoffTime}!
+              </p>
+            </div>
+          </div>
+          <button type="button" onclick="memberSelfCheckIn('${memberId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer active:scale-95">
+            <span>🏸</span>
+            <span>Điểm danh tham gia ngay</span>
+          </button>
+        </div>
+      `;
+    } else {
+      // Chưa điểm danh & QUÁ giờ chốt -> Hết giờ
+      banner.innerHTML = `
+        <div class="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+          <div class="flex items-center gap-2">
+            <span class="text-xl shrink-0">⏳</span>
+            <div>
+              <div class="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                <span><b>${user.name}</b>: Đã hết giờ tự điểm danh (${cutoffTime})</span>
+                <span class="px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded text-[10px] font-black">Hết giờ</span>
+              </div>
+              <p class="text-[11px] text-rose-800 mt-0.5">
+                Buổi sinh hoạt đã chốt danh sách lúc ${cutoffTime}. Vui lòng liên hệ Ban Quản Lý nếu bạn đến sân để được bổ sung.
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  lucide.createIcons();
+}
+
+function memberSelfCheckIn(memberId) {
+  if (!AppState.auth || !AppState.auth.isLoggedIn || !AppState.auth.user) {
+    showToast('🔐 Vui lòng đăng nhập tài khoản thành viên để điểm danh tham gia hoạt động!', 'warning');
+    openLoginModal();
+    return;
+  }
+
+  const currentUserId = AppState.auth.user.id;
+  const targetId = memberId || currentUserId;
+
+  if (!isAttendanceManager() && targetId !== currentUserId) {
+    showToast('⚠️ Bạn chỉ có quyền tự điểm danh cho chính mình!', 'warning');
+    return;
+  }
+
+  if (!isAttendanceManager() && isPastAttendanceCutoff(activityState.date)) {
+    const cutoff = getAttendanceCutoffTime();
+    showToast(`⚠️ Đã quá giờ chốt điểm danh (${cutoff})! Vui lòng liên hệ Ban Quản lý để được bổ sung.`, 'error');
+    return;
+  }
+
+  activityState.selectedMemberIds.add(targetId);
+  if (activityState.temporaryAttendanceSaved) {
+    activityState.isEditingAttendance = true;
+  }
+  saveActivitySessionState();
+  renderActivityMemberChips();
+  recalculateActivitySplit();
+  updateAttendanceSaveBarUI();
+  renderActivityMatches();
+  renderSelfAttendanceBanner();
+  showToast('✓ Bạn đã điểm danh tham gia hoạt động hôm nay thành công! 🏸', 'success');
+}
+
+function memberSelfCancel(memberId) {
+  if (!AppState.auth || !AppState.auth.isLoggedIn || !AppState.auth.user) {
+    showToast('🔐 Vui lòng đăng nhập để thao tác!', 'warning');
+    openLoginModal();
+    return;
+  }
+
+  const currentUserId = AppState.auth.user.id;
+  const targetId = memberId || currentUserId;
+
+  if (!isAttendanceManager() && targetId !== currentUserId) {
+    showToast('⚠️ Bạn chỉ có quyền chỉnh sửa điểm danh của chính mình!', 'warning');
+    return;
+  }
+
+  if (!isAttendanceManager() && isPastAttendanceCutoff(activityState.date)) {
+    const cutoff = getAttendanceCutoffTime();
+    showToast(`⚠️ Đã quá giờ chốt điểm danh (${cutoff})! Thành viên không thể tự hủy điểm danh. Chỉ Ban Quản lý mới có quyền sửa đổi.`, 'error');
+    return;
+  }
+
+  activityState.selectedMemberIds.delete(targetId);
+  if (activityState.temporaryAttendanceSaved) {
+    activityState.isEditingAttendance = true;
+  }
+  saveActivitySessionState();
+  renderActivityMemberChips();
+  recalculateActivitySplit();
+  updateAttendanceSaveBarUI();
+  renderActivityMatches();
+  renderSelfAttendanceBanner();
+  showToast('✓ Bạn đã hủy điểm danh hoạt động hôm nay.', 'info');
 }
 
 function renderAttendanceTab() {
@@ -1707,6 +1991,7 @@ function renderAttendanceTab() {
   if (typeSel) typeSel.value = activityState.type;
 
   renderAttendanceRoleBanner();
+  renderSelfAttendanceBanner();
   updateDailyRatePresetBadgeUI();
   updateShuttleBillingUI();
 
@@ -1735,12 +2020,24 @@ function renderActivityMemberChips() {
 
   let offSelectedCount = 0;
   let honSelectedCount = 0;
+  const currentUserId = AppState.auth?.user?.id;
+  const isPast = isPastAttendanceCutoff(activityState.date);
+  const isMgr = isAttendanceManager();
 
   // Render Thành viên chính thức (20 người - 6 trên 1 hàng)
   officialGrid.innerHTML = officialMembers.map(m => {
     const isSel = activityState.selectedMemberIds.has(m.id);
     if (isSel) offSelectedCount++;
     const label = m.chipName || m.name.split(' ').pop().toUpperCase();
+    const isSelf = AppState.auth?.isLoggedIn && currentUserId === m.id;
+
+    let titleExtra = '';
+    if (isSelf) {
+      titleExtra = ' [Tài khoản của bạn]';
+      if (!isMgr && isPast) {
+        titleExtra += isSel ? ' - Đã chốt điểm danh (Không thể hủy quá giờ)' : ' - Đã hết giờ tự điểm danh';
+      }
+    }
 
     return `
       <button type="button" onclick="toggleActivityMember('${m.id}')"
@@ -1748,8 +2045,8 @@ function renderActivityMemberChips() {
           isSel 
             ? 'bg-emerald-700 hover:bg-emerald-800 text-white font-black shadow-emerald-900/15 ring-1 ring-emerald-600' 
             : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-        }" title="${m.name} (${formatMoney(m.balance || 0)})">
-        <span class="truncate max-w-full">${isSel ? '✓ ' : ''}${label}</span>
+        } ${isSelf ? 'ring-2 ring-amber-400 ring-offset-1' : ''}" title="${m.name}${titleExtra} (${formatMoney(m.balance || 0)})">
+        <span class="truncate max-w-full">${isSel ? '✓ ' : ''}${label}${isSelf ? ' ⭐' : ''}</span>
       </button>
     `;
   }).join('');
@@ -1759,6 +2056,15 @@ function renderActivityMemberChips() {
     const isSel = activityState.selectedMemberIds.has(m.id);
     if (isSel) honSelectedCount++;
     const label = m.chipName || m.name.split(' ').pop().toUpperCase();
+    const isSelf = AppState.auth?.isLoggedIn && currentUserId === m.id;
+
+    let titleExtra = '';
+    if (isSelf) {
+      titleExtra = ' [Tài khoản của bạn]';
+      if (!isMgr && isPast) {
+        titleExtra += isSel ? ' - Đã chốt điểm danh (Không thể hủy quá giờ)' : ' - Đã hết giờ tự điểm danh';
+      }
+    }
 
     return `
       <button type="button" onclick="toggleActivityMember('${m.id}')"
@@ -1766,8 +2072,8 @@ function renderActivityMemberChips() {
           isSel 
             ? 'bg-emerald-700 hover:bg-emerald-800 text-white font-black shadow-emerald-900/15 ring-1 ring-emerald-600' 
             : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-        }" title="${m.name} (${formatMoney(m.balance || 0)})">
-        <span class="truncate max-w-full">${isSel ? '✓ ' : ''}${label}</span>
+        } ${isSelf ? 'ring-2 ring-amber-400 ring-offset-1' : ''}" title="${m.name}${titleExtra} (${formatMoney(m.balance || 0)})">
+        <span class="truncate max-w-full">${isSel ? '✓ ' : ''}${label}${isSelf ? ' ⭐' : ''}</span>
       </button>
     `;
   }).join('');
@@ -1778,15 +2084,63 @@ function renderActivityMemberChips() {
 }
 
 function toggleActivityMember(memberId) {
-  if (!canPerformAttendance()) {
-    showToast('⚠️ Bạn không có quyền điểm danh! Vui lòng liên hệ Trưởng nhóm để được cấp quyền.', 'warning');
+  // 1. Quản lý có toàn quyền sửa đổi bất kỳ thành viên nào ở bất kỳ thời điểm nào
+  if (isAttendanceManager()) {
+    if (activityState.selectedMemberIds.has(memberId)) {
+      activityState.selectedMemberIds.delete(memberId);
+    } else {
+      activityState.selectedMemberIds.add(memberId);
+    }
+    if (activityState.temporaryAttendanceSaved) {
+      activityState.isEditingAttendance = true;
+    }
+    saveActivitySessionState();
+    renderActivityMemberChips();
+    recalculateActivitySplit();
+    updateAttendanceSaveBarUI();
+    renderActivityMatches();
+    renderSelfAttendanceBanner();
     return;
   }
-  if (activityState.selectedMemberIds.has(memberId)) {
-    activityState.selectedMemberIds.delete(memberId);
-  } else {
-    activityState.selectedMemberIds.add(memberId);
+
+  // 2. Chưa đăng nhập: yêu cầu đăng nhập
+  if (!AppState.auth || !AppState.auth.isLoggedIn || !AppState.auth.user) {
+    showToast('🔐 Vui lòng đăng nhập tài khoản thành viên để điểm danh tham gia hoạt động!', 'warning');
+    openLoginModal();
+    return;
   }
+
+  const currentUserId = AppState.auth.user.id;
+
+  // 3. Thành viên chỉ được phép thao tác trên tài khoản của chính mình
+  if (memberId !== currentUserId) {
+    showToast('⚠️ Bạn chỉ có quyền điểm danh cho chính mình. Chỉ Ban Quản lý mới có quyền sửa đổi thông tin của thành viên khác!', 'warning');
+    return;
+  }
+
+  // 4. Thao tác trên chính mình: kiểm tra giờ chốt điểm danh
+  const isPast = isPastAttendanceCutoff(activityState.date);
+  const cutoffTime = getAttendanceCutoffTime();
+  const isSel = activityState.selectedMemberIds.has(memberId);
+
+  if (isSel) {
+    // Thành viên muốn HỦY điểm danh
+    if (isPast) {
+      showToast(`⚠️ Đã quá giờ chốt điểm danh (${cutoffTime})! Thành viên không thể tự hủy điểm danh. Chỉ Ban Quản lý mới có quyền sửa đổi.`, 'error');
+      return;
+    }
+    activityState.selectedMemberIds.delete(memberId);
+    showToast('✓ Bạn đã hủy điểm danh hoạt động hôm nay.', 'info');
+  } else {
+    // Thành viên muốn ĐIỂM DANH tham gia
+    if (isPast) {
+      showToast(`⚠️ Đã quá giờ đăng ký điểm danh (${cutoffTime})! Vui lòng liên hệ Ban Quản lý để được thêm vào buổi chơi.`, 'error');
+      return;
+    }
+    activityState.selectedMemberIds.add(memberId);
+    showToast('✓ Bạn đã điểm danh tham gia hoạt động hôm nay thành công! 🏸', 'success');
+  }
+
   if (activityState.temporaryAttendanceSaved) {
     activityState.isEditingAttendance = true;
   }
@@ -1795,11 +2149,12 @@ function toggleActivityMember(memberId) {
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
   renderActivityMatches();
+  renderSelfAttendanceBanner();
 }
 
 function selectAllActivityMembers() {
-  if (!canPerformAttendance()) {
-    showToast('⚠️ Bạn không có quyền điểm danh! Vui lòng liên hệ Trưởng nhóm.', 'warning');
+  if (!isAttendanceManager()) {
+    showToast('⚠️ Chỉ Ban Quản lý mới có quyền thao tác chọn tất cả danh sách thành viên!', 'warning');
     return;
   }
   AppState.members.forEach(m => {
@@ -1815,11 +2170,12 @@ function selectAllActivityMembers() {
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
   renderActivityMatches();
+  renderSelfAttendanceBanner();
 }
 
 function deselectAllActivityMembers() {
-  if (!canPerformAttendance()) {
-    showToast('⚠️ Bạn không có quyền điểm danh! Vui lòng liên hệ Trưởng nhóm.', 'warning');
+  if (!isAttendanceManager()) {
+    showToast('⚠️ Chỉ Ban Quản lý mới có quyền thao tác bỏ chọn tất cả danh sách thành viên!', 'warning');
     return;
   }
   activityState.selectedMemberIds.clear();
@@ -1831,6 +2187,7 @@ function deselectAllActivityMembers() {
   recalculateActivitySplit();
   updateAttendanceSaveBarUI();
   renderActivityMatches();
+  renderSelfAttendanceBanner();
 }
 
 // --- 4. KHÁCH (HIỂN THỊ MỖI LEVEL TRÊN 1 DÒNG: Level A : THẾ ANH , PHONG , QUANG-Q) ---
@@ -2319,6 +2676,9 @@ function onTipAmountChanged(val) {
 
 function onActivityDateChanged(val) {
   activityState.date = val;
+  saveActivitySessionState();
+  renderSelfAttendanceBanner();
+  renderActivityMemberChips();
 }
 
 function onActivityTypeChanged(val) {
@@ -6595,6 +6955,8 @@ function loginAsDeveloperAdmin(username, password) {
   } catch (e) {}
   updateDevAdminUI();
   renderAuthBadge();
+  renderSelfAttendanceBanner();
+  renderActivityMemberChips();
   return true;
 }
 
@@ -6620,6 +6982,8 @@ function logoutDeveloperAdmin() {
   } catch (e) {}
   updateDevAdminUI();
   renderAuthBadge();
+  renderSelfAttendanceBanner();
+  renderActivityMemberChips();
   showToast('Đã đăng xuất phiên Admin Nhà phát triển.', 'info');
 }
 
@@ -7046,7 +7410,8 @@ function handleCreateNewClubSubmit(event) {
       ],
       allowNegativeWallet: true,
       settlementMode: 'MONTHLY',
-      defaultSettlementDay: 'END_OF_MONTH'
+      defaultSettlementDay: 'END_OF_MONTH',
+      attendanceCutoffTime: '17:00'
     },
     funds: {
       clubFund: initialFund,
@@ -10660,6 +11025,10 @@ function renderSettingsTab() {
   const defaultShuttlesInput = document.getElementById('configDefaultShuttlesPerSession');
   if (defaultShuttlesInput) defaultShuttlesInput.value = config.defaultShuttlesPerSession || 6;
 
+  // Cấu hình giờ chốt điểm danh hoạt động hôm nay (mặc định 17:00)
+  const cutoffInput = document.getElementById('configAttendanceCutoffTime');
+  if (cutoffInput) cutoffInput.value = config.attendanceCutoffTime || '17:00';
+
   // Cấu hình ví thành viên âm & Tất toán dư nợ
   const allowNegCheck = document.getElementById('configAllowNegativeWallet');
   if (allowNegCheck) allowNegCheck.checked = config.allowNegativeWallet !== false;
@@ -11045,7 +11414,11 @@ function saveDailyRateConfig() {
   AppState.config.shuttleUnitPrice = shuttleUnitPrice;
   AppState.config.defaultShuttlesPerSession = defaultShuttles;
 
+  const cutoffTime = document.getElementById('configAttendanceCutoffTime')?.value || AppState.config.attendanceCutoffTime || '17:00';
+  AppState.config.attendanceCutoffTime = cutoffTime;
+
   saveData();
+  renderSelfAttendanceBanner();
   updateDailyRatePresetBadgeUI();
   updateShuttleBillingUI();
   updateDailyRateCalculatedPreview();
@@ -11194,6 +11567,8 @@ function handleLogin(e) {
     updateDevAdminUI();
     renderAuthBadge();
     renderAttendanceRoleBanner();
+    renderSelfAttendanceBanner();
+    renderActivityMemberChips();
     renderUserAccessTable();
     const roleDef = ROLE_DEFINITIONS[member.role] || ROLE_DEFINITIONS.MEMBER;
     showToast(`✓ Chào mừng ${member.name} (${roleDef.icon} ${roleDef.label})!`, 'success');
@@ -11212,6 +11587,8 @@ function handleLogout() {
   updateDevAdminUI();
   renderAuthBadge();
   renderAttendanceRoleBanner();
+  renderSelfAttendanceBanner();
+  renderActivityMemberChips();
   renderUserAccessTable();
   showToast('Đã đăng xuất tài khoản.', 'info');
 }

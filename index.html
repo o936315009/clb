@@ -52,6 +52,15 @@
     .safe-area-bottom {
       padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
     }
+    /* Tối ưu hóa thu hẹp độ rộng, khoảng cách các dòng cho toàn bộ giao diện gọn gàng */
+    table th, table td {
+      padding-top: 0.35rem !important;
+      padding-bottom: 0.35rem !important;
+      line-height: 1.25 !important;
+    }
+    input, select, textarea {
+      line-height: 1.25 !important;
+    }
     /* Custom scrollbar */
     ::-webkit-scrollbar {
       width: 5px;
@@ -71,16 +80,16 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
-  <!-- TOP HEADER (TỐI ƯU GIAO DIỆN TRÌNH DUYỆT ĐIỆN THOẠI) -->
+  <!-- TOP HEADER (TỐI ƯU GIAO DIỆN TRÌNH DUYỆT ĐIỆN THOẠI & THU HẸP ĐỘ RỘNG GỌN ĐẸP) -->
   <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+    <div class="max-w-5xl mx-auto px-2.5 sm:px-4 lg:px-6 h-12 sm:h-14 flex items-center justify-between gap-2">
       <!-- Logo & Club Name (Thiết kế tinh gọn, chuẩn app mobile) -->
-      <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0" onclick="switchTab('dashboard')">
-        <div id="headerClubLogoBadge" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20 ring-2 ring-brand-500/20 text-base sm:text-lg font-bold shrink-0">
+      <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer min-w-0" onclick="switchTab('dashboard')">
+        <div id="headerClubLogoBadge" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 flex items-center justify-center text-white shadow-sm ring-1 ring-brand-500/20 text-sm sm:text-base font-bold shrink-0">
           <span id="headerClubIconSpan">🏸</span>
         </div>
         <div class="min-w-0">
-          <h1 id="headerClubName" class="font-black text-sm sm:text-base md:text-lg leading-tight text-slate-900 tracking-tight truncate">CLB LẬP TRÍ</h1>
+          <h1 id="headerClubName" class="font-black text-xs sm:text-sm md:text-base leading-tight text-slate-900 tracking-tight truncate">CLB LẬP TRÍ</h1>
           <!-- Subtitle: Ẩn theo yêu cầu của bạn để giao diện điện thoại và CLB gọn đẹp nhất -->
           <p id="headerClubSubTitle" class="hidden"></p>
         </div>
@@ -94,14 +103,14 @@
         </div>
 
         <!-- Cloud Sync Status Badge -->
-        <button type="button" onclick="openCloudSyncModal()" id="headerCloudSyncBadge" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer shadow-2xs" title="Cấu hình đồng bộ dữ liệu đám mây đa thiết bị">
-          <span id="cloudSyncDot" class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
-          <span id="cloudSyncText" class="truncate max-w-[80px] sm:max-w-none">Đám mây</span>
+        <button type="button" onclick="openCloudSyncModal()" id="headerCloudSyncBadge" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer shadow-2xs" title="Cấu hình đồng bộ dữ liệu đám mây đa thiết bị">
+          <span id="cloudSyncDot" class="w-2 rounded-full bg-slate-400 shrink-0 aspect-square"></span>
+          <span id="cloudSyncText" class="truncate max-w-[70px] sm:max-w-none text-[11px]">Đám mây</span>
         </button>
 
         <!-- Date display -->
-        <div class="hidden xl:flex items-center text-xs font-semibold px-3 py-1.5 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
-          <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1.5 text-brand-600"></i>
+        <div class="hidden xl:flex items-center text-xs font-semibold px-2.5 py-1 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1 text-brand-600"></i>
           <span id="currentDateDisplay">--/--/----</span>
         </div>
 
@@ -113,35 +122,35 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT LAYOUT -->
-  <div class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col md:flex-row gap-6">
+  <!-- MAIN CONTENT LAYOUT (THU HẸP ĐỘ RỘNG MAX-W-5XL, KHOẢNG CÁCH DÒNG NHỎ GỌN) -->
+  <div class="flex-1 max-w-5xl w-full mx-auto px-2 sm:px-3 lg:px-4 py-2 sm:py-3 flex flex-col md:flex-row gap-3 sm:gap-4">
 
-    <!-- DESKTOP SIDEBAR NAVIGATION -->
-    <aside class="hidden md:block w-64 shrink-0">
-      <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm sticky top-24">
-        <nav class="space-y-1">
-          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-brand-700 bg-brand-50">
-            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+    <!-- DESKTOP SIDEBAR NAVIGATION (THU HẸP RỘNG W-52, GỌN GÀNG) -->
+    <aside class="hidden md:block w-52 shrink-0">
+      <div class="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs sticky top-16">
+        <nav class="space-y-0.5">
+          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-brand-700 bg-brand-50">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Trang chủ</span>
           </button>
-          <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="user-check" class="w-5 h-5"></i>
-            <span>Điểm danh & Trừ ví</span>
+          <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>Hoạt động hôm nay</span>
           </button>
-          <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="wallet" class="w-5 h-5"></i>
+          <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
             <span>Thanh toán & Quỹ</span>
           </button>
-          <button onclick="switchTab('members')" id="nav-members" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="users" class="w-5 h-5"></i>
+          <button onclick="switchTab('members')" id="nav-members" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <i data-lucide="users" class="w-4 h-4"></i>
             <span>Quản lý thành viên</span>
           </button>
-          <button onclick="switchTab('tournament')" id="nav-tournament" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="trophy" class="w-5 h-5 text-amber-500"></i>
+          <button onclick="switchTab('tournament')" id="nav-tournament" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i>
             <span>Giải đấu CLB</span>
           </button>
-          <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="settings" class="w-5 h-5"></i>
+          <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <i data-lucide="settings" class="w-4 h-4"></i>
             <span>Cấu hình & Sao lưu</span>
           </button>
         </nav>
@@ -149,10 +158,10 @@
     </aside>
 
     <!-- TAB VIEW CONTAINER (ĐỆM ĐÁY AN TOÀN CHO BOTTOM NAV) -->
-    <main class="flex-1 min-w-0 pb-24 md:pb-8">
+    <main class="flex-1 min-w-0 pb-20 md:pb-6">
 
       <!-- ================= 1. TAB: TRANG CHỦ ================= -->
-      <section id="tab-dashboard" class="tab-pane space-y-5 sm:space-y-6">
+      <section id="tab-dashboard" class="tab-pane space-y-3 sm:space-y-3.5">
         <!-- 3 KPI CARDS (HIỂN THỊ ĐỦ TRÊN 1 DÒNG CHUẨN ĐIỆN THOẠI) -->
         <div class="grid grid-cols-3 gap-2 sm:gap-4">
           <!-- Card 1: Quỹ CLB -->
@@ -282,38 +291,45 @@
         </div>
       </section>
 
-      <!-- ================= 2. TAB: ĐIỂM DANH & TÍNH TIỀN ================= -->
-      <!-- ================= 2. TAB: BUỔI HOẠT ĐỘNG & ĐIỂM DANH (THEO MẪU ẢNH MOBILE) ================= -->
-      <section id="tab-attendance" class="tab-pane hidden pb-32 md:pb-12">
-        <div class="max-w-xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative">
+      <!-- ================= 2. TAB: HOẠT ĐỘNG HÔM NAY & ĐIỂM DANH ================= -->
+      <section id="tab-attendance" class="tab-pane hidden pb-24 md:pb-8">
+        <div class="max-w-md sm:max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
           
-          <!-- 1. TOP HEADER: < Buổi hoạt động mới  [📸 Xuất ảnh]  [ VI | EN ] -->
-          <div class="px-3.5 py-2.5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-20">
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="switchTab('dashboard')" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 transition" title="Quay lại Trang chủ">
-                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          <!-- 1. TOP HEADER: < Hoạt động hôm nay  [➕ Tạo HĐ mới]  [📸 Xuất ảnh]  [ VI | EN ] -->
+          <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-20 flex-wrap gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="switchTab('dashboard')" class="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 transition" title="Quay lại Trang chủ">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
               </button>
-              <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">Buổi hoạt động mới</h2>
+              <h2 class="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                <span>🏸</span>
+                <span>Hoạt động hôm nay</span>
+              </h2>
             </div>
 
-            <!-- Actions: Nút xuất ảnh + VI | EN -->
-            <div class="flex items-center gap-1.5">
-              <button type="button" onclick="openActivityReportModal()" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Xuất báo cáo dạng ảnh chia sẻ Zalo / Facebook">
+            <!-- Actions: Nút tạo hoạt động mới + Nút xuất ảnh + VI | EN -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="createNewActivitySession()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Tạo buổi hoạt động hôm nay mới (làm mới danh sách điểm danh)">
+                <span>➕</span>
+                <span>Tạo HĐ mới</span>
+              </button>
+              <button type="button" onclick="openActivityReportModal()" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Xuất báo cáo dạng ảnh chia sẻ Zalo / Facebook">
                 <span>📸</span>
                 <span class="hidden sm:inline">Xuất ảnh</span>
               </button>
               <!-- Language switch toggle: VI | EN -->
-              <div class="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
-                <button type="button" onclick="setActivityLanguage('VI')" id="actBtnLangVI" class="px-2 py-0.5 rounded-md bg-slate-900 text-white shadow-sm transition">VI</button>
-                <button type="button" onclick="setActivityLanguage('EN')" id="actBtnLangEN" class="px-2 py-0.5 rounded-md text-slate-600 hover:text-slate-900 transition">EN</button>
+              <div class="flex items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold border border-slate-200">
+                <button type="button" onclick="setActivityLanguage('VI')" id="actBtnLangVI" class="px-1.5 py-0.5 rounded-md bg-slate-900 text-white shadow-sm transition">VI</button>
+                <button type="button" onclick="setActivityLanguage('EN')" id="actBtnLangEN" class="px-1.5 py-0.5 rounded-md text-slate-600 hover:text-slate-900 transition">EN</button>
               </div>
             </div>
           </div>
 
           <!-- FORM BODY (Cuộn mượt mà, độ rộng & khoảng cách các mục được thu gọn tối ưu) -->
-          <div class="p-3 sm:p-3.5 space-y-2.5 sm:space-y-3">
+          <div class="p-2.5 sm:p-3 space-y-2">
 
-            <!-- Banner Phân Quyền Điểm Danh (Ẩn với Trưởng nhóm, chỉ hiện khi Phó nhóm bị khóa quyền) -->
+            <!-- Banner Thành viên tự điểm danh / Khóa quá giờ & Banner Phân quyền Quản lý -->
+            <div id="actSelfAttendanceBanner"></div>
             <div id="actRolePermissionBanner" class="hidden"></div>
 
             <!-- 2. FIELDS: Ngày & Loại -->
@@ -2350,6 +2366,39 @@
               </div>
             </div>
             <p class="text-[10px] text-slate-500 italic">* Bạn có thể tùy chỉnh tên truy cập (vd: <code>tiachop</code>, <code>vinhomessmash</code>). Khi lưu cấu hình, đường link sẽ tự động đổi theo tên này.</p>
+          </div>
+
+          <!-- CẤU HÌNH HOẠT ĐỘNG HÔM NAY & GIỜ CHỐT ĐIỂM DANH -->
+          <div class="p-4 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-slate-50 rounded-2xl border border-amber-200 space-y-2.5">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                  ⏰
+                </div>
+                <div>
+                  <h3 class="text-xs sm:text-sm font-black text-amber-950">
+                    Giờ Chốt Tự Điểm Danh (Hoạt Động Hôm Nay)
+                  </h3>
+                  <p class="text-[11px] text-slate-600 font-medium">Hội viên đăng nhập chỉ được tự điểm danh hoặc hủy điểm danh trước giờ này. Quá giờ chỉ Ban quản lý mới có quyền chỉnh sửa.</p>
+                </div>
+              </div>
+              <span class="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full border border-amber-300 flex items-center gap-1">
+                <span>⏱️</span>
+                <span>Mặc định: 17:00</span>
+              </span>
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap">
+              <label class="text-xs font-bold text-slate-800">Giờ chốt điểm danh hằng ngày:</label>
+              <div class="flex items-center gap-2">
+                <input type="time" id="configAttendanceCutoffTime" value="17:00" onchange="onAttendanceCutoffTimeChanged(this.value)" class="px-3 py-2 text-xs font-bold text-amber-950 border border-amber-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs w-32 text-center" />
+                <button type="button" onclick="saveAttendanceCutoffTimeConfig()" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1">
+                  <span>💾</span>
+                  <span>Lưu giờ chốt</span>
+                </button>
+              </div>
+              <span class="text-[11px] text-slate-500 italic">* Thành viên tự vào điểm danh trên điện thoại trước giờ thi đấu sẽ bị khóa nút hủy khi quá giờ quy định này.</span>
+            </div>
           </div>
 
           <!-- BAN LÃNH ĐẠO CLB: Gồm Chủ tịch, Phó chủ tịch 1, Phó chủ tịch 2, Thư ký, Thủ quỹ, Truyền thông, Cố vấn 1, Cố vấn 2 (Lấy từ danh sách thành viên) -->
@@ -5181,7 +5230,7 @@ const firebaseConfig = {
     </button>
     <button type="button" onclick="switchTab('attendance')" id="m-nav-attendance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
       <i data-lucide="user-check" class="w-5 h-5 mb-0.5"></i>
-      <span class="text-[10px] font-bold">Điểm danh</span>
+      <span class="text-[10px] font-bold">HĐ hôm nay</span>
     </button>
     <button type="button" onclick="switchTab('finance')" id="m-nav-finance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
       <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>

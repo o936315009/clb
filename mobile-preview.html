@@ -295,12 +295,15 @@
         <div id="tabContent-attendance" class="hidden space-y-2.5 pb-20">
           
           <!-- Top Screen Title & Lang Switcher -->
-          <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+          <div class="flex items-center justify-between pb-1.5 border-b border-slate-100 flex-wrap gap-1.5">
             <div class="flex items-center gap-2">
               <button onclick="switchMobileTab('dashboard')" class="text-slate-600 hover:text-slate-900 text-sm font-bold">❮</button>
-              <h3 class="font-black text-sm text-slate-900">Buổi hoạt động mới</h3>
+              <h3 class="font-black text-sm text-slate-900">Hoạt động hôm nay</h3>
             </div>
             <div class="flex items-center gap-1.5">
+              <button type="button" onclick="alert('Đã tạo buổi hoạt động hôm nay mới!');" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer" title="Tạo buổi hoạt động hôm nay mới">
+                <span>➕</span> <span>Tạo HĐ mới</span>
+              </button>
               <button type="button" onclick="openPreviewReportModal()" class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold transition flex items-center gap-0.5 shadow-2xs cursor-pointer">
                 <span>📸</span> <span>Xuất ảnh</span>
               </button>
