@@ -2202,35 +2202,35 @@ function renderActivityGuestChips() {
     { key: 'GUEST_C', label: 'Level C', price: pC, color: 'text-blue-800' }
   ];
 
-  container.className = "space-y-2";
+  container.className = "space-y-1";
 
   container.innerHTML = levels.map(lvl => {
     const groupGuests = guests.filter(g => g.type === lvl.key || g.level === lvl.label.replace('Level ', ''));
     if (groupGuests.length === 0) return '';
 
     return `
-      <div class="flex items-center gap-2 py-1 flex-nowrap overflow-x-auto mobile-scroll">
-        <!-- Nhãn Level trên cùng 1 dòng -->
-        <div class="shrink-0 flex items-center gap-1 font-black text-xs min-w-[68px]">
-          <span class="${lvl.color} font-extrabold">${lvl.label}</span>
+      <div class="flex items-center gap-1.5 py-0.5 flex-nowrap overflow-x-auto mobile-scroll">
+        <!-- Nhãn Level trên cùng 1 dòng: thu nhỏ min-width & text -->
+        <div class="shrink-0 flex items-center gap-0.5 font-black text-[11px] min-w-[50px]">
+          <span class="${lvl.color} font-black">${lvl.label}</span>
           <span class="text-slate-400 font-bold">:</span>
         </div>
 
-        <!-- Danh sách khách hiển thị dạng chip nút bấm trên cùng 1 dòng -->
-        <div class="flex items-center gap-1.5 flex-nowrap shrink-0">
+        <!-- Danh sách khách dạng chip thu nhỏ khoảng cách và padding gọn gàng -->
+        <div class="flex items-center gap-1 flex-nowrap shrink-0">
           ${groupGuests.map((g, idx) => {
             const isSel = activityState.selectedGuestIds.has(g.id);
             const displayName = g.chipName || g.name;
             return `
               <button type="button" onclick="toggleActivityGuest('${g.id}')"
-                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs select-none whitespace-nowrap cursor-pointer flex items-center gap-1 shrink-0 ${
+                class="px-2 py-0.5 rounded-lg text-[11px] font-bold transition shadow-2xs select-none whitespace-nowrap cursor-pointer flex items-center gap-0.5 shrink-0 ${
                   isSel 
                     ? 'bg-emerald-700 text-white shadow-emerald-900/15 ring-1 ring-emerald-600 font-black' 
                     : 'bg-white text-slate-800 border border-slate-200 hover:border-slate-300'
                 }">
                 <span>${isSel ? '✓ ' : ''}${displayName}</span>
               </button>
-              ${idx < groupGuests.length - 1 ? '<span class="text-slate-300 font-bold text-xs select-none">,</span>' : ''}
+              ${idx < groupGuests.length - 1 ? '<span class="text-slate-300 font-bold text-[10px] select-none -ml-0.5">,</span>' : ''}
             `;
           }).join('')}
         </div>
@@ -2601,15 +2601,6 @@ function updateDailyRatePresetBadgeUI() {
       const title = AppState.config?.dailyRateTitle || `ĐƠN GIÁ THEO NGÀY ${count}`;
       badge.textContent = `${title} = ${formatMoney(boxPrice)}`;
     }
-  }
-
-  const actBoxInp = document.getElementById('actSessionBoxPriceInput');
-  if (actBoxInp && document.activeElement !== actBoxInp) {
-    actBoxInp.value = boxPrice;
-  }
-  const actPerShuttleTxt = document.getElementById('actSessionPerShuttleText');
-  if (actPerShuttleTxt) {
-    actPerShuttleTxt.textContent = `${formatMoney(unitPrice)} / quả`;
   }
 }
 

@@ -476,25 +476,6 @@
                 </div>
               </div>
 
-              <!-- Thanh tuỳ chỉnh Đơn giá 1 hộp cầu theo ngày -->
-              <div class="p-2 sm:p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl mb-2 flex items-center justify-between flex-wrap gap-2 text-xs">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-bold text-emerald-950 flex items-center gap-1">
-                    <span>📦</span>
-                    <span>Đơn giá 1 hộp theo ngày:</span>
-                  </span>
-                  <div class="flex items-center gap-1">
-                    <input type="number" id="actSessionBoxPriceInput" min="0" step="5000" value="340000" oninput="onActivityDailyBoxPriceChanged(this.value)" class="w-24 sm:w-28 px-2 py-1 text-xs font-black text-emerald-900 border border-emerald-300 rounded-lg bg-white text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs" />
-                    <span class="text-[11px] font-bold text-emerald-800">đ/hộp</span>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1 text-[11px] text-emerald-800 font-semibold bg-white/90 px-2 py-1 rounded-lg border border-emerald-200 shadow-2xs">
-                  <span>⚡ 1 hộp (12 quả) ➔</span>
-                  <b id="actSessionPerShuttleText" class="text-emerald-950 font-black">28.333 đ / quả</b>
-                  <span class="text-[10px] text-emerald-600">(làm tròn 1đ)</span>
-                </div>
-              </div>
-
               <!-- Danh sách dòng chi phí -->
               <div id="actExpenseRowsContainer" class="space-y-2">
                 <!-- Rendered dynamically -->
