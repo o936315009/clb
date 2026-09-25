@@ -1234,21 +1234,6 @@ let currentTab = 'dashboard';
 function switchTab(tabId) {
   if (tabId === 'matchmaker') tabId = 'tournament';
 
-  // Chặn tài khoản thành viên truy cập tab Cấu hình & Sao lưu
-  if (tabId === 'settings') {
-    const role = getCurrentUserRole();
-    const isMember = role === 'MEMBER';
-    const canConfig = canConfigSystem() && !isMember;
-    if (!canConfig) {
-      showToast('⚠️ Tài khoản thành viên không có quyền truy cập Cấu hình và Sao lưu!', 'warning');
-      if (currentTab === 'settings') {
-        currentTab = 'dashboard';
-      }
-      switchTab('dashboard');
-      return;
-    }
-  }
-
   currentTab = tabId;
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
   const activePane = document.getElementById(`tab-${tabId}`);
@@ -1265,7 +1250,7 @@ function switchTab(tabId) {
     activeNav.classList.add('text-brand-700', 'bg-brand-50');
   }
 
-  // Cập nhật ẩn/hiện điều hướng (thành viên không hiển thị Cấu hình & Sao lưu)
+  // Cập nhật ẩn/hiện điều hướng (ẩn Cấu hình & Sao lưu trên thanh menu đối với tài khoản thành viên)
   updateNavigationUI();
 
   // Cập nhật mobile navigation bar
@@ -1304,7 +1289,7 @@ function switchTab(tabId) {
 }
 
 /**
- * Cập nhật hiển thị các mục điều hướng (Ẩn Cấu hình & Sao lưu với tài khoản thành viên)
+ * Cập nhật hiển thị các mục điều hướng (Ẩn Cấu hình & Sao lưu trên thanh menu với tài khoản thành viên)
  */
 function updateNavigationUI() {
   const role = getCurrentUserRole();
@@ -1329,12 +1314,6 @@ function updateNavigationUI() {
     } else {
       mNavSettings.classList.add('hidden');
     }
-  }
-
-  // 3. Nếu đang ở tab settings mà là tài khoản thành viên -> tự động chuyển về trang chủ
-  if (!canConfig && currentTab === 'settings') {
-    currentTab = 'dashboard';
-    switchTab('dashboard');
   }
 }
 
@@ -12586,14 +12565,6 @@ function openConfigClubDirectLink() {
 }
 
 function renderSettingsTab() {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('⚠️ Tài khoản thành viên không có quyền truy cập Cấu hình và Sao lưu!', 'warning');
-    switchTab('dashboard');
-    return;
-  }
-
   const config = AppState.config;
   const activeClub = getActiveClub();
   if (document.getElementById('configClubName')) document.getElementById('configClubName').value = config.clubName || 'CLB CẦU LÔNG';
@@ -13061,12 +13032,6 @@ function saveDailyRateConfig() {
 
 // Sao lưu và khôi phục
 function exportDataBackup() {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('⚠️ Bạn không có quyền tải tệp sao lưu dữ liệu!', 'warning');
-    return;
-  }
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AppState, null, 2));
   const downloadAnchor = document.createElement('a');
   const now = new Date();
@@ -13081,12 +13046,6 @@ function exportDataBackup() {
 }
 
 function importDataBackup(event) {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('⚠️ Bạn không có quyền khôi phục dữ liệu CLB!', 'warning');
-    return;
-  }
   const file = event.target.files[0];
   if (!file) return;
 
@@ -13119,12 +13078,6 @@ function importDataBackup(event) {
 }
 
 function resetDefaultDemoData() {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('⚠️ Bạn không có quyền đặt lại dữ liệu CLB!', 'warning');
-    return;
-  }
   const activeClub = getActiveClub();
   const isSmash = activeClub.id === 'club_smash';
   const confirmed = confirm(`CẢNH BÁO: Thao tác này sẽ đưa toàn bộ dữ liệu của "${activeClub.name}" về trạng thái ban đầu.\nBạn có chắc chắn muốn đặt lại?`);
@@ -14476,13 +14429,6 @@ function pushDataToCloud() {
 }
 
 function openCloudSyncModal() {
-  const role = getCurrentUserRole();
-  const isMember = role === 'MEMBER';
-  if (isMember || !canConfigSystem()) {
-    showToast('ℹ️ Bạn đang xem dữ liệu trực tuyến đồng bộ từ đám mây.', 'info');
-    return;
-  }
-
   const modal = document.getElementById('modalCloudSync');
   if (!modal) return;
 
