@@ -1612,7 +1612,7 @@ function renderDashboardActivityStats() {
       }
 
       return `
-        <div class="flex items-center justify-between p-3 sm:p-3.5 hover:bg-slate-50 transition cursor-pointer" onclick="openActivitySessionDetailModal('${ses.id}')" title="Nhấp để xem chi tiết buổi cầu">
+        <div class="flex items-center justify-between p-3 sm:p-3.5 hover:bg-emerald-50/50 transition cursor-pointer" onclick="openSessionAttendanceView('${ses.id}')" title="Bấm vào để mở giao diện hoạt động đã điểm danh ngày ${dateDisplay}">
           <div class="flex items-center min-w-0">
             <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#E8F5E9] text-[#2E7D32] flex items-center justify-center shrink-0 shadow-2xs">
               <i data-lucide="clock" class="w-4 h-4 sm:w-5 sm:h-5"></i>
@@ -1693,7 +1693,7 @@ function openActivityHistoryModal() {
         const totalPeople = ses.attendeeCount || (memberCount + guestCount);
 
         return `
-          <div class="p-3 bg-slate-50 hover:bg-emerald-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between gap-3">
+          <div class="p-3 bg-slate-50 hover:bg-emerald-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between gap-3 cursor-pointer" onclick="openSessionAttendanceView('${ses.id}')" title="Bấm vào để mở giao diện hoạt động đã điểm danh ngày ${dateFormatted}">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                 🏸
@@ -1710,9 +1710,9 @@ function openActivityHistoryModal() {
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button type="button" onclick="openActivitySessionDetailModal('${ses.id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer">
-                Chi tiết
+            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+              <button type="button" onclick="openSessionAttendanceView('${ses.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
+                <span>🏸</span> <span>Xem hoạt động</span>
               </button>
               ${(isAttendanceManager() && !isMonthClosed(ses.date)) ? `
                 <button type="button" onclick="loadSessionIntoEditMode('${ses.id}')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs">
@@ -1794,21 +1794,23 @@ function openActivitySessionDetailModal(sessionId) {
       </div>
       ` : ''}
 
-      ${(isAttendanceManager() && !isMonthClosed(ses.date)) ? `
-      <div class="pt-2">
-        <button type="button" onclick="loadSessionIntoEditMode('${ses.id}')" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
-          <span>✏️</span>
-          <span>Chỉnh sửa buổi hoạt động này (Quản trị viên)</span>
+      <div class="pt-2 flex flex-col gap-2">
+        <button type="button" onclick="openSessionAttendanceView('${ses.id}')" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+          <span>🏸</span>
+          <span>Xem Giao Diện Hoạt Động Đã Điểm Danh</span>
         </button>
+        ${(isAttendanceManager() && !isMonthClosed(ses.date)) ? `
+          <button type="button" onclick="loadSessionIntoEditMode('${ses.id}')" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer">
+            <span>✏️</span>
+            <span>Chỉnh sửa buổi hoạt động này (Quản trị viên)</span>
+          </button>
+        ` : (isMonthClosed(ses.date) ? `
+          <div class="p-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5">
+            <span>🔒</span>
+            <span>Buổi hoạt động này đã thuộc tháng chốt sổ cuối tháng (Đã khóa chỉnh sửa)</span>
+          </div>
+        ` : '')}
       </div>
-      ` : (isMonthClosed(ses.date) ? `
-      <div class="pt-2">
-        <div class="p-2.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5">
-          <span>🔒</span>
-          <span>Buổi hoạt động này đã thuộc tháng chốt sổ cuối tháng (Đã khóa chỉnh sửa)</span>
-        </div>
-      </div>
-      ` : '')}
 
       <div class="text-[11px] text-slate-400 text-center pt-2">
         Thời gian chốt sổ: ${ses.timestamp || dateFormatted}
@@ -2061,6 +2063,22 @@ function updateMonthLockBtnUI() {
   }
 }
 
+function openSessionAttendanceView(sessionId) {
+  const ses = (AppState.activitySessions || []).find(s => s.id === sessionId);
+  if (!ses) {
+    showToast('⚠️ Không tìm thấy thông tin buổi hoạt động này!', 'error');
+    return;
+  }
+  closeModal('activityHistoryModal');
+  closeModal('activitySessionDetailModal');
+  closeModal('createActivityModal');
+
+  loadSessionIntoAttendance(ses, false);
+
+  const dateFormatted = ses.date ? ses.date.split('-').reverse().join('/') : '';
+  showToast(`🏸 Đã mở giao diện hoạt động đã điểm danh ngày ${dateFormatted}!`, 'info');
+}
+
 function loadSessionIntoAttendance(ses, startInEditMode = false) {
   if (!ses) return;
   activityState.date = ses.date;
@@ -2100,6 +2118,7 @@ function loadSessionIntoAttendance(ses, startInEditMode = false) {
   saveActivitySessionState();
   switchTab('attendance');
   renderAttendanceTab();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function loadSessionIntoEditMode(sessionId) {
@@ -2942,6 +2961,17 @@ function renderActivityMemberChips() {
 function toggleActivityMember(memberId) {
   // 1. Quản lý có toàn quyền sửa đổi bất kỳ thành viên nào ở bất kỳ thời điểm nào
   if (isAttendanceManager()) {
+    const existingSes = (AppState.activitySessions || []).find(s => s.date === activityState.date);
+    if (existingSes && !activityState.isEditingFinalizedSession) {
+      if (isMonthClosed(activityState.date)) {
+        showToast('🔒 Tháng này đã chốt sổ cuối tháng! Không thể chỉnh sửa buổi hoạt động này.', 'error');
+        return;
+      }
+      activityState.isEditingFinalizedSession = true;
+      activityState.editingSessionId = existingSes.id;
+      renderSessionFinalizedBanner();
+      showToast('✏️ Đã bật chế độ Chỉnh sửa cho Quản trị viên! Bạn có thể sửa điểm danh và bấm "Cập nhật & Chốt lại".', 'info');
+    }
     if (activityState.selectedMemberIds.has(memberId)) {
       activityState.selectedMemberIds.delete(memberId);
     } else {
@@ -3111,6 +3141,17 @@ function toggleActivityGuest(guestId) {
   if (!canPerformAttendance()) {
     showToast('⚠️ Bạn không có quyền điểm danh! Vui lòng liên hệ Trưởng nhóm để được cấp quyền.', 'warning');
     return;
+  }
+  const existingSes = (AppState.activitySessions || []).find(s => s.date === activityState.date);
+  if (existingSes && !activityState.isEditingFinalizedSession) {
+    if (isMonthClosed(activityState.date)) {
+      showToast('🔒 Tháng này đã chốt sổ cuối tháng! Không thể chỉnh sửa buổi hoạt động này.', 'error');
+      return;
+    }
+    activityState.isEditingFinalizedSession = true;
+    activityState.editingSessionId = existingSes.id;
+    renderSessionFinalizedBanner();
+    showToast('✏️ Đã bật chế độ Chỉnh sửa cho Quản trị viên! Bạn có thể sửa khách và bấm "Cập nhật & Chốt lại".', 'info');
   }
   if (activityState.selectedGuestIds.has(guestId)) {
     activityState.selectedGuestIds.delete(guestId);
