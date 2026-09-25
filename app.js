@@ -1714,6 +1714,11 @@ function openActivityHistoryModal() {
               <button type="button" onclick="openActivitySessionDetailModal('${ses.id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer">
                 Chi tiết
               </button>
+              ${(isAttendanceManager() && !isMonthClosed(ses.date)) ? `
+                <button type="button" onclick="loadSessionIntoEditMode('${ses.id}')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs">
+                  <span>✏️</span> <span>Sửa</span>
+                </button>
+              ` : ''}
             </div>
           </div>
         `;
@@ -1789,6 +1794,22 @@ function openActivitySessionDetailModal(sessionId) {
       </div>
       ` : ''}
 
+      ${(isAttendanceManager() && !isMonthClosed(ses.date)) ? `
+      <div class="pt-2">
+        <button type="button" onclick="loadSessionIntoEditMode('${ses.id}')" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+          <span>✏️</span>
+          <span>Chỉnh sửa buổi hoạt động này (Quản trị viên)</span>
+        </button>
+      </div>
+      ` : (isMonthClosed(ses.date) ? `
+      <div class="pt-2">
+        <div class="p-2.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5">
+          <span>🔒</span>
+          <span>Buổi hoạt động này đã thuộc tháng chốt sổ cuối tháng (Đã khóa chỉnh sửa)</span>
+        </div>
+      </div>
+      ` : '')}
+
       <div class="text-[11px] text-slate-400 text-center pt-2">
         Thời gian chốt sổ: ${ses.timestamp || dateFormatted}
       </div>
@@ -1811,6 +1832,7 @@ let activityState = {
   saveGuestDebt: false,
   shuttleBillingMode: 'BY_SHUTTLE',
   shuttleCount: 6,
+  dailyBoxPrice: 340000,
   expenses: [
     { id: 1, title: 'Tiền cầu', qty: 12, unitPrice: 28333, amount: 340000, isCombo: false, isShuttleRow: true }
   ],
@@ -1818,7 +1840,9 @@ let activityState = {
   frontAmount: 0,
   isFrontAll: false,
   tipAmount: 0,
-  matches: []
+  matches: [],
+  isEditingFinalizedSession: false,
+  editingSessionId: null
 };
 
 function saveActivitySessionState() {
@@ -1844,6 +1868,8 @@ function saveActivitySessionState() {
       temporaryAttendanceSaved: activityState.temporaryAttendanceSaved,
       savedAttendanceTime: activityState.savedAttendanceTime,
       isEditingAttendance: activityState.isEditingAttendance,
+      isEditingFinalizedSession: !!activityState.isEditingFinalizedSession,
+      editingSessionId: activityState.editingSessionId || null,
       updatedAt: Date.now()
     };
     localStorage.setItem(sessionKey, JSON.stringify(serializable));
@@ -1883,6 +1909,8 @@ function loadActivitySessionState() {
     activityState.temporaryAttendanceSaved = !!data.temporaryAttendanceSaved;
     activityState.savedAttendanceTime = data.savedAttendanceTime || null;
     activityState.isEditingAttendance = !!data.isEditingAttendance;
+    activityState.isEditingFinalizedSession = !!data.isEditingFinalizedSession;
+    activityState.editingSessionId = data.editingSessionId || null;
     activityState.initialized = true;
     return true;
   } catch (e) {
@@ -1945,8 +1973,268 @@ function initActivitySessionData(forceReset = false) {
   activityState.temporaryAttendanceSaved = false;
   activityState.savedAttendanceTime = null;
   activityState.isEditingAttendance = false;
+  activityState.isEditingFinalizedSession = false;
+  activityState.editingSessionId = null;
 
   activityState.initialized = true;
+}
+
+// ==========================================
+// 2.3B KHÓA CHỐT SỔ CUỐI THÁNG & QUYỀN SỬA ĐỔI HOẠT ĐỘNG
+// ==========================================
+function isMonthClosed(dateOrMonth) {
+  if (!dateOrMonth) return false;
+  const monthKey = String(dateOrMonth).slice(0, 7); // 'YYYY-MM'
+  if (!AppState.closedMonths || !Array.isArray(AppState.closedMonths)) {
+    return false;
+  }
+  return AppState.closedMonths.includes(monthKey);
+}
+
+function toggleMonthCloseStatus(monthKey) {
+  if (!monthKey) return;
+  if (!AppState.closedMonths) AppState.closedMonths = [];
+  const idx = AppState.closedMonths.indexOf(monthKey);
+  const isClosed = idx !== -1;
+  const monthFormatted = monthKey.split('-').reverse().join('/');
+
+  if (isClosed) {
+    if (!confirm(`Bạn có chắc chắn muốn MỞ KHÓA lại sổ hoạt động tháng ${monthFormatted}?\n\nSau khi mở khóa, Quản trị viên có thể tiếp tục chỉnh sửa các buổi hoạt động trong tháng này.`)) {
+      return;
+    }
+    AppState.closedMonths.splice(idx, 1);
+    saveData();
+    updateMonthLockBtnUI();
+    renderSessionFinalizedBanner();
+    showToast(`✓ Đã MỞ KHÓA sổ hoạt động tháng ${monthFormatted}! Quản trị viên có thể chỉnh sửa lại.`, 'info');
+  } else {
+    if (!confirm(`XÁC NHẬN CHỐT SỔ CUỐI THÁNG ${monthFormatted}?\n\nSau khi chốt sổ cuối tháng:\n• Toàn bộ các buổi hoạt động trong tháng ${monthFormatted} sẽ ĐƯỢC KHÓA hoàn toàn.\n• Không thể tạo thêm buổi hoạt động mới hoặc chỉnh sửa các buổi cũ trong tháng này.`)) {
+      return;
+    }
+    AppState.closedMonths.push(monthKey);
+    saveData();
+    updateMonthLockBtnUI();
+    renderSessionFinalizedBanner();
+    showToast(`🔒 Đã CHỐT SỔ CUỐI THÁNG ${monthFormatted}! Các buổi hoạt động trong tháng đã được khóa an toàn.`, 'success');
+  }
+}
+
+function toggleCurrentMonthSettlementLock() {
+  const monthInput = document.getElementById('settlementReportMonth');
+  let monthKey = '';
+  if (monthInput && monthInput.value) {
+    monthKey = monthInput.value;
+  } else {
+    const d = new Date();
+    monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  toggleMonthCloseStatus(monthKey);
+}
+
+function updateMonthLockBtnUI() {
+  const monthInput = document.getElementById('settlementReportMonth');
+  let monthKey = '';
+  if (monthInput && monthInput.value) {
+    monthKey = monthInput.value;
+  } else {
+    const d = new Date();
+    monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const btn = document.getElementById('btnToggleMonthLock');
+  const icon = document.getElementById('btnMonthLockIcon');
+  const text = document.getElementById('btnMonthLockText');
+  if (!btn) return;
+
+  const isClosed = isMonthClosed(monthKey);
+  const monthFormatted = monthKey.split('-').reverse().join('/');
+
+  if (isClosed) {
+    if (icon) icon.textContent = '🔓';
+    if (text) text.textContent = `Mở khóa tháng ${monthFormatted}`;
+    btn.className = 'px-2.5 py-1.5 text-xs font-bold rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 transition cursor-pointer flex items-center gap-1 shadow-2xs';
+    btn.title = `Tháng ${monthFormatted} đang bị KHÓA. Nhấn để mở khóa nếu cần sửa.`;
+  } else {
+    if (icon) icon.textContent = '🔒';
+    if (text) text.textContent = `Chốt sổ tháng ${monthFormatted}`;
+    btn.className = 'px-2.5 py-1.5 text-xs font-bold rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 transition cursor-pointer flex items-center gap-1 shadow-2xs';
+    btn.title = `Chốt sổ cuối tháng để khóa quyền sửa các buổi hoạt động trong tháng ${monthFormatted}`;
+  }
+}
+
+function loadSessionIntoAttendance(ses, startInEditMode = false) {
+  if (!ses) return;
+  activityState.date = ses.date;
+  activityState.type = ses.title || 'Buổi cầu';
+  activityState.dailyBoxPrice = ses.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
+  activityState.selectedMemberIds = new Set((ses.members || []).map(m => m.id));
+  activityState.selectedGuestIds = new Set((ses.guests || []).map(g => g.id));
+  if (ses.expenses && ses.expenses.length > 0) {
+    activityState.expenses = JSON.parse(JSON.stringify(ses.expenses));
+  } else {
+    const boxPrice = activityState.dailyBoxPrice;
+    const count = AppState.config?.shuttlecocksPerBox || 12;
+    const unitPrice = count > 0 ? Math.round(boxPrice / count) : 28333;
+    const shuttleTotal = ses.shuttleTotal || 0;
+    const qty = unitPrice > 0 ? Math.round(shuttleTotal / unitPrice) : 12;
+    activityState.expenses = [
+      { id: 1, title: 'Tiền cầu', qty: qty || 12, unitPrice: unitPrice, amount: shuttleTotal, isCombo: false, isShuttleRow: true }
+    ];
+  }
+  if (ses.matches) {
+    activityState.matches = JSON.parse(JSON.stringify(ses.matches));
+  } else {
+    activityState.matches = [];
+  }
+  activityState.temporaryAttendanceSaved = false;
+  activityState.savedAttendanceTime = null;
+  activityState.isEditingAttendance = false;
+
+  if (startInEditMode) {
+    activityState.isEditingFinalizedSession = true;
+    activityState.editingSessionId = ses.id;
+  } else {
+    activityState.isEditingFinalizedSession = false;
+    activityState.editingSessionId = null;
+  }
+
+  saveActivitySessionState();
+  switchTab('attendance');
+  renderAttendanceTab();
+}
+
+function loadSessionIntoEditMode(sessionId) {
+  const ses = (AppState.activitySessions || []).find(s => s.id === sessionId);
+  if (!ses) {
+    showToast('⚠️ Không tìm thấy buổi hoạt động này!', 'error');
+    return;
+  }
+  if (isMonthClosed(ses.date)) {
+    showToast(`🔒 Tháng ${ses.date.slice(0, 7)} đã chốt sổ cuối tháng! Không thể chỉnh sửa buổi hoạt động này.`, 'error');
+    return;
+  }
+  if (!isAttendanceManager()) {
+    showToast('⚠️ Chỉ Ban Quản lý mới có quyền chỉnh sửa buổi hoạt động đã chốt!', 'warning');
+    return;
+  }
+
+  closeModal('activitySessionDetailModal');
+  closeModal('activityHistoryModal');
+  closeModal('createActivityModal');
+
+  loadSessionIntoAttendance(ses, true);
+  const formattedDate = ses.date.split('-').reverse().join('/');
+  showToast(`✏️ Đã mở chế độ Chỉnh Sửa buổi hoạt động ngày ${formattedDate}! Sau khi cập nhật, nhấn "Cập nhật & Chốt lại".`, 'info');
+}
+
+function cancelSessionEditMode() {
+  activityState.isEditingFinalizedSession = false;
+  activityState.editingSessionId = null;
+  saveActivitySessionState();
+  renderAttendanceTab();
+  showToast('Đã thoát chế độ chỉnh sửa buổi hoạt động.', 'info');
+}
+
+function renderSessionFinalizedBanner() {
+  const banner = document.getElementById('actSessionFinalizedBanner');
+  const btnSaveText = document.getElementById('actBtnSaveText');
+  const btnSave = document.getElementById('actBtnSaveAndSplit');
+  if (!banner) return;
+
+  const currentDate = activityState.date || getTodayInputFormat();
+  const dateFormatted = currentDate.split('-').reverse().join('/');
+  const existingSes = (AppState.activitySessions || []).find(s => s.date === currentDate);
+  const isClosed = isMonthClosed(currentDate);
+
+  if (isClosed) {
+    banner.innerHTML = `
+      <div class="mb-3 p-3 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🔒</span>
+          <div>
+            <div class="text-xs font-black text-rose-800">THÁNG NÀY ĐÃ CHỐT SỔ CUỐI THÁNG</div>
+            <div class="text-[11px] text-rose-600">Buổi ngày ${dateFormatted} đã khóa an toàn. Không thể chỉnh sửa hoặc chia lại tiền.</div>
+          </div>
+        </div>
+        ${isAttendanceManager() ? `
+          <button type="button" onclick="openSettlementReportModal()" class="px-2.5 py-1.5 bg-white border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer">
+            Xem báo cáo tháng
+          </button>
+        ` : ''}
+      </div>
+    `;
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (btnSaveText) {
+      btnSaveText.textContent = '🔒 Tháng đã chốt sổ (Đã khóa)';
+    }
+    return;
+  }
+
+  if (btnSave) {
+    btnSave.disabled = false;
+    btnSave.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+
+  if (activityState.isEditingFinalizedSession && existingSes) {
+    if (btnSaveText) {
+      btnSaveText.textContent = '💾 Cập Nhật & Chốt Lại Hoạt Động';
+    }
+    banner.innerHTML = `
+      <div class="mb-3 p-3 bg-amber-50 border-2 border-amber-400 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">✏️</span>
+          <div>
+            <div class="text-xs font-black text-amber-900 flex items-center gap-1.5">
+              <span>ĐANG CHỈNH SỬA BUỔI HOẠT ĐỘNG NGÀY ${dateFormatted}</span>
+              <span class="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px] font-bold">Chế độ Quản trị</span>
+            </div>
+            <div class="text-[11px] text-amber-800 mt-0.5">
+              Bạn có thể sửa danh sách có mặt, tiền cầu hoặc thu khách. Khi bấm <b>"Cập nhật & Chốt lại"</b>, các khoản trừ ví và nhật ký cũ sẽ được hoàn tác sạch sẽ và thay thế theo dữ liệu mới.
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="cancelSessionEditMode()" class="px-2.5 py-1.5 bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer shadow-2xs">
+          ✕ Hủy sửa
+        </button>
+      </div>
+    `;
+  } else if (existingSes) {
+    if (btnSaveText) {
+      btnSaveText.textContent = isAttendanceManager() ? '✏️ Mở Chỉnh Sửa Buổi Này' : '✓ Buổi Này Đã Chốt Sổ';
+    }
+    banner.innerHTML = `
+      <div class="mb-3 p-3 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">✅</span>
+          <div>
+            <div class="text-xs font-black text-emerald-900">
+              BUỔI HOẠT ĐỘNG NGÀY ${dateFormatted} ĐÃ ĐƯỢC CHỐT SỔ
+            </div>
+            <div class="text-[11px] text-emerald-700 mt-0.5">
+              Đã chốt: <b>${existingSes.attendeeCount || (existingSes.members ? existingSes.members.length : 0)} người</b> • Tiền cầu: <b>${formatMoney(existingSes.shuttleTotal || 0)}</b> • Mỗi TV: <b>${formatMoney(existingSes.shuttleFeePerMember || 0)}</b>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="openActivitySessionDetailModal('${existingSes.id}')" class="px-2.5 py-1.5 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+            Chi tiết
+          </button>
+          ${isAttendanceManager() ? `
+            <button type="button" onclick="loadSessionIntoEditMode('${existingSes.id}')" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
+              <span>✏️</span> <span>Sửa</span>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  } else {
+    banner.innerHTML = '';
+    if (btnSaveText) {
+      btnSaveText.textContent = '💾 Lưu & Chia Tiền Buổi Cầu';
+    }
+  }
 }
 
 // ==========================================
@@ -2018,10 +2306,24 @@ function saveAttendanceCutoffTimeConfig() {
 function openTodayActivitySession(askResetIfToday = false) {
   switchTab('attendance');
   const today = getTodayInputFormat();
+  const existingTodaySes = (AppState.activitySessions || []).find(s => s.date === today);
+
+  if (existingTodaySes) {
+    loadSessionIntoAttendance(existingTodaySes, false);
+    if (isAttendanceManager()) {
+      showToast(`🏸 Buổi hôm nay (${getFormattedCurrentDate()}) đã chốt sổ. Bạn có thể xem hoặc bấm Sửa để cập nhật.`, 'info');
+    } else {
+      showToast(`🏸 Buổi hôm nay (${getFormattedCurrentDate()}) đã được chốt sổ!`, 'info');
+    }
+    return;
+  }
+
   const isAlreadyToday = (activityState.date === today);
 
   if (!isAlreadyToday) {
     activityState.date = today;
+    activityState.isEditingFinalizedSession = false;
+    activityState.editingSessionId = null;
     const dateInput = document.getElementById('actDateInput');
     if (dateInput) dateInput.value = today;
     saveActivitySessionState();
@@ -2032,6 +2334,8 @@ function openTodayActivitySession(askResetIfToday = false) {
     if (confirm(confirmMsg)) {
       initActivitySessionData(true);
       activityState.date = today;
+      activityState.isEditingFinalizedSession = false;
+      activityState.editingSessionId = null;
       activityState.selectedMemberIds = new Set();
       activityState.selectedGuestIds = new Set();
       activityState.matches = [];
@@ -2121,6 +2425,29 @@ function submitCreateActivitySession(e) {
   const boxInp = document.getElementById('newActDailyBoxPrice');
 
   const chosenDate = dateInput?.value || getTodayInputFormat();
+  const formattedDate = chosenDate.split('-').reverse().join('/');
+
+  // 1. Kiểm tra tháng đã chốt sổ cuối tháng chưa
+  if (isMonthClosed(chosenDate)) {
+    alert(`⚠️ Tháng ${chosenDate.slice(0, 7)} đã CHỐT SỔ CUỐI THÁNG!\nKhông thể tạo buổi hoạt động mới trong tháng đã chốt.`);
+    return;
+  }
+
+  // 2. Kiểm tra quy tắc: Mỗi ngày chỉ được tạo 1 hoạt động
+  const existingSes = (AppState.activitySessions || []).find(s => s.date === chosenDate);
+  if (existingSes) {
+    const confirmEdit = confirm(
+      `⚠️ QUY TẮC: MỖI NGÀY CHỈ ĐƯỢC TẠO 1 BUỔI HOẠT ĐỘNG!\n\n` +
+      `Ngày ${formattedDate} đã có một buổi hoạt động được chốt (${existingSes.title || 'Buổi cầu'}, ${existingSes.attendeeCount || 0} người).\n\n` +
+      `Bạn có muốn MỞ CHỈNH SỬA buổi hoạt động ngày ${formattedDate} để cập nhật lại không?`
+    );
+    if (confirmEdit) {
+      closeModal('createActivityModal');
+      loadSessionIntoEditMode(existingSes.id);
+    }
+    return;
+  }
+
   const chosenType = typeSelect?.value || 'Buổi cầu';
   const shouldReset = resetCheck ? resetCheck.checked : true;
   const chosenBoxPrice = boxInp ? (Number(boxInp.value) || 340000) : (AppState.config?.dailyBoxPrice || 340000);
@@ -2133,6 +2460,9 @@ function submitCreateActivitySession(e) {
   activityState.date = chosenDate;
   activityState.type = chosenType;
   activityState.dailyBoxPrice = chosenBoxPrice;
+  activityState.isEditingFinalizedSession = false;
+  activityState.editingSessionId = null;
+
   if (activityState.expenses && activityState.expenses.length > 0) {
     const exp = activityState.expenses.find(e => e.isShuttleRow) || activityState.expenses[0];
     if (exp) {
@@ -2156,7 +2486,6 @@ function submitCreateActivitySession(e) {
   switchTab('attendance');
   renderAttendanceTab();
 
-  const formattedDate = chosenDate.split('-').reverse().join('/');
   showToast(`✓ Đã tạo buổi hoạt động ngày ${formattedDate} (${chosenType}) với đơn giá hộp: ${formatMoney(chosenBoxPrice)} (1 quả = ${formatMoney(unitPrice)})!`, 'success');
 }
 
@@ -2518,6 +2847,7 @@ function renderAttendanceTab() {
 
   renderAttendanceRoleBanner();
   renderSelfAttendanceBanner();
+  renderSessionFinalizedBanner();
   updateDailyRatePresetBadgeUI();
   updateShuttleBillingUI();
 
@@ -3246,10 +3576,20 @@ function onTipAmountChanged(val) {
 }
 
 function onActivityDateChanged(val) {
+  const existingSes = (AppState.activitySessions || []).find(s => s.date === val);
+  if (existingSes) {
+    loadSessionIntoAttendance(existingSes, false);
+    const dateFormatted = val.split('-').reverse().join('/');
+    showToast(`ℹ️ Ngày ${dateFormatted} đã có buổi hoạt động được chốt. Đã tải thông tin!`, 'info');
+    return;
+  }
   activityState.date = val;
+  activityState.isEditingFinalizedSession = false;
+  activityState.editingSessionId = null;
   saveActivitySessionState();
   renderSelfAttendanceBanner();
   renderActivityMemberChips();
+  renderSessionFinalizedBanner();
 }
 
 function onActivityTypeChanged(val) {
@@ -4199,15 +4539,37 @@ function saveAndSplitActivitySession() {
     return;
   }
 
+  const dateStr = activityState.date || getTodayInputFormat();
+  const dateFormatted = dateStr.split('-').reverse().join('/');
+  const nowTime = getNowTimestampString();
+
+  // 1. Kiểm tra tháng đã chốt sổ cuối tháng chưa
+  if (isMonthClosed(dateStr)) {
+    alert(`⚠️ Tháng ${dateStr.slice(0, 7)} đã CHỐT SỔ CUỐI THÁNG!\nKhông thể chỉnh sửa hoặc lưu hoạt động trong tháng này.`);
+    return;
+  }
+
+  // 2. Kiểm tra quy tắc 1 hoạt động / ngày & xử lý Chế độ Chỉnh sửa
+  if (!AppState.activitySessions) AppState.activitySessions = [];
+  const existingSesIndex = AppState.activitySessions.findIndex(s => s.date === dateStr);
+  const existingSes = existingSesIndex !== -1 ? AppState.activitySessions[existingSesIndex] : null;
+
+  if (existingSes && !activityState.isEditingFinalizedSession) {
+    const confirmEdit = confirm(
+      `⚠️ QUY TẮC: MỖI NGÀY CHỈ ĐƯỢC CÓ 1 HOẠT ĐỘNG!\n\n` +
+      `Buổi hoạt động ngày ${dateFormatted} đã được chốt sổ trước đó (${existingSes.attendeeCount || 0} người).\n\n` +
+      `Bạn có muốn MỞ CHẾ ĐỘ CHỈNH SỬA để cập nhật lại buổi hoạt động ngày ${dateFormatted} không?`
+    );
+    if (confirmEdit) {
+      loadSessionIntoEditMode(existingSes.id);
+    }
+    return;
+  }
+
   let shuttleTotal = 0;
   (activityState.expenses || []).forEach(e => {
     const amt = Number(e.amount) || 0;
-    const title = (e.title || '').toLowerCase();
-    if (e.isShuttleRow || title.includes('cầu')) {
-      shuttleTotal += amt;
-    } else {
-      shuttleTotal += amt;
-    }
+    shuttleTotal += amt;
   });
 
   let guestPaid = 0;
@@ -4223,37 +4585,76 @@ function saveAndSplitActivitySession() {
   const needSplit = Math.max(0, shuttleTotal - guestPaid);
   const shuttleFeePerMember = memberCount > 0 ? Math.round(needSplit / memberCount) : 0;
   const totalMemberShuttleFee = shuttleFeePerMember * memberCount;
-  const totalMemberCourtFee = 0; // Không tính tiền sân trong buổi hoạt động
+  const totalMemberCourtFee = 0;
 
-  const dateStr = activityState.date || getTodayInputFormat();
-  const dateFormatted = dateStr.split('-').reverse().join('/');
-  const nowTime = getNowTimestampString();
-
-  const confirmMsg = `Xác nhận lưu buổi hoạt động ngày ${dateFormatted}?\n` +
+  const isEditing = !!activityState.isEditingFinalizedSession;
+  const confirmTitle = isEditing ? `[CHẾ ĐỘ SỬA] Xác nhận CẬP NHẬT & CHỐT LẠI buổi hoạt động ngày ${dateFormatted}?` : `Xác nhận lưu buổi hoạt động ngày ${dateFormatted}?`;
+  const confirmMsg = `${confirmTitle}\n` +
     `• Tổng tiền cầu: ${formatMoney(shuttleTotal)}\n` +
     `• Thu khách giao lưu: -${formatMoney(guestPaid)} (${guestCount} khách)\n` +
     `• Còn lại chia đều TV: ${formatMoney(needSplit)} (${formatMoney(shuttleFeePerMember)}/người × ${memberCount} TV)\n` +
-    `• Hệ thống trừ tiền cầu trực tiếp vào Ví TV (cho phép dư nợ ví âm) và cộng vào Quỹ Tạm Ứng Cầu.`;
+    (isEditing ? `• HỆ THỐNG SẼ HOÀN TÁC TOÀN BỘ SỐ TIỀN VÀ SỐ BUỔI CŨ CỦA NGÀY ${dateFormatted}, sau đó trừ ví và cập nhật lại theo số liệu mới.` : `• Hệ thống trừ tiền cầu trực tiếp vào Ví TV (cho phép dư nợ ví âm) và cộng vào Quỹ Tạm Ứng Cầu.`);
 
   if (!confirm(confirmMsg)) return;
+
+  // Xác định ID phiên
+  let targetSessionId = (isEditing && existingSes) ? existingSes.id : ('SES_' + Date.now());
+
+  // NẾU ĐANG CHỈNH SỬA: HOÀN TÁC TOÀN BỘ DỮ LIỆU CŨ CỦA BUỔI TRƯỚC KHI ÁP DỤNG DỮ LIỆU MỚI
+  if (isEditing && existingSes) {
+    // A. Hoàn lại số dư ví và giảm số buổi của các thành viên cũ trong buổi
+    (existingSes.members || []).forEach(mOld => {
+      const mem = (AppState.members || []).find(m => m.id === mOld.id);
+      if (mem) {
+        const oldFee = mOld.fee !== undefined ? mOld.fee : (existingSes.shuttleFeePerMember || 0);
+        mem.balance = (mem.balance || 0) + oldFee; // Hoàn tiền cũ về ví
+        mem.monthlySessions = Math.max(0, (mem.monthlySessions || 1) - 1);
+      }
+    });
+
+    // B. Giảm số buổi của khách cũ
+    (existingSes.guests || []).forEach(gOld => {
+      const guest = (AppState.members || []).find(m => m.id === gOld.id);
+      if (guest) {
+        guest.monthlySessions = Math.max(0, (guest.monthlySessions || 1) - 1);
+      }
+    });
+
+    // C. Xóa các giao dịch cũ liên quan đến buổi hoạt động này
+    AppState.transactions = (AppState.transactions || []).filter(tx => {
+      if (tx.sessionId && tx.sessionId === targetSessionId) return false;
+      if (tx.date && (tx.date.includes(dateFormatted) || tx.date.startsWith(dateStr))) {
+        if (tx.type === 'SHUTTLE_FEE' || tx.subType === 'SHUTTLE_ADV_IN' || tx.subType === 'GUEST_ADV_IN' || tx.categoryGroup === 'ADVANCE_SHUTTLE_IN' || tx.categoryGroup === 'ADVANCE_GUEST_IN') {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // D. Xóa nhật ký điểm danh cũ của buổi hoạt động này
+    AppState.attendanceRecords = (AppState.attendanceRecords || []).filter(att => {
+      if (att.sessionId && att.sessionId === targetSessionId) return false;
+      if (att.date === dateStr) return false;
+      return true;
+    });
+  }
 
   // 1. Trừ tiền ví (CHỈ TRỪ TIỀN CẦU) và tăng số buổi tháng cho từng thành viên tham gia (Hỗ trợ số dư âm)
   let negativeCount = 0;
   (activityState.selectedMemberIds || new Set()).forEach(id => {
     const member = AppState.members.find(m => m.id === id);
     if (member) {
-      const totalDeduct = shuttleFeePerMember; // Chỉ tính tiền cầu sau khi trừ khách
+      const totalDeduct = shuttleFeePerMember;
 
-      // Cho phép ví thành viên dư nợ / âm số dư
       member.balance = (member.balance || 0) - totalDeduct;
       if (member.balance < 0) negativeCount++;
 
       member.monthlySessions = (member.monthlySessions || 0) + 1;
-      const tierName = getTierNameForSession(member.monthlySessions);
 
       // Ghi lịch sử giao dịch trừ ví
       AppState.transactions.push({
         id: 'TX_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        sessionId: targetSessionId,
         date: nowTime,
         type: 'SHUTTLE_FEE',
         categoryGroup: 'ADVANCE_SHUTTLE_IN',
@@ -4271,6 +4672,7 @@ function saveAndSplitActivitySession() {
       // Nhật ký điểm danh
       AppState.attendanceRecords.push({
         id: 'ATT_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        sessionId: targetSessionId,
         date: dateStr,
         memberId: member.id,
         memberName: member.name,
@@ -4291,11 +4693,11 @@ function saveAndSplitActivitySession() {
     }
   });
 
-  // 3. Ghi Sổ Quỹ Tạm Ứng (Tạm ứng tiền cầu + Thu khách theo hạng, KHÔNG ghi tiền sân)
-  // A. Tạm ứng tiền cầu: Trừ ví TV -> Cộng vào Quỹ tạm ứng tiền cầu
+  // 3. Ghi Sổ Quỹ Tạm Ứng (Tạm ứng tiền cầu + Thu khách theo hạng)
   if (totalMemberShuttleFee > 0) {
     AppState.transactions.push({
       id: 'TX_' + Date.now() + '_SHUTTLE',
+      sessionId: targetSessionId,
       date: nowTime,
       categoryGroup: 'ADVANCE_SHUTTLE_IN',
       subType: 'SHUTTLE_ADV_IN',
@@ -4309,27 +4711,10 @@ function saveAndSplitActivitySession() {
     });
   }
 
-  // B. Tạm ứng tiền sân: Trừ ví TV theo bậc -> Cộng vào Quỹ tạm ứng tiền sân
-  if (totalMemberCourtFee > 0) {
-    AppState.transactions.push({
-      id: 'TX_' + Date.now() + '_COURT',
-      date: nowTime,
-      categoryGroup: 'ADVANCE_COURT_IN',
-      subType: 'COURT_ADV_IN',
-      categoryName: 'Tạm ứng tiền sân',
-      amount: totalMemberCourtFee,
-      walletImpact: -totalMemberCourtFee,
-      fundImpact: totalMemberCourtFee,
-      targetName: 'Quỹ Tạm Ứng Tiền Sân',
-      description: `Thu tạm ứng tiền sân ${memberCount} thành viên theo bậc số buổi ngày ${dateFormatted}`,
-      operator: (AppState.auth && AppState.auth.user) ? AppState.auth.user.username : 'admin'
-    });
-  }
-
-  // C. Khoản thu của khách giao lưu theo hạng -> Cộng vào Quỹ tạm ứng
   if (guestPaid > 0) {
     AppState.transactions.push({
       id: 'TX_' + Date.now() + '_GUEST',
+      sessionId: targetSessionId,
       date: nowTime,
       categoryGroup: 'ADVANCE_GUEST_IN',
       subType: 'GUEST_ADV_IN',
@@ -4349,6 +4734,7 @@ function saveAndSplitActivitySession() {
     const frontName = frontPerson ? frontPerson.name : 'Người ứng tiền';
     AppState.transactions.push({
       id: 'TX_' + Date.now() + '_FRONT',
+      sessionId: targetSessionId,
       date: nowTime,
       type: 'ADVANCE',
       categoryGroup: 'ADVANCE',
@@ -4363,8 +4749,7 @@ function saveAndSplitActivitySession() {
     });
   }
 
-  // 5. Lưu phiên hoạt động vào AppState.activitySessions
-  if (!AppState.activitySessions) AppState.activitySessions = [];
+  // 5. Lưu hoặc cập nhật phiên hoạt động trong AppState.activitySessions
   const sessionMembers = [];
   (activityState.selectedMemberIds || new Set()).forEach(id => {
     const m = AppState.members.find(x => x.id === id);
@@ -4389,10 +4774,10 @@ function saveAndSplitActivitySession() {
     }
   });
 
-  const newActivitySession = {
-    id: 'SES_' + Date.now(),
+  const sessionData = {
+    id: targetSessionId,
     date: dateStr,
-    title: 'Buổi cầu',
+    title: activityState.type || 'Buổi cầu',
     attendeeCount: memberCount + guestCount,
     memberCount: memberCount,
     guestCount: guestCount,
@@ -4401,21 +4786,35 @@ function saveAndSplitActivitySession() {
     courtFee: totalMemberCourtFee || 0,
     guestPaid: guestPaid,
     needSplit: needSplit,
+    dailyBoxPrice: activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000,
+    expenses: activityState.expenses ? JSON.parse(JSON.stringify(activityState.expenses)) : [],
+    matches: activityState.matches ? JSON.parse(JSON.stringify(activityState.matches)) : [],
     members: sessionMembers,
     guests: sessionGuests,
-    timestamp: nowTime
+    timestamp: nowTime,
+    isEdited: isEditing,
+    lastEditedAt: isEditing ? nowTime : null
   };
-  AppState.activitySessions.unshift(newActivitySession);
+
+  if (isEditing && existingSesIndex !== -1) {
+    AppState.activitySessions[existingSesIndex] = sessionData;
+  } else {
+    AppState.activitySessions.unshift(sessionData);
+  }
 
   // Cập nhật lại toàn bộ chỉ số quỹ tạm ứng và quỹ CLB
   calculateAdvanceFundStats();
   saveData();
 
-  // Dọn sạch phiên tạm thời để bắt đầu buổi mới
+  // Dọn sạch trạng thái chỉnh sửa
+  activityState.isEditingFinalizedSession = false;
+  activityState.editingSessionId = null;
   clearActivitySessionState();
   initActivitySessionData(true);
 
-  let successMsg = `Đã lưu và trừ ví thành công ${memberCount} thành viên! (Cầu: +${formatMoney(totalMemberShuttleFee)}, Sân: +${formatMoney(totalMemberCourtFee)}, Khách: +${formatMoney(guestPaid)}).`;
+  let successMsg = isEditing
+    ? `✓ Đã CẬP NHẬT & CHỐT LẠI thành công buổi hoạt động ngày ${dateFormatted}! (${memberCount} TV, mỗi TV: ${formatMoney(shuttleFeePerMember)})`
+    : `Đã lưu và trừ ví thành công ${memberCount} thành viên! (Cầu: +${formatMoney(totalMemberShuttleFee)}, Khách: +${formatMoney(guestPaid)}).`;
   if (negativeCount > 0) successMsg += ` Có ${negativeCount} thành viên đang có số dư âm (dư nợ).`;
   showToast(successMsg, 'success');
 
@@ -12864,6 +13263,9 @@ function renderSettlementReport() {
   setElText('repWalletDeducted', formatNumberDot(data.kpi ? data.kpi.walletDeducted : 1800000));
   setElText('repWalletRemaining', formatNumberDot(data.kpi ? data.kpi.walletRemaining : (grandTotalCollected - 1800000 - grandTotalFine)));
   setElText('repWalletEndMonthBal', formatNumberDot(data.kpi ? data.kpi.walletEndMonthBal : 0));
+
+  // Cập nhật trạng thái nút Khóa / Mở khóa Chốt sổ cuối tháng
+  updateMonthLockBtnUI();
 }
 
 function formatNumberDot(num) {
