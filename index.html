@@ -2646,7 +2646,7 @@
           <!-- Thống kê tổng số lượng tài khoản theo vai trò -->
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center text-xs">
             <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
-              <span class="text-[10px] text-amber-800 uppercase font-black block">👑 Chủ Nhiệm</span>
+              <span class="text-[10px] text-amber-800 uppercase font-black block">👑 Quản Lý</span>
               <b id="accessStatAdmin" class="text-sm font-black text-amber-950">1</b>
               <span class="text-[10px] text-amber-700 block">Toàn quyền</span>
             </div>
@@ -2684,7 +2684,7 @@
                 Tất cả (<span id="filterCountAll">0</span>)
               </button>
               <button type="button" onclick="setUserAccessRoleFilter('ADMIN')" id="btnAccessFilter-ADMIN" class="px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
-                👑 Chủ nhiệm
+                👑 Quản lý
               </button>
               <button type="button" onclick="setUserAccessRoleFilter('VICE_ADMIN')" id="btnAccessFilter-VICE_ADMIN" class="px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
                 🛡️ Phó nhóm
@@ -3179,7 +3179,7 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Người phụ trách / Người nộp / Nhận:</label>
-          <input type="text" id="fundParty" placeholder="VD: Ban chủ nhiệm / Thủ quỹ" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
+          <input type="text" id="fundParty" placeholder="VD: Ban quản lý / Thủ quỹ" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
         </div>
 
         <div class="pt-2 flex gap-3">
@@ -4233,7 +4233,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Đại diện đi thăm / Trao:</label>
-            <input type="text" id="memberExpenseRepresentative" placeholder="VD: Ban chủ nhiệm CLB" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
+            <input type="text" id="memberExpenseRepresentative" placeholder="VD: Ban quản lý CLB" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
           </div>
         </div>
 
@@ -4549,7 +4549,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button type="button" onclick="applyRolePreset('ADMIN')" id="btnPreset-ADMIN" class="p-2 rounded-xl border text-left font-bold transition cursor-pointer flex flex-col justify-between hover:border-amber-400 bg-amber-50 text-amber-950 border-amber-300">
                 <div class="flex items-center justify-between">
-                  <span>👑 Chủ nhiệm</span>
+                  <span>👑 Quản lý</span>
                   <span class="text-[9px] px-1 bg-amber-200 rounded font-black">All</span>
                 </div>
                 <span class="text-[10px] text-amber-800 font-normal mt-0.5">Toàn quyền hệ thống</span>
@@ -4693,7 +4693,7 @@
               <span>Tạo Tài Khoản Câu Lạc Bộ Mới</span>
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-emerald-950 uppercase tracking-wider">Multi-Club</span>
             </h3>
-            <p class="text-xs text-emerald-100 font-medium">Khởi tạo CLB mới với quỹ tài chính, danh sách hội viên & tài khoản Chủ nhiệm độc lập</p>
+            <p class="text-xs text-emerald-100 font-medium">Khởi tạo CLB mới với quỹ tài chính, danh sách hội viên & tài khoản Quản lý độc lập</p>
           </div>
         </div>
         <button type="button" onclick="closeModal('modalCreateNewClub')" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer">✕</button>
@@ -4775,19 +4775,19 @@
             </div>
           </div>
 
-          <!-- 2. TÀI KHOẢN CHỦ NHIỆM / QUẢN TRỊ VIÊN (ADMIN ACCOUNT) -->
+          <!-- 2. TÀI KHOẢN QUẢN LÝ / QUẢN TRỊ VIÊN (ADMIN ACCOUNT) -->
           <div class="bg-gradient-to-br from-amber-50/60 to-slate-50 p-4 rounded-2xl border border-amber-200 space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-amber-200/80">
               <h4 class="font-bold text-amber-900 flex items-center gap-1.5 text-xs uppercase tracking-wide">
                 <span>2.</span>
-                <span>Tài Khoản Chủ Nhiệm / Sáng Lập CLB (Toàn Quyền Quản Trị)</span>
+                <span>Tài Khoản Quản Lý / Sáng Lập CLB (Toàn Quyền Quản Trị)</span>
               </h4>
-              <span class="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">👑 Chủ Nhiệm (ADMIN)</span>
+              <span class="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">👑 Quản Lý (ADMIN)</span>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block font-bold text-slate-700 mb-1">Họ và tên Chủ nhiệm (*):</label>
+                <label class="block font-bold text-slate-700 mb-1">Họ và tên Quản lý (*):</label>
                 <input type="text" id="newClubAdminName" placeholder="VD: Nguyễn Hoàng Long" oninput="autoSuggestClubAdminUsername(this.value); clearClubInputError(this)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
 
@@ -4848,7 +4848,7 @@
                 <input type="radio" name="newClubInitMode" value="FRESH" checked class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
                 <div>
                   <span class="font-bold text-slate-900 block text-xs">🌱 Bắt đầu hoàn toàn mới - Dữ liệu thực tế CLB (Khuyên dùng)</span>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Chỉ có duy nhất tài khoản Chủ nhiệm bạn vừa tạo, hoàn toàn không hiển thị dữ liệu mẫu của nhà phát triển. Danh sách hội viên sẵn sàng để bạn tự thêm hoặc dán từ Zalo.</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Chỉ có duy nhất tài khoản Quản lý bạn vừa tạo, hoàn toàn không hiển thị dữ liệu mẫu của nhà phát triển. Danh sách hội viên sẵn sàng để bạn tự thêm hoặc dán từ Zalo.</p>
                 </div>
               </label>
 
@@ -5290,7 +5290,7 @@ const firebaseConfig = {
             <h3 class="text-base font-black tracking-tight text-white flex items-center gap-2">
               <span>Đăng Nhập Tài Khoản</span>
             </h3>
-            <p class="text-xs text-indigo-100 font-medium">Hội viên • Ban Chủ Nhiệm • Admin Nhà Phát Triển</p>
+            <p class="text-xs text-indigo-100 font-medium">Hội viên • Ban Quản Lý • Admin Nhà Phát Triển</p>
           </div>
         </div>
         <button type="button" onclick="closeModal('loginModal')" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer">✕</button>
@@ -5331,7 +5331,7 @@ const firebaseConfig = {
             </button>
 
             <button type="button" onclick="fillQuickLogin('chinh', '123')" class="p-2.5 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition cursor-pointer shadow-2xs">
-              <span class="font-extrabold text-amber-900 text-xs flex items-center gap-1">👑 Chủ nhiệm CLB</span>
+              <span class="font-extrabold text-amber-900 text-xs flex items-center gap-1">👑 Quản lý CLB</span>
               <span class="text-[10px] text-slate-500 block font-mono">chinh / 123</span>
               <span class="text-[9px] text-amber-700 font-bold mt-0.5 block">Quản lý quỹ & điểm danh</span>
             </button>

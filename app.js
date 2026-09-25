@@ -131,7 +131,7 @@ function initSecondClubDataIfMissing() {
             id: 'M001',
             username: 'long_admin',
             role: 'ADMIN',
-            name: 'Nguyễn Hoàng Long (Chủ nhiệm)',
+            name: 'Nguyễn Hoàng Long (Quản lý)',
             permissions: getRoleDefaultPermissions('ADMIN')
           }
         }
@@ -255,7 +255,7 @@ function getActiveClubId() {
       bankInfo: existingData?.config?.bankInfo || '',
       createdAt: getFormattedCurrentDate(),
       storageKey: storageKey,
-      adminName: existingData?.auth?.user?.name?.replace(/\s*\(Chủ nhiệm\)/i, '') || 'Chủ nhiệm CLB',
+      adminName: existingData?.auth?.user?.name?.replace(/\s*\((?:Chủ nhiệm|Quản lý)\)/i, '') || 'Quản lý CLB',
       adminUsername: existingData?.auth?.user?.username || 'admin',
       phone: '',
       isDeveloperSample: false
@@ -334,7 +334,7 @@ let STORAGE_KEY = getCurrentClubStorageKey();
 // ==========================================
 const ROLE_DEFINITIONS = {
   DEV_ADMIN: { label: 'Admin Nhà Phát Triển', icon: '🚀', color: 'purple', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300' },
-  ADMIN: { label: 'Chủ nhiệm', icon: '👑', color: 'amber', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300' },
+  ADMIN: { label: 'Quản lý', icon: '👑', color: 'amber', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300' },
   VICE_ADMIN: { label: 'Phó nhóm', icon: '🛡️', color: 'blue', badgeClass: 'bg-blue-100 text-blue-900 border-blue-300' },
   TREASURER: { label: 'Thủ quỹ', icon: '💰', color: 'emerald', badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
   REFEREE: { label: 'Trọng tài', icon: '⚖️', color: 'purple', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300' },
@@ -384,7 +384,7 @@ function generateAutoUsername(name) {
 
 function getBlankClubInitialData(club) {
   const c = club || {};
-  const adminName = c.adminName || 'Chủ nhiệm CLB';
+  const adminName = c.adminName || 'Quản lý CLB';
   const adminUsername = c.adminUsername || generateAutoUsername(adminName) || 'admin';
   const adminPhone = c.phone || '';
   const adminChipName = adminName.trim().split(/\s+/).pop().toUpperCase();
@@ -476,7 +476,7 @@ function getBlankClubInitialData(club) {
         id: 'M001',
         username: adminUsername,
         role: 'ADMIN',
-        name: `${adminName} (Chủ nhiệm)`,
+        name: `${adminName} (Quản lý)`,
         permissions: getRoleDefaultPermissions('ADMIN')
       }
     }
@@ -541,7 +541,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     courtFee: 0,
     guestPaid: 0,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 37778 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 37778 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 37778 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 37778 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 37778 },
@@ -586,7 +586,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 384000,
     shuttleFeePerMember: 48000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 48000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 48000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 48000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 48000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 48000 },
@@ -606,7 +606,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 450000,
     shuttleFeePerMember: 45000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 45000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 45000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 45000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 45000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 45000 },
@@ -628,7 +628,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 364000,
     shuttleFeePerMember: 52000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 52000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 52000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 52000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 52000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 52000 },
@@ -647,7 +647,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 372000,
     shuttleFeePerMember: 46500,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 46500 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 46500 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 46500 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 46500 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 46500 },
@@ -667,7 +667,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 392000,
     shuttleFeePerMember: 49000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 49000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 49000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 49000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 49000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 49000 },
@@ -687,7 +687,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 400000,
     shuttleFeePerMember: 50000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 50000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 50000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 50000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 50000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 50000 },
@@ -707,7 +707,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 417130,
     shuttleFeePerMember: 59590,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 59590 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 59590 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 59590 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 59590 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 59590 },
@@ -726,7 +726,7 @@ const DEFAULT_ACTIVITY_SESSIONS = [
     shuttleTotal: 360000,
     shuttleFeePerMember: 40000,
     members: [
-      { id: 'M001', name: 'Trần Đức Chính (Chủ nhiệm)', fee: 40000 },
+      { id: 'M001', name: 'Trần Đức Chính (Quản lý)', fee: 40000 },
       { id: 'M002', name: 'Nguyễn Thành Công', fee: 40000 },
       { id: 'M003', name: 'Lê Anh Dũng', fee: 40000 },
       { id: 'M004', name: 'Vũ Văn Duy', fee: 40000 },
@@ -836,7 +836,7 @@ const DEFAULT_INITIAL_DATA = {
     { id: 'G002', name: 'Khách 2', chipName: 'Khách 2', phone: '', type: 'GUEST_C', level: 'C', fee: 50000, username: 'khach2', password: '123', balance: 0, monthlySessions: 1, role: 'MEMBER', status: 'ACTIVE', permissions: getRoleDefaultPermissions('MEMBER') }
   ],
   attendanceRecords: [
-    { id: 'ATT_101', date: '2026-09-15', memberId: 'M001', memberName: 'Nguyễn Văn Tuấn (Chủ nhiệm)', fee: 100000, sessionIndex: 6, timestamp: '15/09/2026 18:30' },
+    { id: 'ATT_101', date: '2026-09-15', memberId: 'M001', memberName: 'Nguyễn Văn Tuấn (Quản lý)', fee: 100000, sessionIndex: 6, timestamp: '15/09/2026 18:30' },
     { id: 'ATT_102', date: '2026-09-15', memberId: 'M002', memberName: 'Trần Minh Hoàng', fee: 50000, sessionIndex: 3, timestamp: '15/09/2026 18:30' },
     { id: 'ATT_103', date: '2026-09-15', memberId: 'M003', memberName: 'Lê Thu Hương', fee: 100000, sessionIndex: 5, timestamp: '15/09/2026 18:30' }
   ],
@@ -860,7 +860,7 @@ const DEFAULT_INITIAL_DATA = {
     // B.1.3 Chi khác (Hoạt động chung)
     { id: 'TX_1009', date: '13/09/2026 16:00', categoryGroup: 'EXPENSE_B', subType: 'EXP_GENERAL_OTHER', categoryName: 'Chi HĐ khác', amount: 680000, targetName: 'Đại lý Cầu Lông', walletImpact: 0, fundImpact: -680000, description: 'Mua 2 hộp cầu Victor Champion No.1 cho CLB', operator: 'admin' },
     // B.2 Chi thành viên (Hiếu / Hỷ / Ốm)
-    { id: 'TX_1010', date: '06/09/2026 10:00', categoryGroup: 'EXPENSE_B', subType: 'EXP_HY', categoryName: 'Chi Hỷ', amount: 1000000, targetName: 'Nguyễn Văn Tuấn (Chủ nhiệm)', memberId: 'M001', walletImpact: 0, fundImpact: -1000000, description: 'Chi mừng cưới thành viên Nguyễn Văn Tuấn (Trừ Quỹ CLB)', operator: 'admin' },
+    { id: 'TX_1010', date: '06/09/2026 10:00', categoryGroup: 'EXPENSE_B', subType: 'EXP_HY', categoryName: 'Chi Hỷ', amount: 1000000, targetName: 'Nguyễn Văn Tuấn (Quản lý)', memberId: 'M001', walletImpact: 0, fundImpact: -1000000, description: 'Chi mừng cưới thành viên Nguyễn Văn Tuấn (Trừ Quỹ CLB)', operator: 'admin' },
     { id: 'TX_1011', date: '14/09/2026 15:00', categoryGroup: 'EXPENSE_B', subType: 'EXP_OM', categoryName: 'Chi Thăm ốm', amount: 500000, targetName: 'Vũ Văn Duy', memberId: 'M004', walletImpact: 0, fundImpact: -500000, description: 'Chi thăm ốm thành viên Vũ Văn Duy (Trừ Quỹ CLB)', operator: 'admin' },
     // Nạp ví thành viên
     { id: 'TX_1012', date: '16/09/2026 09:30', categoryGroup: 'WALLET_TOPUP', subType: 'TOPUP', categoryName: 'Nạp ví', amount: 500000, targetName: 'Trần Đức Chính', memberId: 'M001', walletImpact: 500000, fundImpact: 0, description: 'Nạp tiền ví thành viên (Chuyển khoản VietQR)', operator: 'admin' },
@@ -883,7 +883,7 @@ const DEFAULT_INITIAL_DATA = {
       id: 'M001',
       username: 'admin',
       role: 'ADMIN',
-      name: 'Trần Đức Chính (Chủ nhiệm)',
+      name: 'Trần Đức Chính (Quản lý)',
       permissions: getRoleDefaultPermissions('ADMIN')
     }
   }
@@ -2487,7 +2487,7 @@ function getCurrentUserRole() {
   if (AppState.auth && AppState.auth.isLoggedIn === false) {
     return 'GUEST';
   }
-  return 'ADMIN'; // Mặc định là Chủ nhiệm toàn quyền
+  return 'ADMIN'; // Mặc định là Quản lý toàn quyền
 }
 
 function isAttendanceManager() {
@@ -2783,12 +2783,12 @@ function switchActiveUserRole(role) {
   AppState.auth.isLoggedIn = true;
 
   const activeClub = getActiveClub();
-  const defaultAdminName = activeClub?.adminName || 'Chủ nhiệm CLB';
+  const defaultAdminName = activeClub?.adminName || 'Quản lý CLB';
   const president = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.leadership?.president || 'M001'))) || (AppState.members ? AppState.members[0] : null);
   const presidentName = president ? president.name : defaultAdminName;
 
   const viceLeader = (AppState.members && AppState.members.find(m => m.id === (AppState.config?.viceLeaderId || AppState.config?.leadership?.vicePresident1))) || (AppState.members && AppState.members.length > 1 ? AppState.members[1] : null);
-  const viceName = viceLeader ? viceLeader.name : 'Phó chủ nhiệm CLB';
+  const viceName = viceLeader ? viceLeader.name : 'Phó quản lý CLB';
 
   const treasurer = (AppState.members && AppState.members.find(m => m.id === AppState.config?.leadership?.treasurer)) || (AppState.members && AppState.members.length > 2 ? AppState.members[2] : null);
   const treasurerName = treasurer ? treasurer.name : 'Thủ quỹ CLB';
@@ -2803,7 +2803,7 @@ function switchActiveUserRole(role) {
       id: president ? president.id : 'M001',
       username: (president && president.username) ? president.username : (activeClub?.adminUsername || 'admin'),
       role: 'ADMIN',
-      name: `${presidentName} (Chủ nhiệm)`,
+      name: `${presidentName} (Quản lý)`,
       permissions: getRoleDefaultPermissions('ADMIN')
     };
   } else if (role === 'VICE_ADMIN') {
@@ -2933,7 +2933,7 @@ function renderAttendanceRoleBanner() {
         <div class="flex items-center gap-2 shrink-0">
           <button type="button" onclick="switchActiveUserRole('ADMIN')" class="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-900 border border-blue-300 rounded-xl font-bold text-[11px] shadow-2xs transition cursor-pointer flex items-center gap-1">
             <span>👑</span>
-            <span>Về vai Chủ nhiệm</span>
+            <span>Về vai Quản lý</span>
           </button>
         </div>
       `;
@@ -2947,13 +2947,13 @@ function renderAttendanceRoleBanner() {
               <span>Vai trò: Phó nhóm (${userName})</span>
               <span class="px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-black uppercase">Chưa được cấp quyền điểm danh</span>
             </div>
-            <div class="text-[11px] text-amber-800 mt-0.5">⚠️ Quyền điểm danh chưa được bật cho tài khoản này. Vui lòng liên hệ Chủ nhiệm để cấp quyền.</div>
+            <div class="text-[11px] text-amber-800 mt-0.5">⚠️ Quyền điểm danh chưa được bật cho tài khoản này. Vui lòng liên hệ Quản lý để cấp quyền.</div>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <button type="button" onclick="switchActiveUserRole('ADMIN')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-[11px] shadow-xs transition cursor-pointer flex items-center gap-1">
             <span>👑</span>
-            <span>Đổi về Chủ nhiệm cấp quyền</span>
+            <span>Đổi về Quản lý cấp quyền</span>
           </button>
         </div>
       `;
@@ -2974,7 +2974,7 @@ function renderAttendanceRoleBanner() {
       <div class="flex items-center gap-2 shrink-0">
         <button type="button" onclick="switchActiveUserRole('ADMIN')" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold text-[11px] shadow-2xs transition cursor-pointer flex items-center gap-1">
           <span>👑</span>
-          <span>Về vai Chủ nhiệm</span>
+          <span>Về vai Quản lý</span>
         </button>
       </div>
     `;
@@ -2994,7 +2994,7 @@ function renderAttendanceRoleBanner() {
       <div class="flex items-center gap-2 shrink-0">
         <button type="button" onclick="switchActiveUserRole('ADMIN')" class="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-900 border border-purple-300 rounded-xl font-bold text-[11px] shadow-2xs transition cursor-pointer flex items-center gap-1">
           <span>👑</span>
-          <span>Về vai Chủ nhiệm</span>
+          <span>Về vai Quản lý</span>
         </button>
       </div>
     `;
@@ -6664,7 +6664,7 @@ function handleGeneralExpenseSubmit(e) {
   const cat = document.querySelector('input[name="generalExpenseCategory"]:checked').value;
   const amount = Number(document.getElementById('generalExpenseAmount').value);
   const dateVal = document.getElementById('generalExpenseDate').value || getTodayInputFormat();
-  const payer = document.getElementById('generalExpensePayer').value.trim() || 'Ban chủ nhiệm';
+  const payer = document.getElementById('generalExpensePayer').value.trim() || 'Ban quản lý';
   const content = document.getElementById('generalExpenseContent').value.trim();
 
   if (!content || amount <= 0) {
@@ -6746,7 +6746,7 @@ function handleMemberExpenseSubmit(e) {
   const cat = document.querySelector('input[name="memberExpenseCategory"]:checked').value;
   const amount = Number(document.getElementById('memberExpenseAmount').value);
   const dateVal = document.getElementById('memberExpenseDate').value || getTodayInputFormat();
-  const rep = document.getElementById('memberExpenseRepresentative').value.trim() || 'Ban chủ nhiệm';
+  const rep = document.getElementById('memberExpenseRepresentative').value.trim() || 'Ban quản lý';
   const note = document.getElementById('memberExpenseNote').value.trim();
 
   const member = AppState.members.find(x => x.id === memberId);
@@ -6880,7 +6880,7 @@ function handleFundTransactionSubmit(e) {
   const type = document.getElementById('fundTransactionType').value;
   const amount = Number(document.getElementById('fundAmount').value);
   const category = document.getElementById('fundCategory').value.trim();
-  const party = document.getElementById('fundParty').value.trim() || 'Thủ quỹ / Ban chủ nhiệm';
+  const party = document.getElementById('fundParty').value.trim() || 'Thủ quỹ / Ban quản lý';
 
   if (amount <= 0 || !category) {
     showToast('Vui lòng nhập đầy đủ thông tin số tiền và hạng mục!', 'warning');
@@ -7099,7 +7099,7 @@ function setSettlementModeFilter(mode) {
   if (noteEl) {
     if (mode === 'DAILY') noteEl.textContent = 'Thu hết dư nợ trong ngày sinh hoạt hôm nay. Nộp tiền để đưa số dư âm về 0đ.';
     else if (mode === 'MONTHLY') noteEl.textContent = 'Dư nợ theo dõi lũy kế cả tháng, tổng kết và tất toán cuối tháng.';
-    else noteEl.textContent = 'Tất toán linh hoạt vào bất kỳ ngày nào do Ban chủ nhiệm chỉ định.';
+    else noteEl.textContent = 'Tất toán linh hoạt vào bất kỳ ngày nào do Ban quản lý chỉ định.';
   }
 }
 
@@ -7897,7 +7897,7 @@ function renderUserAccessTable() {
     const currentRole = getCurrentUserRole();
     let selHtml = `
       <optgroup label="🎭 1. Trải Nghiệm Thử Theo Vai Trò Chuẩn">
-        <option value="ROLE_ADMIN" ${currentRole === 'ADMIN' && (!currentLoggedUser?.id || currentLoggedUser.id === 'M001') ? 'selected' : ''}>👑 Chủ nhiệm (Toàn quyền 6/6)</option>
+        <option value="ROLE_ADMIN" ${currentRole === 'ADMIN' && (!currentLoggedUser?.id || currentLoggedUser.id === 'M001') ? 'selected' : ''}>👑 Quản lý (Toàn quyền 6/6)</option>
         <option value="ROLE_VICE_ADMIN" ${currentRole === 'VICE_ADMIN' ? 'selected' : ''}>🛡️ Phó nhóm (Điểm danh, Giải đấu, Trọng tài)</option>
         <option value="ROLE_TREASURER" ${currentRole === 'TREASURER' ? 'selected' : ''}>💰 Thủ quỹ (Quản lý Quỹ, Nạp ví, Tất toán)</option>
         <option value="ROLE_REFEREE" ${currentRole === 'REFEREE' ? 'selected' : ''}>⚖️ Trọng tài (Nhập điểm số & Điều hành sân)</option>
@@ -8318,7 +8318,7 @@ function toggleUserAccountLock(memberId) {
   if (member.role === 'ADMIN' && member.status !== 'LOCKED') {
     const adminCount = AppState.members.filter(m => m.role === 'ADMIN' && m.status !== 'LOCKED').length;
     if (adminCount <= 1) {
-      showToast('Không thể khóa tài khoản Chủ nhiệm duy nhất của CLB!', 'warning');
+      showToast('Không thể khóa tài khoản Quản lý duy nhất của CLB!', 'warning');
       return;
     }
   }
@@ -8343,7 +8343,7 @@ function handleResetPasswordSubmit(e) {
 
 // ==========================================
 // 15.5 PHÂN HỆ QUẢN LÝ ĐA CÂU LẠC BỘ (MULTI-CLUB SWITCHER & ACCOUNTS)
-// Cho phép tạo thêm CLB mới (Quỹ, Thành viên, Tài khoản Chủ nhiệm riêng) và chuyển đổi linh hoạt
+// Cho phép tạo thêm CLB mới (Quỹ, Thành viên, Tài khoản Quản lý riêng) và chuyển đổi linh hoạt
 // ==========================================
 
 function renderAuthBadge() {
@@ -8353,7 +8353,7 @@ function renderAuthBadge() {
   const auth = AppState.auth || {};
   const user = auth.user || {};
   const role = user.role || 'ADMIN';
-  const roleDef = ROLE_DEFINITIONS[role] || { label: 'Chủ nhiệm', icon: '👑', color: 'amber' };
+  const roleDef = ROLE_DEFINITIONS[role] || { label: 'Quản lý', icon: '👑', color: 'amber' };
   const displayName = user.name ? user.name.split(' (')[0] : (user.username || 'Admin');
 
   container.innerHTML = `
@@ -8537,14 +8537,14 @@ function logoutDeveloperAdmin() {
     if (AppState?.auth?.user?.role === 'DEV_ADMIN') {
       const activeClub = getActiveClub();
       const adminMem = AppState.members?.find(m => m.role === 'ADMIN') || AppState.members?.[0];
-      const adminName = adminMem ? adminMem.name : (activeClub?.adminName || 'Chủ nhiệm');
+      const adminName = adminMem ? adminMem.name : (activeClub?.adminName || 'Quản lý');
       AppState.auth = {
         isLoggedIn: true,
         user: {
           id: adminMem ? adminMem.id : 'M001',
           username: adminMem ? adminMem.username : 'admin',
           role: 'ADMIN',
-          name: `${adminName} (Chủ nhiệm)`,
+          name: `${adminName} (Quản lý)`,
           permissions: getRoleDefaultPermissions('ADMIN')
         }
       };
@@ -8821,7 +8821,7 @@ function handleCreateNewClubSubmit(event) {
     accessSlug = 'clb-' + Date.now();
   }
 
-  // 3. Thông minh hóa: Kiểm tra Họ tên & Username Chủ nhiệm
+  // 3. Thông minh hóa: Kiểm tra Họ tên & Username Quản lý
   if (!adminName && !adminUsername) {
     if (modalBody && adminNameInput) {
       adminNameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -8830,11 +8830,11 @@ function handleCreateNewClubSubmit(event) {
       setClubInputError(adminNameInput);
       adminNameInput.focus();
     }
-    showToast('Vui lòng nhập Họ tên hoặc Tên đăng nhập Chủ nhiệm (*)!', 'warning');
+    showToast('Vui lòng nhập Họ tên hoặc Tên đăng nhập Quản lý (*)!', 'warning');
     return;
   }
 
-  // Nếu người dùng chỉ nhập Username (vd: tntoan) -> Tự động lấy làm Họ tên Chủ nhiệm
+  // Nếu người dùng chỉ nhập Username (vd: tntoan) -> Tự động lấy làm Họ tên Quản lý
   if (!adminName && adminUsername) {
     adminName = adminUsername;
     if (adminNameInput) adminNameInput.value = adminName;
@@ -8856,7 +8856,7 @@ function handleCreateNewClubSubmit(event) {
   const clubId = 'club_' + cleanSlug;
   const storageKey = 'CLB_CAU_LONG_DATA_' + cleanSlug;
 
-  // Xây dựng tài khoản Chủ nhiệm CLB mới
+  // Xây dựng tài khoản Quản lý CLB mới
   const adminMemberId = 'M001';
   const adminChip = adminName.trim().split(/\s+/).pop().toUpperCase();
   const adminMember = {
@@ -8919,12 +8919,12 @@ function handleCreateNewClubSubmit(event) {
         memberId: adminMemberId,
         walletImpact: 500000,
         fundImpact: 0,
-        description: 'Nạp tiền ví thành viên Chủ nhiệm sáng lập',
+        description: 'Nạp tiền ví thành viên Quản lý sáng lập',
         operator: adminUsername
       }
     ];
   } else {
-    // FRESH mode: Bắt đầu hoàn toàn mới, 0 dummy data, chỉ có duy nhất tài khoản Chủ nhiệm
+    // FRESH mode: Bắt đầu hoàn toàn mới, 0 dummy data, chỉ có duy nhất tài khoản Quản lý
     adminMember.balance = 0;
     if (initialFund > 0) {
       transactionsList.push({
@@ -9005,7 +9005,7 @@ function handleCreateNewClubSubmit(event) {
         id: adminMemberId,
         username: adminUsername,
         role: 'ADMIN',
-        name: `${adminName} (Chủ nhiệm)`,
+        name: `${adminName} (Quản lý)`,
         permissions: getRoleDefaultPermissions('ADMIN')
       }
     }
@@ -9208,7 +9208,7 @@ function renderMultiClubSettingsSection() {
                 ${club.isDeveloperSample ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Mẫu Dev</span>' : ''}
               </div>
               <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
-                <span>👑 Chủ nhiệm: <strong class="text-slate-700">${club.adminName || 'Admin'}</strong></span>
+                <span>👑 Quản lý: <strong class="text-slate-700">${club.adminName || 'Admin'}</strong></span>
                 ${club.phone ? `<span>• 📞 ${club.phone}</span>` : ''}
               </p>
             </div>
@@ -9462,7 +9462,7 @@ const TOURNAMENT_CLUBS = [
   { id: 'CLB_A', name: 'CLB A', country: 'VN', participating: true, contact: 'Nguyễn Văn A1 (Trưởng đoàn - 0988.111.001)' },
   { id: 'CLB_B', name: 'CLB B', country: 'VN', participating: true, contact: 'Đặng Văn B1 (Đội trưởng - 0912.222.001)' },
   { id: 'CLB_C', name: 'CLB C', country: 'VN', participating: true, contact: 'Dương Văn C1 (Liên lạc - 0903.333.001)' },
-  { id: 'CLB_D', name: 'CLB D', country: 'VN', participating: true, contact: 'Hồ Văn D1 (Chủ nhiệm - 0977.444.001)' },
+  { id: 'CLB_D', name: 'CLB D', country: 'VN', participating: true, contact: 'Hồ Văn D1 (Quản lý - 0977.444.001)' },
   { id: 'CLB_E', name: 'CLB E', country: 'VN', participating: true, contact: 'Trịnh Thị E1 (Đại diện - 0966.555.001)' }
 ];
 
@@ -13116,14 +13116,14 @@ function handleLogin(e) {
     return;
   }
 
-  // 2. Kiểm tra tài khoản Chủ nhiệm CLB hoặc Hội viên trong danh sách CLB hiện tại
+  // 2. Kiểm tra tài khoản Quản lý CLB hoặc Hội viên trong danh sách CLB hiện tại
   const member = AppState.members.find(m => m.username && m.username.toLowerCase() === u.toLowerCase() && m.password === p);
   if (member) {
     if (member.status === 'LOCKED') {
       showToast(`⚠️ Tài khoản ${member.name} đang bị tạm khóa. Vui lòng liên hệ Ban quản trị!`, 'error');
       return;
     }
-    // Đăng nhập hội viên / chủ nhiệm CLB (không có quyền Dev Admin)
+    // Đăng nhập hội viên / quản lý CLB (không có quyền Dev Admin)
     try {
       localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
     } catch (e) {}
