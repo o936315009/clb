@@ -194,10 +194,10 @@
             <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
           </div>
 
-          <!-- Card 3: Tổng số dư ví thành viên -->
+          <!-- Card 3: Số dư ví thành viên / Ví cá nhân -->
           <div class="bg-white p-2.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs relative overflow-hidden transition hover:shadow-md flex flex-col justify-between">
             <div class="flex items-center justify-between gap-1">
-              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate">Ví Thành Viên</span>
+              <span id="kpiWalletLabel" class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate">Ví Thành Viên</span>
               <div class="w-6 h-6 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <i data-lucide="wallet-cards" class="w-3.5 h-3.5 sm:w-5 sm:h-5"></i>
               </div>
@@ -205,7 +205,7 @@
             <div class="mt-1.5 sm:mt-3">
               <span id="kpiTotalWallet" class="text-xs sm:text-lg md:text-2xl font-black text-slate-900 block truncate">0 đ</span>
             </div>
-            <p class="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate hidden sm:block">Tổng tiền trong ví</p>
+            <p id="kpiWalletDesc" class="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate hidden sm:block">Tổng tiền trong ví</p>
             <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
           </div>
         </div>
@@ -265,23 +265,59 @@
                 <button type="button" onclick="openSettlementReportModal()" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs sm:text-sm hover:underline cursor-pointer">Thống kê</button>
               </div>
 
-              <!-- Summary Table / Rows -->
+              <!-- Summary Table / Rows: CÔNG THỨC SỐ DƯ VÍ THÀNH VIÊN -->
               <div class="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
-                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
-                  <span class="text-xs sm:text-sm text-slate-400 font-medium">buổi</span>
-                  <span id="statSummarySessionsCount" class="text-xs sm:text-sm font-bold text-slate-900">0</span>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5 bg-slate-50/70">
+                  <span class="text-xs sm:text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>Số buổi đã tham gia</span>
+                  </span>
+                  <span id="statSummarySessionsCount" class="text-xs sm:text-sm font-bold text-slate-900">0 buổi</span>
                 </div>
-                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
-                  <span class="text-xs sm:text-sm text-slate-900 font-bold">Chi phí mỗi buổi</span>
-                  <span id="statSummaryShuttleCost" class="text-xs sm:text-sm font-bold text-slate-900">0đ</span>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5">
+                  <span class="text-xs sm:text-sm text-emerald-700 font-bold flex items-center gap-1.5">
+                    <span>➕</span>
+                    <span>Tiền nạp vào ví</span>
+                  </span>
+                  <span id="statSummaryTopUp" class="text-xs sm:text-sm font-black text-emerald-600">+0 đ</span>
                 </div>
-                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3">
-                  <span class="text-xs sm:text-sm text-slate-900 font-bold">Tiền sân</span>
-                  <span id="statSummaryCourtFee" class="text-xs sm:text-sm font-bold text-slate-900">0đ</span>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5">
+                  <span class="text-xs sm:text-sm text-slate-700 font-semibold flex items-center gap-1.5">
+                    <span>➖</span>
+                    <span>Chi phí cầu hàng ngày</span>
+                  </span>
+                  <span id="statSummaryShuttleCost" class="text-xs sm:text-sm font-bold text-slate-800">-0 đ</span>
                 </div>
-                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3.5 bg-slate-100/70 border-t border-slate-200">
-                  <span class="text-xs sm:text-sm text-slate-900 font-black">Tổng phí kỳ này</span>
-                  <span id="statSummaryTotalFee" class="text-xs sm:text-sm font-black text-slate-900">0đ</span>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5">
+                  <span class="text-xs sm:text-sm text-slate-700 font-semibold flex items-center gap-1.5">
+                    <span>➖</span>
+                    <span>Tiền phạt</span>
+                  </span>
+                  <span id="statSummaryFine" class="text-xs sm:text-sm font-bold text-slate-800">0 đ</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5">
+                  <span class="text-xs sm:text-sm text-slate-700 font-semibold flex items-center gap-1.5">
+                    <span>➖</span>
+                    <span>Quỹ thành viên</span>
+                  </span>
+                  <span id="statSummaryClubFund" class="text-xs sm:text-sm font-bold text-slate-800">0 đ</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2 sm:py-2.5">
+                  <span class="text-xs sm:text-sm text-slate-700 font-semibold flex items-center gap-1.5">
+                    <span>➖</span>
+                    <span>Tiền sân</span>
+                  </span>
+                  <span id="statSummaryCourtFee" class="text-xs sm:text-sm font-bold text-slate-800">0 đ</span>
+                </div>
+                <div class="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-t-2 border-emerald-500/30">
+                  <div>
+                    <span class="text-xs sm:text-sm text-slate-900 font-black flex items-center gap-1.5">
+                      <span>🟰</span>
+                      <span>Số dư ví thành viên</span>
+                    </span>
+                    <span class="text-[10px] text-slate-400 block sm:inline font-normal">(Nạp - Cầu - Phạt - Quỹ - Sân)</span>
+                  </div>
+                  <span id="statSummaryWalletBalance" class="text-sm sm:text-base font-black text-emerald-700">0 đ</span>
                 </div>
               </div>
             </div>
@@ -766,17 +802,17 @@
           <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between hover:shadow-xs transition">
             <div>
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700">Ví Thành Viên</span>
+                <span id="kpiFinanceWalletTitle" class="text-[10px] font-bold uppercase tracking-wider text-blue-700">Ví Thành Viên</span>
                 <span class="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">💳</span>
               </div>
               <div id="kpiFinanceTotalWallet" class="text-xl font-black text-blue-700 mt-1">0 đ</div>
               <div class="mt-2 text-[10px] text-slate-600 border-t border-slate-100 pt-1.5 space-y-0.5">
                 <div class="flex justify-between">
-                  <span class="text-slate-500">Nợ ví / âm:</span>
+                  <span id="kpiFinanceSublabel1" class="text-slate-500">Nợ ví / âm:</span>
                   <b id="kpiFinanceNegativeCount" class="text-rose-600 font-bold">0 người</b>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-slate-500">Quỹ tạm ứng:</span>
+                  <span id="kpiFinanceSublabel2" class="text-slate-500">Quỹ tạm ứng:</span>
                   <b id="kpiFinanceAdvance" class="text-slate-800 font-bold">0 đ</b>
                 </div>
               </div>
@@ -1206,7 +1242,7 @@
               <p class="text-xs text-slate-500 mt-0.5">Tạo tài khoản, quản lý số dư ví, cấp lại mật khẩu và phân loại</p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2">
+            <div id="memberManagementAdminButtons" class="flex flex-wrap items-center gap-2">
               <button onclick="openMemberModal('official')" class="inline-flex items-center px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition">
                 <i data-lucide="user-plus" class="w-3.5 h-3.5 mr-1.5"></i>
                 + Thành viên chính thức

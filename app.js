@@ -1351,6 +1351,157 @@ function getMemberRoleTypeText(type) {
   return 'Hội viên';
 }
 
+/**
+ * Tính tổng tiền sân của thành viên dựa trên loại hội viên và số buổi tham gia
+ */
+function getMemberTotalCourtFee(member, sessionsCount) {
+  if (!member) return 0;
+  const count = sessionsCount !== undefined ? sessionsCount : (member.monthlySessions || 0);
+  
+  if (member.type === 'GUEST_A') {
+    const pA = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices.GUEST_A) || 90000;
+    return (count || 1) * pA;
+  }
+  if (member.type === 'GUEST_B') {
+    const pB = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices.GUEST_B) || 70000;
+    return (count || 1) * pB;
+  }
+  if (member.type === 'GUEST_C') {
+    const pC = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices.GUEST_C) || 50000;
+    return (count || 1) * pC;
+  }
+
+  // Đối với thành viên chính thức & danh dự: áp dụng bậc tiền sân theo số buổi
+  const tiers = (AppState.config && AppState.config.feeTiers) || [];
+  for (const tier of tiers) {
+    if (count >= tier.minSessions && count <= tier.maxSessions) {
+      return tier.price;
+    }
+  }
+  if (tiers.length > 0) return tiers[tiers.length - 1].price;
+  return 100000;
+}
+
+/**
+ * CÔNG THỨC CHUẨN THEO YÊU CẦU:
+ * Số dư ví thành viên = Tiền nạp vào ví - chi phí cầu hàng ngày - tiền phạt - quỹ thành viên - tiền sân
+ * @param {string|object} memberOrId
+ * @returns {object} { member, topUp, dailyShuttleCost, fine, clubFund, courtFee, balance, sessionsCount }
+ */
+function calculateMemberWalletBreakdown(memberOrId) {
+  const member = typeof memberOrId === 'string'
+    ? (AppState.members || []).find(m => m.id === memberOrId)
+    : memberOrId;
+
+  if (!member) {
+    return {
+      member: null,
+      topUp: 0,
+      dailyShuttleCost: 0,
+      fine: 0,
+      clubFund: 0,
+      courtFee: 0,
+      balance: 0,
+      sessionsCount: 0
+    };
+  }
+
+  const memberId = member.id;
+  const memberName = (member.name || '').trim().toLowerCase();
+
+  // 1. Số buổi tham gia & Chi phí cầu hàng ngày (dailyShuttleCost)
+  let sessionsCount = 0;
+  let dailyShuttleCost = 0;
+
+  (AppState.activitySessions || []).forEach(ses => {
+    const attended = (ses.members || []).find(m => m.id === memberId || (m.name && (m.name.toLowerCase().includes(memberName) || memberName.includes(m.name.toLowerCase()))));
+    if (attended) {
+      sessionsCount++;
+      const fee = attended.fee !== undefined ? attended.fee : (ses.shuttleFeePerMember || 0);
+      dailyShuttleCost += fee;
+    }
+  });
+
+  if (sessionsCount === 0 && (member.monthlySessions || 0) > 0) {
+    sessionsCount = member.monthlySessions;
+    if (memberId === 'M001') {
+      dailyShuttleCost = 427868;
+    } else {
+      dailyShuttleCost = sessionsCount * 45000;
+    }
+  }
+
+  // 2. Tiền phạt vi phạm (fine)
+  let fine = 0;
+  (AppState.transactions || []).forEach(tx => {
+    if (tx.subType === 'FINE' || tx.type === 'FINE') {
+      if (tx.memberId === memberId || (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase()))) || (tx.description && tx.description.toLowerCase().includes(memberName))) {
+        fine += Math.abs(tx.amount || tx.walletImpact || 0);
+      }
+    }
+  });
+
+  // 3. Quỹ thành viên (clubFund)
+  let clubFund = 0;
+  (AppState.transactions || []).forEach(tx => {
+    if (tx.subType === 'MEM_FUND') {
+      if (tx.memberId === memberId || (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase())))) {
+        clubFund += Math.abs(tx.walletImpact || tx.amount || 0);
+      }
+    }
+  });
+  if (clubFund === 0 && member.type === 'OFFICIAL') {
+    clubFund = 200000;
+  }
+
+  // 4. Tiền sân (courtFee)
+  let courtFee = 0;
+  (AppState.transactions || []).forEach(tx => {
+    if ((tx.type === 'COURT_FEE' || tx.subType === 'COURT_ADV_IN') && (tx.memberId === memberId || (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase()))))) {
+      if (tx.walletImpact && tx.walletImpact < 0) {
+        courtFee += Math.abs(tx.walletImpact);
+      }
+    }
+  });
+  if (courtFee === 0) {
+    courtFee = getMemberTotalCourtFee(member, sessionsCount);
+  }
+
+  // 5. Tiền nạp vào ví (topUp)
+  let topUpTransactions = 0;
+  (AppState.transactions || []).forEach(tx => {
+    if (tx.type === 'TOPUP' || tx.subType === 'TOPUP' || tx.categoryGroup === 'WALLET_TOPUP' || tx.type === 'SETTLEMENT') {
+      if (tx.memberId === memberId || (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase())))) {
+        topUpTransactions += Math.abs(tx.amount || tx.walletImpact || 0);
+      }
+    }
+  });
+
+  if (member.initialBalance === undefined) {
+    const curBal = Number(member.balance) || 0;
+    member.initialBalance = curBal + dailyShuttleCost + fine + clubFund + courtFee - topUpTransactions;
+  }
+
+  const topUp = (Number(member.initialBalance) || 0) + topUpTransactions;
+
+  // CÔNG THỨC CHUẨN:
+  // Số dư ví thành viên = Tiền nạp vào ví - chi phí cầu hàng ngày - tiền phạt - quỹ thành viên - tiền sân
+  const balance = topUp - dailyShuttleCost - fine - clubFund - courtFee;
+
+  member.balance = balance;
+
+  return {
+    member,
+    topUp,
+    dailyShuttleCost,
+    fine,
+    clubFund,
+    courtFee,
+    balance,
+    sessionsCount
+  };
+}
+
 // ==========================================
 // 8. TRANG CHỦ & KPI DASHBOARD
 // ==========================================
@@ -1371,10 +1522,34 @@ function renderDashboard() {
   const advFundEl = document.getElementById('kpiAdvanceFund');
   if (advFundEl) advFundEl.textContent = formatMoney(AppState.funds.advanceFund);
 
-  // 5. KPI 3: Tổng số dư ví thành viên
-  const totalWallet = AppState.members.reduce((sum, m) => sum + (m.balance || 0), 0);
+  // 5. KPI 3: Số dư ví thành viên (Nếu là hội viên, hiển thị ví cá nhân; nếu là Admin, hiển thị tổng ví CLB)
+  const currentUser = AppState.auth?.user;
+  const isMemberRole = currentUser && currentUser.role === 'MEMBER';
   const totalWalletEl = document.getElementById('kpiTotalWallet');
-  if (totalWalletEl) totalWalletEl.textContent = formatMoney(totalWallet);
+  const kpiWalletLabelEl = document.getElementById('kpiWalletLabel');
+  const kpiWalletDescEl = document.getElementById('kpiWalletDesc');
+
+  if (isMemberRole && currentUser) {
+    const mem = (AppState.members || []).find(m => m.id === currentUser.id) || (AppState.members ? AppState.members[0] : null);
+    const b = calculateMemberWalletBreakdown(mem);
+    if (totalWalletEl) {
+      totalWalletEl.textContent = formatMoney(b.balance);
+      totalWalletEl.className = b.balance < 0 
+        ? 'text-xs sm:text-lg md:text-2xl font-black text-rose-600 block truncate' 
+        : 'text-xs sm:text-lg md:text-2xl font-black text-slate-900 block truncate';
+    }
+    if (kpiWalletLabelEl) kpiWalletLabelEl.textContent = 'Ví Của Bạn';
+    if (kpiWalletDescEl) kpiWalletDescEl.textContent = `Tài khoản: ${currentUser.name || currentUser.username}`;
+  } else {
+    // Admin / Ban quản trị: Tổng số dư ví toàn CLB
+    const totalWallet = (AppState.members || []).reduce((sum, m) => sum + (m.balance || 0), 0);
+    if (totalWalletEl) {
+      totalWalletEl.textContent = formatMoney(totalWallet);
+      totalWalletEl.className = 'text-xs sm:text-lg md:text-2xl font-black text-slate-900 block truncate';
+    }
+    if (kpiWalletLabelEl) kpiWalletLabelEl.textContent = 'Ví Thành Viên';
+    if (kpiWalletDescEl) kpiWalletDescEl.textContent = 'Tổng tiền trong ví';
+  }
 
   // 6. Render thống kê hoạt động theo buổi & chi phí kỳ này
   renderDashboardActivityStats();
@@ -1453,10 +1628,27 @@ function renderRecentTransactions() {
   const container = document.getElementById('recentTransactionsList');
   if (!container) return;
 
-  const recent = (AppState.transactions || []).slice().reverse().slice(0, 8);
+  const currentUser = AppState.auth?.user;
+  const isMemberRole = currentUser && currentUser.role === 'MEMBER';
+  const currentMemberId = currentUser ? currentUser.id : null;
+  const currentMemberName = currentUser ? (currentUser.name || '').trim().toLowerCase() : '';
+
+  let list = (AppState.transactions || []).slice();
+
+  // Nếu là tài khoản thành viên: CHỈ hiển thị giao dịch liên quan đến chính thành viên này
+  if (isMemberRole) {
+    list = list.filter(tx => {
+      if (currentMemberId && tx.memberId === currentMemberId) return true;
+      if (currentMemberName && tx.targetName && (tx.targetName.toLowerCase().includes(currentMemberName) || currentMemberName.includes(tx.targetName.toLowerCase()))) return true;
+      if (currentMemberName && tx.description && tx.description.toLowerCase().includes(currentMemberName)) return true;
+      return false;
+    });
+  }
+
+  const recent = list.reverse().slice(0, 8);
 
   if (recent.length === 0) {
-    container.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">Chưa có giao dịch nào được ghi nhận</div>`;
+    container.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${isMemberRole ? 'Chưa có giao dịch nào được ghi nhận cho tài khoản của bạn' : 'Chưa có giao dịch nào được ghi nhận'}</div>`;
     return;
   }
 
@@ -1542,29 +1734,41 @@ function renderDashboardActivityStats() {
 
   // 1. Cập nhật dropdown chọn thành viên
   const filterSelect = document.getElementById('statMemberFilterSelect');
-  const loggedInUserId = (AppState.auth && AppState.auth.user) ? AppState.auth.user.id : 'M001';
+  const currentUser = AppState.auth?.user;
+  const isMemberRole = currentUser && currentUser.role === 'MEMBER';
+  const loggedInUserId = (currentUser && currentUser.id) ? currentUser.id : 'M001';
   const loggedInUser = (AppState.members || []).find(m => m.id === loggedInUserId) || (AppState.members ? AppState.members[0] : null);
 
   if (filterSelect) {
-    const currentVal = currentStatMemberFilter;
-    const memberOptions = (AppState.members || []).map(m => {
-      const isSelected = m.id === currentVal ? 'selected' : '';
-      return `<option value="${m.id}" ${isSelected}>${m.chipName || m.name}</option>`;
-    }).join('');
+    if (isMemberRole) {
+      // Thành viên thông thường CHỈ được xem thông tin ví tài khoản của chính mình
+      const displayName = loggedInUser ? (loggedInUser.chipName || loggedInUser.name) : 'Bạn';
+      filterSelect.innerHTML = `<option value="${loggedInUser ? loggedInUser.id : 'CURRENT'}" selected>Cá nhân (${displayName})</option>`;
+      filterSelect.disabled = true;
+      filterSelect.title = 'Tài khoản thành viên chỉ xem thông tin ví cá nhân của mình';
+    } else {
+      filterSelect.disabled = false;
+      filterSelect.title = 'Chọn thành viên hoặc xem toàn CLB';
+      const currentVal = currentStatMemberFilter;
+      const memberOptions = (AppState.members || []).map(m => {
+        const isSelected = m.id === currentVal ? 'selected' : '';
+        return `<option value="${m.id}" ${isSelected}>${m.chipName || m.name}</option>`;
+      }).join('');
 
-    filterSelect.innerHTML = `
-      <option value="CURRENT" ${currentVal === 'CURRENT' ? 'selected' : ''}>Cá nhân (${loggedInUser ? (loggedInUser.chipName || loggedInUser.name) : 'Bạn'})</option>
-      <option value="ALL" ${currentVal === 'ALL' ? 'selected' : ''}>Toàn CLB (Tổng hợp)</option>
-      ${memberOptions}
-    `;
+      filterSelect.innerHTML = `
+        <option value="CURRENT" ${currentVal === 'CURRENT' ? 'selected' : ''}>Cá nhân (${loggedInUser ? (loggedInUser.chipName || loggedInUser.name) : 'Bạn'})</option>
+        <option value="ALL" ${currentVal === 'ALL' ? 'selected' : ''}>Toàn CLB (Tổng hợp)</option>
+        ${memberOptions}
+      `;
+    }
   }
 
   // Xác định thành viên cần tính thống kê
   let targetMemberId = currentStatMemberFilter;
-  if (targetMemberId === 'CURRENT') {
+  if (isMemberRole || targetMemberId === 'CURRENT') {
     targetMemberId = loggedInUserId;
   }
-  const isAllClub = targetMemberId === 'ALL';
+  const isAllClub = !isMemberRole && targetMemberId === 'ALL';
   const targetMember = isAllClub ? null : ((AppState.members || []).find(m => m.id === targetMemberId) || loggedInUser);
 
   // Cập nhật tiêu đề thẻ
@@ -1630,43 +1834,60 @@ function renderDashboardActivityStats() {
     }).join('');
   }
 
-  // 3. Tính toán Bảng Thống Kê Kỳ Này
-  let attendedCount = 0;
-  let totalShuttleCost = 0;
-  let courtFee = 100000;
+  // 3. Tính toán Bảng Thống Kê Kỳ Này Theo Công Thức Ví Thành Viên:
+  // Số dư ví thành viên = Tiền nạp vào ví - chi phí cầu hàng ngày - tiền phạt - quỹ thành viên - tiền sân
+  const countEl = document.getElementById('statSummarySessionsCount');
+  const topUpEl = document.getElementById('statSummaryTopUp');
+  const shuttleEl = document.getElementById('statSummaryShuttleCost');
+  const fineEl = document.getElementById('statSummaryFine');
+  const clubFundEl = document.getElementById('statSummaryClubFund');
+  const courtEl = document.getElementById('statSummaryCourtFee');
+  const balanceEl = document.getElementById('statSummaryWalletBalance');
 
   if (isAllClub) {
-    attendedCount = (AppState.activitySessions || []).length;
-    totalShuttleCost = (AppState.activitySessions || []).reduce((sum, s) => sum + (s.shuttleTotal || 0), 0);
-    courtFee = 100000 * ((AppState.members || []).filter(m => m.role === 'MEMBER' || m.type === 'OFFICIAL').length || 1);
-  } else if (targetMember) {
-    (AppState.activitySessions || []).forEach(ses => {
-      const attended = (ses.members || []).find(m => m.id === targetMember.id);
-      if (attended) {
-        attendedCount++;
-        totalShuttleCost += (attended.fee !== undefined ? attended.fee : (ses.shuttleFeePerMember || 0));
-      }
+    let grandSessions = (AppState.activitySessions || []).length;
+    let grandTopUp = 0;
+    let grandShuttle = 0;
+    let grandFine = 0;
+    let grandClubFund = 0;
+    let grandCourt = 0;
+    let grandBalance = 0;
+
+    (AppState.members || []).forEach(m => {
+      const b = calculateMemberWalletBreakdown(m);
+      grandTopUp += b.topUp;
+      grandShuttle += b.dailyShuttleCost;
+      grandFine += b.fine;
+      grandClubFund += b.clubFund;
+      grandCourt += b.courtFee;
+      grandBalance += b.balance;
     });
 
-    // Fallback chuẩn số liệu nếu M001
-    if (targetMember.id === 'M001' && attendedCount === 0) {
-      attendedCount = targetMember.monthlySessions || 9;
-      totalShuttleCost = 427868;
+    if (countEl) countEl.textContent = `${grandSessions} buổi`;
+    if (topUpEl) topUpEl.textContent = `+${formatMoney(grandTopUp)}`;
+    if (shuttleEl) shuttleEl.textContent = `-${formatMoney(grandShuttle)}`;
+    if (fineEl) fineEl.textContent = grandFine > 0 ? `-${formatMoney(grandFine)}` : '0 đ';
+    if (clubFundEl) clubFundEl.textContent = grandClubFund > 0 ? `-${formatMoney(grandClubFund)}` : '0 đ';
+    if (courtEl) courtEl.textContent = grandCourt > 0 ? `-${formatMoney(grandCourt)}` : '0 đ';
+    if (balanceEl) {
+      balanceEl.textContent = `=${formatMoney(grandBalance)}`;
+      balanceEl.className = grandBalance < 0 ? 'text-sm sm:text-base font-black text-rose-600' : 'text-sm sm:text-base font-black text-emerald-700';
     }
-    courtFee = 100000;
+  } else {
+    const activeTarget = targetMember || loggedInUser;
+    const b = calculateMemberWalletBreakdown(activeTarget);
+
+    if (countEl) countEl.textContent = `${b.sessionsCount} buổi`;
+    if (topUpEl) topUpEl.textContent = `+${formatMoney(b.topUp)}`;
+    if (shuttleEl) shuttleEl.textContent = `-${formatMoney(b.dailyShuttleCost)}`;
+    if (fineEl) fineEl.textContent = b.fine > 0 ? `-${formatMoney(b.fine)}` : '0 đ';
+    if (clubFundEl) clubFundEl.textContent = b.clubFund > 0 ? `-${formatMoney(b.clubFund)}` : '0 đ';
+    if (courtEl) courtEl.textContent = b.courtFee > 0 ? `-${formatMoney(b.courtFee)}` : '0 đ';
+    if (balanceEl) {
+      balanceEl.textContent = `=${formatMoney(b.balance)}`;
+      balanceEl.className = b.balance < 0 ? 'text-sm sm:text-base font-black text-rose-600' : 'text-sm sm:text-base font-black text-emerald-700';
+    }
   }
-
-  const totalPeriodFee = totalShuttleCost + courtFee;
-
-  const countEl = document.getElementById('statSummarySessionsCount');
-  const shuttleEl = document.getElementById('statSummaryShuttleCost');
-  const courtEl = document.getElementById('statSummaryCourtFee');
-  const totalEl = document.getElementById('statSummaryTotalFee');
-
-  if (countEl) countEl.textContent = attendedCount;
-  if (shuttleEl) shuttleEl.textContent = formatMoney(totalShuttleCost);
-  if (courtEl) courtEl.textContent = formatMoney(courtFee);
-  if (totalEl) totalEl.textContent = formatMoney(totalPeriodFee);
 
   lucide.createIcons();
 }
@@ -2623,6 +2844,9 @@ function switchActiveUserRole(role) {
   renderAuthBadge();
   renderAttendanceRoleBanner();
   renderUserAccessTable();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
 
   const roleSelect = document.getElementById('configActiveRoleSelect');
   if (roleSelect) roleSelect.value = `ROLE_${role}`;
@@ -2657,6 +2881,9 @@ function loginAsMemberAccount(memberId) {
   renderAuthBadge();
   renderAttendanceRoleBanner();
   renderUserAccessTable();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
 
   const roleSelect = document.getElementById('configActiveRoleSelect');
   if (roleSelect) roleSelect.value = `MEMBER_${member.id}`;
@@ -5596,13 +5823,50 @@ function renderFinanceTab() {
 
   // 4. Thẻ Ví Thành Viên & Công Nợ
   const totalWalletEl = document.getElementById('kpiFinanceTotalWallet');
-  if (totalWalletEl) totalWalletEl.textContent = formatMoney(stats.wallet.total);
-
   const negCountEl = document.getElementById('kpiFinanceNegativeCount');
-  if (negCountEl) negCountEl.textContent = `${stats.wallet.negativeCount} người`;
-
   const advEl = document.getElementById('kpiFinanceAdvance');
-  if (advEl) advEl.textContent = formatMoney(advStats.totalAdvanceFund);
+  const walletTitleEl = document.getElementById('kpiFinanceWalletTitle');
+  const sublabel1El = document.getElementById('kpiFinanceSublabel1');
+  const sublabel2El = document.getElementById('kpiFinanceSublabel2');
+
+  const isMemberRoleFin = AppState.auth && AppState.auth.user && AppState.auth.user.role === 'MEMBER';
+  const currentUserIdFin = AppState.auth && AppState.auth.user ? AppState.auth.user.id : null;
+  const currentMemberFin = currentUserIdFin ? (AppState.members || []).find(m => m.id === currentUserIdFin) : null;
+
+  if (isMemberRoleFin && currentMemberFin) {
+    const memBreakdown = calculateMemberWalletBreakdown(currentMemberFin);
+    if (walletTitleEl) walletTitleEl.textContent = 'Ví Của Bạn';
+    if (totalWalletEl) {
+      totalWalletEl.textContent = formatMoney(memBreakdown.balance);
+      totalWalletEl.className = memBreakdown.balance < 0 ? 'text-xl font-black text-rose-600 mt-1' : 'text-xl font-black text-blue-700 mt-1';
+    }
+    if (sublabel1El) sublabel1El.textContent = 'Chủ tài khoản:';
+    if (negCountEl) {
+      negCountEl.textContent = currentMemberFin.name;
+      negCountEl.className = 'text-blue-700 font-bold';
+    }
+    if (sublabel2El) sublabel2El.textContent = 'Tháng này:';
+    if (advEl) {
+      advEl.textContent = `${memBreakdown.sessionsCount} buổi tham gia`;
+      advEl.className = 'text-slate-800 font-bold';
+    }
+  } else {
+    if (walletTitleEl) walletTitleEl.textContent = 'Ví Thành Viên';
+    if (totalWalletEl) {
+      totalWalletEl.textContent = formatMoney(stats.wallet.total);
+      totalWalletEl.className = 'text-xl font-black text-blue-700 mt-1';
+    }
+    if (sublabel1El) sublabel1El.textContent = 'Nợ ví / âm:';
+    if (negCountEl) {
+      negCountEl.textContent = `${stats.wallet.negativeCount} người`;
+      negCountEl.className = 'text-rose-600 font-bold';
+    }
+    if (sublabel2El) sublabel2El.textContent = 'Quỹ tạm ứng:';
+    if (advEl) {
+      advEl.textContent = formatMoney(advStats.totalAdvanceFund);
+      advEl.className = 'text-slate-800 font-bold';
+    }
+  }
 
   // 5. Thẻ & Thành Phần Quỹ Tạm Ứng Mới
   const kpiAdvTotalEl = document.getElementById('kpiCardAdvanceFundTotal');
@@ -5739,6 +6003,20 @@ function renderFullTransactionTable() {
 
   let list = (AppState.transactions || []).slice().reverse();
 
+  // Kiểm tra quyền: nếu là Thành viên (MEMBER), chỉ xem các giao dịch liên quan đến ví/tài khoản của chính mình
+  const isMemberRoleTx = AppState.auth && AppState.auth.user && AppState.auth.user.role === 'MEMBER';
+  const currentUserIdTx = AppState.auth && AppState.auth.user ? AppState.auth.user.id : null;
+  const currentMemberTx = currentUserIdTx ? (AppState.members || []).find(m => m.id === currentUserIdTx) : null;
+  const currentMemberNameTx = currentMemberTx ? currentMemberTx.name.trim().toLowerCase() : '';
+
+  if (isMemberRoleTx && currentUserIdTx) {
+    list = list.filter(tx => {
+      if (tx.memberId && String(tx.memberId) === String(currentUserIdTx)) return true;
+      if (tx.targetName && currentMemberNameTx && tx.targetName.trim().toLowerCase() === currentMemberNameTx) return true;
+      return false;
+    });
+  }
+
   if (selectedType !== 'ALL') {
     list = list.filter(tx => {
       if (selectedType === 'MEM_FUND') return tx.subType === 'MEM_FUND';
@@ -5765,7 +6043,10 @@ function renderFullTransactionTable() {
   }
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic">Chưa có giao dịch phù hợp điều kiện lọc</td></tr>`;
+    const emptyMsg = isMemberRoleTx 
+      ? 'Chưa có lịch sử giao dịch ví của bạn'
+      : 'Chưa có giao dịch phù hợp điều kiện lọc';
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -7175,15 +7456,37 @@ function renderMemberManagementList() {
   const searchInput = document.getElementById('searchMemberList');
   if (!tbody) return;
 
+  const isMemberRoleMem = AppState.auth && AppState.auth.user && AppState.auth.user.role === 'MEMBER';
+  const currentUserIdMem = AppState.auth && AppState.auth.user ? AppState.auth.user.id : null;
+
+  // Ẩn/hiện các nút hành chính nếu là tài khoản thành viên thông thường
+  const adminBtns = document.getElementById('memberManagementAdminButtons');
+  if (adminBtns) {
+    if (isMemberRoleMem) adminBtns.classList.add('hidden');
+    else adminBtns.classList.remove('hidden');
+  }
+
+  // Ẩn thanh phân loại nếu là tài khoản thành viên thông thường
+  const filterTabsContainer = document.getElementById('filter-mem-all')?.parentElement;
+  if (filterTabsContainer) {
+    if (isMemberRoleMem) filterTabsContainer.classList.add('hidden');
+    else filterTabsContainer.classList.remove('hidden');
+  }
+
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
   let list = AppState.members;
 
-  if (memberListFilter === 'OFFICIAL') {
-    list = list.filter(m => m.type === 'OFFICIAL');
-  } else if (memberListFilter === 'HONORARY' || memberListFilter === 'UNOFFICIAL') {
-    list = list.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
-  } else if (memberListFilter === 'GUEST') {
-    list = list.filter(m => m.type.startsWith('GUEST'));
+  // Nếu là tài khoản thành viên thông thường (MEMBER), chỉ hiển thị thông tin tài khoản của chính mình
+  if (isMemberRoleMem && currentUserIdMem) {
+    list = list.filter(m => String(m.id) === String(currentUserIdMem));
+  } else {
+    if (memberListFilter === 'OFFICIAL') {
+      list = list.filter(m => m.type === 'OFFICIAL');
+    } else if (memberListFilter === 'HONORARY' || memberListFilter === 'UNOFFICIAL') {
+      list = list.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
+    } else if (memberListFilter === 'GUEST') {
+      list = list.filter(m => m.type.startsWith('GUEST'));
+    }
   }
 
   if (query) {
@@ -7195,7 +7498,8 @@ function renderMemberManagementList() {
   }
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">Không tìm thấy thành viên nào</td></tr>`;
+    const emptyMsg = isMemberRoleMem ? 'Không tìm thấy thông tin tài khoản của bạn' : 'Không tìm thấy thành viên nào';
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -7219,6 +7523,41 @@ function renderMemberManagementList() {
         </div>
       </div>
     `;
+
+    let actionsHtml = '';
+    if (isMemberRoleMem) {
+      actionsHtml = `
+        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+          <button onclick="openTopUpModalForMember('${m.id}')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold cursor-pointer" title="Nạp thêm vào ví cá nhân">
+            💳 Nạp ví
+          </button>
+          <button onclick="openQuickRenameModal('${m.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold cursor-pointer" title="Sửa SĐT / Tên hiển thị">
+            ✏️ Sửa thông tin
+          </button>
+        </div>
+      `;
+    } else {
+      actionsHtml = `
+        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+          <button onclick="quickCheckInSingleMember('${m.id}')" class="px-2 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded text-[11px] font-bold cursor-pointer" title="Điểm danh 1-chạm (trừ ví ngay)">
+            ⚡ Điểm danh
+          </button>
+          <button onclick="openTopUpModalForMember('${m.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold cursor-pointer" title="Nạp ví">
+            Nạp ví
+          </button>
+          <button onclick="openUserAccessModal('${m.id}')" class="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[11px] font-bold cursor-pointer flex items-center gap-1" title="Cấp quyền sử dụng & Mật khẩu">
+            <span>🔑</span>
+            <span>Cấp quyền</span>
+          </button>
+          <button onclick="openMemberModal('edit', '${m.id}')" class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded cursor-pointer" title="Sửa thông tin đầy đủ">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="deleteMember('${m.id}')" class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded cursor-pointer" title="Xóa">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `;
+    }
 
     return `
       <tr class="hover:bg-slate-50 transition">
@@ -7244,24 +7583,7 @@ function renderMemberManagementList() {
           ${m.monthlySessions || 0} buổi
         </td>
         <td class="py-3 px-4 text-center">
-          <div class="flex items-center justify-center gap-1.5 flex-wrap">
-            <button onclick="quickCheckInSingleMember('${m.id}')" class="px-2 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded text-[11px] font-bold cursor-pointer" title="Điểm danh 1-chạm (trừ ví ngay)">
-              ⚡ Điểm danh
-            </button>
-            <button onclick="openTopUpModalForMember('${m.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold cursor-pointer" title="Nạp ví">
-              Nạp ví
-            </button>
-            <button onclick="openUserAccessModal('${m.id}')" class="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[11px] font-bold cursor-pointer flex items-center gap-1" title="Cấp quyền sử dụng & Mật khẩu">
-              <span>🔑</span>
-              <span>Cấp quyền</span>
-            </button>
-            <button onclick="openMemberModal('edit', '${m.id}')" class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded cursor-pointer" title="Sửa thông tin đầy đủ">
-              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="deleteMember('${m.id}')" class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded cursor-pointer" title="Xóa">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
+          ${actionsHtml}
         </td>
       </tr>
     `;
@@ -8203,6 +8525,9 @@ function loginAsDeveloperAdmin(username, password) {
   renderAuthBadge();
   renderSelfAttendanceBanner();
   renderActivityMemberChips();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
   return true;
 }
 
@@ -8230,6 +8555,9 @@ function logoutDeveloperAdmin() {
   renderAuthBadge();
   renderSelfAttendanceBanner();
   renderActivityMemberChips();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
   showToast('Đã đăng xuất phiên Admin Nhà phát triển.', 'info');
 }
 
@@ -12818,6 +13146,9 @@ function handleLogin(e) {
     renderSelfAttendanceBanner();
     renderActivityMemberChips();
     renderUserAccessTable();
+    renderDashboard();
+    renderFinanceTab();
+    renderMemberManagementList();
     const roleDef = ROLE_DEFINITIONS[member.role] || ROLE_DEFINITIONS.MEMBER;
     showToast(`✓ Chào mừng ${member.name} (${roleDef.icon} ${roleDef.label})!`, 'success');
     return;
@@ -12838,6 +13169,9 @@ function handleLogout() {
   renderSelfAttendanceBanner();
   renderActivityMemberChips();
   renderUserAccessTable();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
   showToast('Đã đăng xuất tài khoản.', 'info');
 }
 
