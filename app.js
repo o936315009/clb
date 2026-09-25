@@ -1296,6 +1296,7 @@ function saveActivitySessionState() {
       saveGuestDebt: activityState.saveGuestDebt,
       shuttleBillingMode: activityState.shuttleBillingMode,
       shuttleCount: activityState.shuttleCount,
+      dailyBoxPrice: activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000,
       expenses: activityState.expenses,
       frontPersonId: activityState.frontPersonId,
       frontAmount: activityState.frontAmount,
@@ -1332,6 +1333,7 @@ function loadActivitySessionState() {
     activityState.saveGuestDebt = !!data.saveGuestDebt;
     activityState.shuttleBillingMode = data.shuttleBillingMode || 'BY_SHUTTLE';
     activityState.shuttleCount = data.shuttleCount || 6;
+    activityState.dailyBoxPrice = data.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
     if (data.expenses && Array.isArray(data.expenses) && data.expenses.length > 0) {
       activityState.expenses = data.expenses;
     }
@@ -1369,18 +1371,19 @@ function initActivitySessionData(forceReset = false) {
   activityState.selectedGuestIds = new Set();
   activityState.saveGuestDebt = false;
 
-  const boxPrice = AppState.config?.dailyBoxPrice || 340000;
+  const boxPrice = activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
   const count = AppState.config?.shuttlecocksPerBox || 12;
-  const unitPrice = Math.round(boxPrice / count) || 28333;
+  const unitPrice = count > 0 ? Math.round(boxPrice / count) : 28333;
   const mode = AppState.config?.shuttleBillingMode || 'BY_SHUTTLE';
   const defaultShuttleCount = AppState.config?.defaultShuttlesPerSession || 12;
 
+  activityState.dailyBoxPrice = boxPrice;
   activityState.shuttleBillingMode = mode;
   activityState.shuttleCount = defaultShuttleCount;
 
   if (mode === 'BY_SHUTTLE') {
     const qty = defaultShuttleCount;
-    const amount = Math.round(qty * (boxPrice / count));
+    const amount = (qty === count) ? boxPrice : (qty * unitPrice);
     activityState.expenses = [
       { id: 1, title: 'Tiền cầu', qty: qty, unitPrice: unitPrice, amount: amount, isCombo: false, isShuttleRow: true }
     ];
@@ -1532,8 +1535,23 @@ function openCreateActivityModal() {
   if (resetCheck) {
     resetCheck.checked = true;
   }
+  const boxInp = document.getElementById('newActDailyBoxPrice');
+  if (boxInp) {
+    boxInp.value = activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
+    updateNewActBoxPricePreview(boxInp.value);
+  }
   openModal('createActivityModal');
   if (window.lucide) lucide.createIcons();
+}
+
+function updateNewActBoxPricePreview(val) {
+  const boxPrice = Number(val) || 340000;
+  const count = AppState.config?.shuttlecocksPerBox || 12;
+  const unitPrice = count > 0 ? Math.round(boxPrice / count) : 28333;
+  const previewEl = document.getElementById('newActUnitPricePreview');
+  if (previewEl) {
+    previewEl.textContent = `${formatMoney(unitPrice)} / quả`;
+  }
 }
 
 function setNewActDateQuick(type) {
@@ -1562,16 +1580,30 @@ function submitCreateActivitySession(e) {
   const dateInput = document.getElementById('newActSessionDate');
   const typeSelect = document.getElementById('newActSessionType');
   const resetCheck = document.getElementById('newActResetCheck');
+  const boxInp = document.getElementById('newActDailyBoxPrice');
 
   const chosenDate = dateInput?.value || getTodayInputFormat();
   const chosenType = typeSelect?.value || 'Buổi cầu';
   const shouldReset = resetCheck ? resetCheck.checked : true;
+  const chosenBoxPrice = boxInp ? (Number(boxInp.value) || 340000) : (AppState.config?.dailyBoxPrice || 340000);
+  const count = AppState.config?.shuttlecocksPerBox || 12;
+  const unitPrice = count > 0 ? Math.round(chosenBoxPrice / count) : 28333;
 
   if (shouldReset) {
     initActivitySessionData(true);
   }
   activityState.date = chosenDate;
   activityState.type = chosenType;
+  activityState.dailyBoxPrice = chosenBoxPrice;
+  if (activityState.expenses && activityState.expenses.length > 0) {
+    const exp = activityState.expenses.find(e => e.isShuttleRow) || activityState.expenses[0];
+    if (exp) {
+      exp.unitPrice = unitPrice;
+      if (exp.qty === count) exp.amount = chosenBoxPrice;
+      else exp.amount = exp.qty * unitPrice;
+    }
+  }
+
   if (shouldReset) {
     activityState.selectedMemberIds = new Set();
     activityState.selectedGuestIds = new Set();
@@ -1587,7 +1619,7 @@ function submitCreateActivitySession(e) {
   renderAttendanceTab();
 
   const formattedDate = chosenDate.split('-').reverse().join('/');
-  showToast(`✓ Đã tạo buổi hoạt động ngày ${formattedDate} (${chosenType}) thành công! Danh sách điểm danh đã sẵn sàng.`, 'success');
+  showToast(`✓ Đã tạo buổi hoạt động ngày ${formattedDate} (${chosenType}) với đơn giá hộp: ${formatMoney(chosenBoxPrice)} (1 quả = ${formatMoney(unitPrice)})!`, 'success');
 }
 
 // Giữ lại createNewActivitySession làm alias
@@ -2461,11 +2493,15 @@ function updateExpenseQty(id, val) {
   if (exp) {
     exp.qty = Math.max(1, Number(val) || 1);
     if (exp.isShuttleRow && (AppState.config?.shuttleBillingMode !== 'BY_BOX')) {
-      const boxPrice = AppState.config?.dailyBoxPrice || 340000;
+      const boxPrice = activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
       const countPerBox = AppState.config?.shuttlecocksPerBox || 12;
-      const unitPrice = Math.round(boxPrice / countPerBox) || 28333;
+      const unitPrice = countPerBox > 0 ? Math.round(boxPrice / countPerBox) : 28333;
       exp.unitPrice = unitPrice;
-      exp.amount = Math.round(exp.qty * (boxPrice / countPerBox));
+      if (exp.qty === countPerBox) {
+        exp.amount = boxPrice;
+      } else {
+        exp.amount = exp.qty * unitPrice;
+      }
     } else {
       exp.amount = exp.qty * exp.unitPrice;
     }
@@ -2527,26 +2563,72 @@ function adjustShuttleCount(delta) {
   }
 }
 
+function onActivityDailyBoxPriceChanged(val) {
+  const boxPrice = Math.max(0, Number(val) || 0);
+  const count = AppState.config?.shuttlecocksPerBox || 12;
+  const unitPrice = count > 0 ? Math.round(boxPrice / count) : 0;
+
+  activityState.dailyBoxPrice = boxPrice;
+
+  // Cập nhật dòng chi phí tiền cầu
+  const exp = (activityState.expenses || []).find(e => e.isShuttleRow) || activityState.expenses[0];
+  if (exp) {
+    exp.unitPrice = unitPrice;
+    if (exp.qty === count) {
+      exp.amount = boxPrice;
+    } else {
+      exp.amount = exp.qty * unitPrice;
+    }
+  }
+
+  saveActivitySessionState();
+  updateDailyRatePresetBadgeUI();
+  renderActivityExpenseRows();
+  recalculateActivitySplit();
+}
+
 function updateDailyRatePresetBadgeUI() {
   const badge = document.getElementById('actDailyRatePresetBadge');
-  if (!badge) return;
-  const boxPrice = AppState.config?.dailyBoxPrice || 340000;
+  const boxPrice = activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
   const count = AppState.config?.shuttlecocksPerBox || 12;
-  const unitPrice = Math.round(boxPrice / count) || 28333;
+  const unitPrice = count > 0 ? Math.round(boxPrice / count) : 28333;
   const mode = AppState.config?.shuttleBillingMode || 'BY_SHUTTLE';
-  if (mode === 'BY_SHUTTLE') {
-    badge.textContent = `ĐƠN GIÁ THEO QUẢ = ${formatMoney(unitPrice)} (1 hộp ${count} quả = ${formatMoney(boxPrice)})`;
-  } else {
-    const title = AppState.config?.dailyRateTitle || `ĐƠN GIÁ THEO NGÀY ${count}`;
-    badge.textContent = `${title} = ${formatMoney(boxPrice)}`;
+
+  if (badge) {
+    if (mode === 'BY_SHUTTLE') {
+      badge.textContent = `ĐƠN GIÁ THEO QUẢ = ${formatMoney(unitPrice)} (1 hộp ${count} quả = ${formatMoney(boxPrice)})`;
+    } else {
+      const title = AppState.config?.dailyRateTitle || `ĐƠN GIÁ THEO NGÀY ${count}`;
+      badge.textContent = `${title} = ${formatMoney(boxPrice)}`;
+    }
+  }
+
+  const actBoxInp = document.getElementById('actSessionBoxPriceInput');
+  if (actBoxInp && document.activeElement !== actBoxInp) {
+    actBoxInp.value = boxPrice;
+  }
+  const actPerShuttleTxt = document.getElementById('actSessionPerShuttleText');
+  if (actPerShuttleTxt) {
+    actPerShuttleTxt.textContent = `${formatMoney(unitPrice)} / quả`;
   }
 }
 
 function applyDailyRatePreset(rate) {
-  const boxPrice = rate !== undefined ? rate : (AppState.config?.dailyBoxPrice || 340000);
-  const count = AppState.config?.shuttlecocksPerBox || 12;
-  const unitPrice = Math.round(boxPrice / count) || 28333;
+  let boxPrice = rate;
+  if (boxPrice === undefined) {
+    const configInput = document.getElementById('configDailyBoxPrice');
+    if (configInput && configInput.value) {
+      boxPrice = Number(configInput.value) || 340000;
+    } else {
+      boxPrice = activityState.dailyBoxPrice || AppState.config?.dailyBoxPrice || 340000;
+    }
+  }
+  const countInput = document.getElementById('configShuttlecocksPerBox');
+  const count = (countInput && countInput.value) ? (Number(countInput.value) || 12) : (AppState.config?.shuttlecocksPerBox || 12);
+  const unitPrice = count > 0 ? Math.round(boxPrice / count) : 28333;
   const mode = AppState.config?.shuttleBillingMode || 'BY_SHUTTLE';
+
+  activityState.dailyBoxPrice = boxPrice;
 
   if (activityState.expenses.length > 0) {
     if (mode === 'BY_SHUTTLE') {
@@ -2554,7 +2636,7 @@ function applyDailyRatePreset(rate) {
       activityState.expenses[0].title = 'Tiền cầu';
       activityState.expenses[0].unitPrice = unitPrice;
       activityState.expenses[0].qty = qty;
-      activityState.expenses[0].amount = Math.round(qty * (boxPrice / count));
+      activityState.expenses[0].amount = (qty === count) ? boxPrice : (qty * unitPrice);
       activityState.expenses[0].isShuttleRow = true;
     } else {
       const title = AppState.config?.dailyRateTitle || `ĐƠN GIÁ THEO NGÀY ${count}`;
@@ -2588,9 +2670,11 @@ function applyDailyRatePreset(rate) {
       });
     }
   }
+  saveActivitySessionState();
+  updateDailyRatePresetBadgeUI();
   renderActivityExpenseRows();
   recalculateActivitySplit();
-  showToast(`✓ Đã áp dụng định mức: ${mode === 'BY_SHUTTLE' ? formatMoney(unitPrice) + '/quả (1 hộp = ' + formatMoney(boxPrice) + ')' : formatMoney(boxPrice) + '/hộp'}!`, 'success');
+  showToast(`✓ Đã áp dụng đơn giá theo ngày: ${mode === 'BY_SHUTTLE' ? formatMoney(unitPrice) + '/quả (1 hộp = ' + formatMoney(boxPrice) + ')' : formatMoney(boxPrice) + '/hộp'}!`, 'success');
 }
 
 // --- 6. KHOẢN ĐÓNG GÓP & NGƯỜI ỨNG TIỀN ---
@@ -11393,7 +11477,7 @@ function saveDailyRateConfig() {
   updateDailyRatePresetBadgeUI();
   updateShuttleBillingUI();
   updateDailyRateCalculatedPreview();
-  showToast(`✓ Đã lưu cấu hình: 1 hộp = ${count} quả (${formatMoney(boxPrice)}), tính ${billingMode === 'BY_SHUTTLE' ? 'theo số quả' : 'theo hộp'}!`, 'success');
+  showToast(`✓ Đã lưu cấu hình: 1 hộp = ${count} quả (${formatMoney(boxPrice)}), đơn giá 1 quả = ${formatMoney(shuttleUnitPrice)} (làm tròn đơn vị đồng)!`, 'success');
 }
 
 // Sao lưu và khôi phục
