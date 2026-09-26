@@ -1056,9 +1056,10 @@ function loadData() {
       }
 
       if (!AppState.config) AppState.config = {};
-      if (AppState.config.autoBackupIdleMinutes === undefined) {
-        AppState.config.autoBackupIdleMinutes = 10;
+      if (AppState.config.autoBackupIdleSeconds === undefined) {
+        AppState.config.autoBackupIdleSeconds = 15;
       }
+      AppState.config.autoBackupIdleMinutes = Math.round(AppState.config.autoBackupIdleSeconds / 60);
       saveData();
     } else {
       AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
@@ -14733,7 +14734,7 @@ function checkConcurrentSession() {
 }
 
 /**
- * 4. Tự động sao lưu dữ liệu khi không thao tác (5, 10, 15... phút)
+ * 4. Tự động sao lưu dữ liệu khi không thao tác (Đơn vị: Giây - 5, 10, 15, 30, 60... giây)
  */
 let lastUserActivityTime = Date.now();
 let hasBackedUpCurrentIdle = false;
@@ -14747,28 +14748,33 @@ function setupInactivityAutoBackup() {
     window.addEventListener(evt, resetActivity, { passive: true });
   });
 
-  setInterval(checkInactivityBackup, 15000);
+  // Kiểm tra thời gian không thao tác mỗi 1 giây (đơn vị giây)
+  setInterval(checkInactivityBackup, 1000);
 }
 
 function onAutoBackupSettingChange(val) {
-  const minutes = Number(val) || 0;
+  const seconds = Number(val) || 0;
   if (!AppState.config) AppState.config = {};
-  AppState.config.autoBackupIdleMinutes = minutes;
+  AppState.config.autoBackupIdleSeconds = seconds;
+  AppState.config.autoBackupIdleMinutes = Math.round(seconds / 60);
   saveData();
   updateAutoBackupUI();
-  showToast(`✓ Đã cập nhật chế độ tự động sao lưu: ${minutes > 0 ? `sau ${minutes} phút không thao tác` : 'Tắt'}`, 'success');
+  showToast(`✓ Đã cập nhật chế độ tự động sao lưu: ${seconds > 0 ? `sau ${seconds} giây không thao tác` : 'Tắt'}`, 'success');
 }
 
 function updateAutoBackupUI() {
-  const minutes = AppState.config?.autoBackupIdleMinutes !== undefined ? AppState.config.autoBackupIdleMinutes : 10;
-  const select = document.getElementById('configAutoBackupIdleMinutes');
-  if (select) select.value = String(minutes);
+  const seconds = AppState.config?.autoBackupIdleSeconds !== undefined 
+    ? AppState.config.autoBackupIdleSeconds 
+    : (AppState.config?.autoBackupIdleMinutes ? AppState.config.autoBackupIdleMinutes * 60 : 15);
+
+  const select = document.getElementById('configAutoBackupIdleSeconds') || document.getElementById('configAutoBackupIdleMinutes');
+  if (select) select.value = String(seconds);
 
   const statusText = document.getElementById('autoBackupStatusText');
   const lastTimeText = document.getElementById('autoBackupLastTimeText');
   if (statusText) {
-    if (minutes > 0) {
-      statusText.innerHTML = `<span class="text-emerald-700 font-medium">🟢 Đang giám sát: Sẽ tự lưu sau ${minutes} phút rảnh tay</span>`;
+    if (seconds > 0) {
+      statusText.innerHTML = `<span class="text-emerald-700 font-medium">🟢 Đang giám sát: Sẽ tự lưu sau ${seconds} giây rảnh tay</span>`;
     } else {
       statusText.innerHTML = `<span class="text-slate-400 font-medium">⚪ Đang tắt tự động sao lưu</span>`;
     }
@@ -14780,12 +14786,14 @@ function updateAutoBackupUI() {
 }
 
 function checkInactivityBackup() {
-  const minutes = AppState.config?.autoBackupIdleMinutes !== undefined ? AppState.config.autoBackupIdleMinutes : 10;
-  if (minutes <= 0) return;
+  const seconds = AppState.config?.autoBackupIdleSeconds !== undefined 
+    ? AppState.config.autoBackupIdleSeconds 
+    : (AppState.config?.autoBackupIdleMinutes ? AppState.config.autoBackupIdleMinutes * 60 : 15);
+  if (seconds <= 0) return;
   if (hasBackedUpCurrentIdle) return;
 
   const idleMs = Date.now() - lastUserActivityTime;
-  if (idleMs >= minutes * 60 * 1000) {
+  if (idleMs >= seconds * 1000) {
     try {
       const nowStr = getNowTimestampString();
       const snapshot = {
@@ -14814,7 +14822,7 @@ function checkInactivityBackup() {
         pushDataToCloud();
       }
 
-      showToast(`💾 Đã tự động sao lưu an toàn dữ liệu CLB sau ${minutes} phút rảnh tay.`, 'info');
+      showToast(`💾 Đã tự động sao lưu an toàn dữ liệu CLB sau ${seconds} giây không thao tác.`, 'info');
     } catch (e) {
       console.warn('Lỗi tự động sao lưu rảnh tay:', e);
     }

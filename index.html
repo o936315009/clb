@@ -3059,27 +3059,30 @@
             </button>
           </div>
 
-          <!-- Inactivity Auto-Backup Setting -->
+          <!-- Inactivity Auto-Backup Setting (Đơn vị: Giây) -->
           <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
             <div class="flex items-center justify-between flex-wrap gap-2">
               <div class="flex items-center gap-2.5">
                 <span class="text-xl">⏱️</span>
                 <div>
-                  <div class="text-xs font-bold text-slate-800">Tự động sao lưu dữ liệu khi không thao tác:</div>
-                  <div class="text-[11px] text-slate-500">Tự động lưu bản snapshot an toàn khi người dùng không hoạt động (5, 10, 15... phút)</div>
+                  <div class="text-xs font-bold text-slate-800">Tự động sao lưu dữ liệu khi không thao tác (Đơn vị: Giây):</div>
+                  <div class="text-[11px] text-slate-500">Tự động lưu bản snapshot an toàn khi người dùng không hoạt động (5, 10, 15... giây)</div>
                 </div>
               </div>
-              <select id="configAutoBackupIdleMinutes" onchange="onAutoBackupSettingChange(this.value)" class="text-xs font-bold bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer shadow-2xs">
+              <select id="configAutoBackupIdleSeconds" onchange="onAutoBackupSettingChange(this.value)" class="text-xs font-bold bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer shadow-2xs">
                 <option value="0">Tắt tự động sao lưu</option>
-                <option value="5">Sau 5 phút không thao tác</option>
-                <option value="10" selected>Sau 10 phút không thao tác (Khuyên dùng)</option>
-                <option value="15">Sau 15 phút không thao tác</option>
-                <option value="30">Sau 30 phút không thao tác</option>
-                <option value="60">Sau 60 phút không thao tác</option>
+                <option value="5">Sau 5 giây không thao tác</option>
+                <option value="10">Sau 10 giây không thao tác</option>
+                <option value="15" selected>Sau 15 giây không thao tác</option>
+                <option value="30">Sau 30 giây không thao tác</option>
+                <option value="60">Sau 60 giây (1 phút) không thao tác</option>
+                <option value="120">Sau 120 giây (2 phút) không thao tác</option>
+                <option value="300">Sau 300 giây (5 phút) không thao tác</option>
+                <option value="600">Sau 600 giây (10 phút) không thao tác</option>
               </select>
             </div>
             <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-200/70 flex-wrap gap-2">
-              <span id="autoBackupStatusText" class="font-medium text-emerald-700 flex items-center gap-1">🟢 Đang giám sát: Sẽ tự lưu sau 10 phút rảnh tay</span>
+              <span id="autoBackupStatusText" class="font-medium text-emerald-700 flex items-center gap-1">🟢 Đang giám sát: Sẽ tự lưu sau 15 giây rảnh tay</span>
               <span id="autoBackupLastTimeText" class="text-slate-500 font-mono">Lần lưu gần nhất: Chưa thực hiện</span>
             </div>
           </div>
