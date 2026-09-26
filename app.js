@@ -1044,6 +1044,21 @@ function loadData() {
         if (AppState.funds.shuttlePaidTotal === undefined) AppState.funds.shuttlePaidTotal = isSmash ? 680000 : 0;
         if (AppState.funds.courtPaidTotal === undefined) AppState.funds.courtPaidTotal = isSmash ? 1500000 : 0;
       }
+
+      if (!AppState.personalExpenses) {
+        AppState.personalExpenses = isSmash ? [
+          { id: 'PEXP_01', memberId: 'M001', category: 'STRING', amount: 160000, date: '2026-09-08', month: '2026-09', note: 'Căng cước Nanogy 98 10.5kg', createdAt: '2026-09-08T10:00:00Z' },
+          { id: 'PEXP_02', memberId: 'M001', category: 'GRIP', amount: 35000, date: '2026-09-12', month: '2026-09', note: 'Quấn cán Yonex AC102EX', createdAt: '2026-09-12T16:00:00Z' },
+          { id: 'PEXP_03', memberId: 'M001', category: 'WATER', amount: 45000, date: '2026-09-15', month: '2026-09', note: 'Nước điện giải Revive 3 chai', createdAt: '2026-09-15T19:00:00Z' },
+          { id: 'PEXP_04', memberId: 'M001', category: 'BEER', amount: 150000, date: '2026-09-18', month: '2026-09', note: 'Liên hoan sau buổi cầu', createdAt: '2026-09-18T21:00:00Z' },
+          { id: 'PEXP_05', memberId: 'M001', category: 'SIDE_MATCH', amount: 100000, date: '2026-09-22', month: '2026-09', note: 'Kèo đôi nam giao lưu vui vẻ', createdAt: '2026-09-22T20:30:00Z' }
+        ] : [];
+      }
+
+      if (!AppState.config) AppState.config = {};
+      if (AppState.config.autoBackupIdleMinutes === undefined) {
+        AppState.config.autoBackupIdleMinutes = 10;
+      }
       saveData();
     } else {
       AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
@@ -1925,6 +1940,11 @@ function renderDashboardActivityStats() {
       balanceEl.textContent = `=${formatMoney(b.balance)}`;
       balanceEl.className = b.balance < 0 ? 'text-sm sm:text-base font-black text-rose-600' : 'text-sm sm:text-base font-black text-emerald-700';
     }
+  }
+
+  // Cập nhật Sổ chi phí cá nhân & Tổng chi trong tháng trên Dashboard
+  if (typeof renderHomePersonalExpenseWidget === 'function') {
+    renderHomePersonalExpenseWidget(targetMember ? targetMember.id : loggedInUserId);
   }
 
   lucide.createIcons();
@@ -3155,8 +3175,15 @@ function renderActivityMemberChips() {
 
   if (!officialGrid || !honoraryGrid) return;
 
-  const officialMembers = AppState.members.filter(m => m.type === 'OFFICIAL');
-  const honoraryMembers = AppState.members.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
+  let officialMembers = AppState.members.filter(m => m.type === 'OFFICIAL');
+  let honoraryMembers = AppState.members.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
+
+  // Nếu người xem là thành viên thông thường (MEMBER), ẩn hoàn toàn tài khoản Quản lý toàn quyền CLB (ADMIN)
+  // Các thành viên tham gia quản lý (Phó nhóm, Thủ quỹ, Trọng tài) vẫn hiển thị đầy đủ giống mọi thành viên
+  if (AppState.auth?.user?.role === 'MEMBER') {
+    officialMembers = officialMembers.filter(m => !isClubMasterAdmin(m));
+    honoraryMembers = honoraryMembers.filter(m => !isClubMasterAdmin(m));
+  }
 
   let offSelectedCount = 0;
   let honSelectedCount = 0;
@@ -7514,17 +7541,18 @@ function renderMemberManagementList() {
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
   let list = AppState.members;
 
-  // Nếu là tài khoản thành viên thông thường (MEMBER), chỉ hiển thị thông tin tài khoản của chính mình
-  if (isMemberRoleMem && currentUserIdMem) {
-    list = list.filter(m => String(m.id) === String(currentUserIdMem));
-  } else {
-    if (memberListFilter === 'OFFICIAL') {
-      list = list.filter(m => m.type === 'OFFICIAL');
-    } else if (memberListFilter === 'HONORARY' || memberListFilter === 'UNOFFICIAL') {
-      list = list.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
-    } else if (memberListFilter === 'GUEST') {
-      list = list.filter(m => m.type.startsWith('GUEST'));
-    }
+  // Nếu là tài khoản thành viên thông thường (MEMBER), ẩn hoàn toàn tài khoản Quản lý toàn quyền CLB (ADMIN)
+  // Các thành viên tham gia quản lý (Phó nhóm, Thủ quỹ, Trọng tài) và hội viên khác hiển thị đầy đủ 100%
+  if (isMemberRoleMem) {
+    list = list.filter(m => !isClubMasterAdmin(m));
+  }
+
+  if (memberListFilter === 'OFFICIAL') {
+    list = list.filter(m => m.type === 'OFFICIAL');
+  } else if (memberListFilter === 'HONORARY' || memberListFilter === 'UNOFFICIAL') {
+    list = list.filter(m => m.type === 'HONORARY' || m.type === 'UNOFFICIAL');
+  } else if (memberListFilter === 'GUEST') {
+    list = list.filter(m => m.type.startsWith('GUEST'));
   }
 
   if (query) {
@@ -7564,16 +7592,21 @@ function renderMemberManagementList() {
 
     let actionsHtml = '';
     if (isMemberRoleMem) {
-      actionsHtml = `
-        <div class="flex items-center justify-center gap-1.5 flex-wrap">
-          <button onclick="openTopUpModalForMember('${m.id}')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold cursor-pointer" title="Nạp thêm vào ví cá nhân">
-            💳 Nạp ví
-          </button>
-          <button onclick="openQuickRenameModal('${m.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold cursor-pointer" title="Sửa SĐT / Tên hiển thị">
-            ✏️ Sửa thông tin
-          </button>
-        </div>
-      `;
+      const isSelf = String(m.id) === String(currentUserIdMem);
+      if (isSelf) {
+        actionsHtml = `
+          <div class="flex items-center justify-center gap-1.5 flex-wrap">
+            <button onclick="openTopUpModalForMember('${m.id}')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-bold cursor-pointer" title="Nạp thêm vào ví cá nhân">
+              💳 Nạp ví
+            </button>
+            <button onclick="openQuickRenameModal('${m.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold cursor-pointer" title="Sửa SĐT / Tên hiển thị">
+              ✏️ Sửa thông tin
+            </button>
+          </div>
+        `;
+      } else {
+        actionsHtml = `<div class="text-center text-slate-400 text-xs">—</div>`;
+      }
     } else {
       actionsHtml = `
         <div class="flex items-center justify-center gap-1.5 flex-wrap">
@@ -7597,14 +7630,17 @@ function renderMemberManagementList() {
       `;
     }
 
+    const isSelfRow = !isMemberRoleMem || String(m.id) === String(currentUserIdMem);
+
     return `
       <tr class="hover:bg-slate-50 transition">
         <td class="py-3 px-4">
           <div class="flex items-center gap-1.5">
             <span class="font-bold text-slate-900 text-xs">${m.name}</span>
+            ${isSelfRow ? `
             <button onclick="openQuickRenameModal('${m.id}')" class="text-slate-400 hover:text-brand-600 p-0.5 rounded transition cursor-pointer" title="Đổi tên / SĐT thành viên">
               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-            </button>
+            </button>` : ''}
           </div>
           <div class="text-[11px] text-slate-400">${m.phone || 'Chưa có SĐT'}</div>
         </td>
@@ -8640,11 +8676,12 @@ function updateDevAdminUI() {
   const badge = document.getElementById('badgeDevAdminStatus');
   if (badge) {
     if (isDev) {
+      badge.classList.remove('hidden');
       badge.className = 'px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-xs rounded-full flex items-center gap-1 shadow-2xs';
       badge.innerHTML = `<span>🚀</span><span>Admin Nhà Phát Triển (Đang bật)</span>`;
     } else {
-      badge.className = 'px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs rounded-full flex items-center gap-1';
-      badge.innerHTML = `<span>🔒</span><span>Chưa cấp quyền Admin Dev</span>`;
+      badge.classList.add('hidden');
+      badge.innerHTML = '';
     }
   }
 
@@ -8652,28 +8689,41 @@ function updateDevAdminUI() {
   const btnToggle = document.getElementById('btnToggleDevAdminSession');
   if (btnToggle) {
     if (isDev) {
+      btnToggle.classList.remove('hidden');
       btnToggle.className = 'px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
       btnToggle.onclick = logoutDeveloperAdmin;
       btnToggle.innerHTML = `<span>🔒</span><span>Khóa quyền Admin Dev</span>`;
     } else {
-      btnToggle.className = 'px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
-      btnToggle.onclick = openDevAdminAuthModal;
-      btnToggle.innerHTML = `<span>🚀</span><span>Đăng nhập Admin Nhà Phát Triển</span>`;
+      btnToggle.classList.add('hidden');
     }
   }
 
-  // 3. Nút Tạo CLB Mới trong Settings
+  // 3. Nút Ẩn/Hiện CLB mẫu Dev
+  const btnHideDemo = document.getElementById('btnToggleHideDevDemo');
+  if (btnHideDemo) {
+    if (isDev) {
+      btnHideDemo.classList.remove('hidden');
+    } else {
+      btnHideDemo.classList.add('hidden');
+    }
+  }
+
+  // 4. Nút Tạo CLB Mới trong Settings
   const btnCreate = document.getElementById('btnCreateClubInSettings');
   if (btnCreate) {
     if (isDev) {
+      btnCreate.classList.remove('hidden');
       btnCreate.className = 'px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
       btnCreate.title = 'Khởi tạo CLB mới vào hệ thống';
       btnCreate.innerHTML = `<span>➕</span><span>Tạo Câu Lạc Bộ Mới</span>`;
     } else {
-      btnCreate.className = 'px-3.5 py-1.5 bg-slate-100 hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
-      btnCreate.title = 'Yêu cầu đăng nhập tài khoản Admin Nhà phát triển';
-      btnCreate.innerHTML = `<span>🔒</span><span>Tạo CLB Mới (Cần quyền Admin Dev)</span>`;
+      btnCreate.classList.add('hidden');
     }
+  }
+
+  // 5. Cập nhật giao diện Đa Câu Lạc Bộ
+  if (typeof renderMultiClubSettingsSection === 'function') {
+    renderMultiClubSettingsSection();
   }
 }
 
@@ -9187,14 +9237,19 @@ function renderMultiClubSettingsSection() {
 
   const registry = getClubsRegistry();
   const activeId = getActiveClubId();
-  const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+  const isDev = isDeveloperAdmin();
+  const isHideDemo = !isDev || localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
   const visibleClubs = isHideDemo
     ? registry.filter(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning')
     : registry;
   const listToRender = visibleClubs.length > 0 ? visibleClubs : registry;
 
   if (countEl) {
-    countEl.textContent = `${listToRender.length} Câu Lạc Bộ` + (isHideDemo && registry.length > listToRender.length ? ` (Đã ẩn ${registry.length - listToRender.length} CLB mẫu Dev)` : '');
+    if (isDev) {
+      countEl.textContent = `${listToRender.length} Câu Lạc Bộ` + (isHideDemo && registry.length > listToRender.length ? ` (Đã ẩn ${registry.length - listToRender.length} CLB mẫu Dev)` : '');
+    } else {
+      countEl.textContent = `${listToRender.length} Câu Lạc Bộ`;
+    }
   }
 
   container.innerHTML = listToRender.map(club => {
@@ -9227,7 +9282,7 @@ function renderMultiClubSettingsSection() {
                 <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
                   ${club.shortName || 'CLB'}
                 </span>
-                ${club.isDeveloperSample ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Mẫu Dev</span>' : ''}
+                ${(isDev && club.isDeveloperSample) ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Mẫu Dev</span>' : ''}
               </div>
               <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
                 <span>👑 Quản lý: <strong class="text-slate-700">${club.adminName || 'Admin'}</strong></span>
@@ -13131,11 +13186,13 @@ function handleLogin(e) {
 
   // 1. Kiểm tra tài khoản Admin Nhà Phát Triển (Super Admin)
   if (verifyDevAdminCredentials(u, p)) {
+    const sessionToken = 'SES_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem(CLB_CURRENT_SESSION_KEY, sessionToken);
     loginAsDeveloperAdmin(u, p);
     closeModal('loginModal');
     renderAttendanceRoleBanner();
     renderUserAccessTable();
-    showToast('✓ Đăng nhập thành công với quyền Admin Nhà Phát Triển (Toàn quyền tạo CLB & hệ thống)!', 'success');
+    showToast('✓ Đăng nhập thành công với quyền Admin Nhà Phát Triển!', 'success');
     return;
   }
 
@@ -13150,6 +13207,12 @@ function handleLogin(e) {
     try {
       localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
     } catch (e) {}
+
+    // Thiết lập phiên đăng nhập duy nhất (1 thiết bị/trình duyệt tại 1 thời điểm)
+    const sessionToken = 'SES_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem(CLB_CURRENT_SESSION_KEY, sessionToken);
+    member.activeSessionToken = sessionToken;
+    member.lastLoginTime = getNowTimestampString();
 
     AppState.auth = {
       isLoggedIn: true,
@@ -13172,18 +13235,31 @@ function handleLogin(e) {
     renderDashboard();
     renderFinanceTab();
     renderMemberManagementList();
+
+    // Bắt buộc đổi mật khẩu trong lần đăng nhập đầu tiên
+    const requiresFirstLoginChange = member.mustChangePassword === true || 
+      (!member.hasChangedPassword && (member.password === '123' || member.password === '123456'));
+    if (requiresFirstLoginChange) {
+      member.mustChangePassword = true;
+      saveData();
+      openFirstLoginPasswordModal(member);
+      return;
+    }
+
     const roleDef = ROLE_DEFINITIONS[member.role] || ROLE_DEFINITIONS.MEMBER;
     showToast(`✓ Chào mừng ${member.name} (${roleDef.icon} ${roleDef.label})!`, 'success');
     return;
   }
 
-  showToast('Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123 hoặc chinh / 123)', 'error');
+  showToast('Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!', 'error');
 }
 
 function handleLogout() {
   try {
     localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
+    localStorage.removeItem(CLB_CURRENT_SESSION_KEY);
   } catch (e) {}
+  closeModal('modalFirstLoginChangePassword');
   AppState.auth = { isLoggedIn: false, user: null };
   saveData();
   updateDevAdminUI();
@@ -14056,6 +14132,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initTournamentModule();
   lucide.createIcons();
   initFirebaseCloudSync();
+  setupInactivityAutoBackup();
+  updateAutoBackupUI();
+  setInterval(checkConcurrentSession, 8000);
+
+  // Kiểm tra tài khoản cần đổi mật khẩu lần đầu
+  if (AppState.auth?.isLoggedIn && AppState.auth?.user?.id) {
+    const currentMember = (AppState.members || []).find(m => m.id === AppState.auth.user.id);
+    if (currentMember && currentMember.mustChangePassword) {
+      setTimeout(() => openFirstLoginPasswordModal(currentMember), 400);
+    }
+  }
 
   if (window.location.hash) {
     const rawHash = window.location.hash.replace('#', '');
@@ -14555,4 +14642,527 @@ function manualTriggerCloudSync() {
   setTimeout(() => {
     showToast('✓ Đồng bộ đám mây hoàn tất!', 'success');
   }, 1000);
+}
+
+// ==========================================
+// 21. PHÂN HỆ BẢO MẬT, ĐỔI MẬT KHẨU LẦN ĐẦU, 1 PHIÊN ĐĂNG NHẬP, TỰ ĐỘNG SAO LƯU & SỔ CHI PHÍ CÁ NHÂN
+// ==========================================
+
+/**
+ * 1. Nhận diện tài khoản Admin quản lý toàn quyền CLB (Master Admin)
+ * Tài khoản này ẩn hoàn toàn trên giao diện đối với hội viên thường.
+ * Các tài khoản tham gia ban quản lý (Phó nhóm, Thủ quỹ, Trọng tài) vẫn hiển thị đầy đủ giống mọi hội viên.
+ */
+function isClubMasterAdmin(member) {
+  if (!member) return false;
+  return member.role === 'ADMIN' || member.isClubMasterAdmin === true;
+}
+
+/**
+ * 2. Đổi mật khẩu trong lần đăng nhập đầu tiên
+ */
+function openFirstLoginPasswordModal(member) {
+  const modal = document.getElementById('modalFirstLoginChangePassword');
+  if (!modal) return;
+  const nameEl = document.getElementById('firstLoginMemberName');
+  if (nameEl) nameEl.textContent = member?.name || member?.username || 'Hội viên';
+  const p1 = document.getElementById('firstLoginNewPassword');
+  const p2 = document.getElementById('firstLoginConfirmPassword');
+  if (p1) p1.value = '';
+  if (p2) p2.value = '';
+  openModal('modalFirstLoginChangePassword');
+}
+
+function handleFirstLoginChangePasswordSubmit(e) {
+  if (e) e.preventDefault();
+  const p1 = document.getElementById('firstLoginNewPassword')?.value.trim();
+  const p2 = document.getElementById('firstLoginConfirmPassword')?.value.trim();
+
+  if (!p1 || p1.length < 6) {
+    showToast('⚠️ Mật khẩu mới phải có tối thiểu 6 ký tự!', 'warning');
+    return;
+  }
+  if (p1 !== p2) {
+    showToast('⚠️ Mật khẩu xác nhận không trùng khớp. Vui lòng nhập lại!', 'error');
+    return;
+  }
+  if (p1 === '123' || p1 === '123456') {
+    showToast('⚠️ Vui lòng không đặt lại mật khẩu mặc định (123 hoặc 123456)!', 'warning');
+    return;
+  }
+
+  const currentUserId = AppState.auth?.user?.id;
+  const member = (AppState.members || []).find(m => m.id === currentUserId);
+  if (!member) {
+    showToast('Lỗi: Không tìm thấy thông tin tài khoản!', 'error');
+    return;
+  }
+
+  member.password = p1;
+  member.mustChangePassword = false;
+  member.hasChangedPassword = true;
+  saveData();
+  closeModal('modalFirstLoginChangePassword');
+  showToast('✓ Cập nhật mật khẩu thành công! Tài khoản của bạn đã được bảo vệ an toàn.', 'success');
+}
+
+/**
+ * 3. Giới hạn 1 phiên đăng nhập duy nhất trên 1 thiết bị/trình duyệt tại 1 thời điểm
+ */
+const CLB_CURRENT_SESSION_KEY = 'CLB_CURRENT_SESSION_TOKEN_V1';
+
+function checkConcurrentSession() {
+  if (!AppState.auth || !AppState.auth.isLoggedIn || !AppState.auth.user) return;
+  if (AppState.auth.user.role === 'DEV_ADMIN') return;
+
+  const currentUserId = AppState.auth.user.id;
+  const member = (AppState.members || []).find(m => m.id === currentUserId);
+  if (!member || !member.activeSessionToken) return;
+
+  const localToken = localStorage.getItem(CLB_CURRENT_SESSION_KEY);
+  if (!localToken) {
+    localStorage.setItem(CLB_CURRENT_SESSION_KEY, member.activeSessionToken);
+    return;
+  }
+
+  if (member.activeSessionToken !== localToken) {
+    console.warn('Phát hiện phiên làm việc đã được mở trên thiết bị khác!');
+    handleLogout();
+    alert('⚠️ Tài khoản của bạn đã được đăng nhập từ một thiết bị hoặc trình duyệt khác.\n\nPhiên làm việc này đã kết thúc để bảo đảm an toàn dữ liệu.');
+  }
+}
+
+/**
+ * 4. Tự động sao lưu dữ liệu khi không thao tác (5, 10, 15... phút)
+ */
+let lastUserActivityTime = Date.now();
+let hasBackedUpCurrentIdle = false;
+
+function setupInactivityAutoBackup() {
+  const resetActivity = () => {
+    lastUserActivityTime = Date.now();
+    hasBackedUpCurrentIdle = false;
+  };
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+    window.addEventListener(evt, resetActivity, { passive: true });
+  });
+
+  setInterval(checkInactivityBackup, 15000);
+}
+
+function onAutoBackupSettingChange(val) {
+  const minutes = Number(val) || 0;
+  if (!AppState.config) AppState.config = {};
+  AppState.config.autoBackupIdleMinutes = minutes;
+  saveData();
+  updateAutoBackupUI();
+  showToast(`✓ Đã cập nhật chế độ tự động sao lưu: ${minutes > 0 ? `sau ${minutes} phút không thao tác` : 'Tắt'}`, 'success');
+}
+
+function updateAutoBackupUI() {
+  const minutes = AppState.config?.autoBackupIdleMinutes !== undefined ? AppState.config.autoBackupIdleMinutes : 10;
+  const select = document.getElementById('configAutoBackupIdleMinutes');
+  if (select) select.value = String(minutes);
+
+  const statusText = document.getElementById('autoBackupStatusText');
+  const lastTimeText = document.getElementById('autoBackupLastTimeText');
+  if (statusText) {
+    if (minutes > 0) {
+      statusText.innerHTML = `<span class="text-emerald-700 font-medium">🟢 Đang giám sát: Sẽ tự lưu sau ${minutes} phút rảnh tay</span>`;
+    } else {
+      statusText.innerHTML = `<span class="text-slate-400 font-medium">⚪ Đang tắt tự động sao lưu</span>`;
+    }
+  }
+  const lastSaved = localStorage.getItem('CLB_AUTO_BACKUP_LAST_TIME');
+  if (lastTimeText && lastSaved) {
+    lastTimeText.textContent = `Lần lưu gần nhất: ${lastSaved}`;
+  }
+}
+
+function checkInactivityBackup() {
+  const minutes = AppState.config?.autoBackupIdleMinutes !== undefined ? AppState.config.autoBackupIdleMinutes : 10;
+  if (minutes <= 0) return;
+  if (hasBackedUpCurrentIdle) return;
+
+  const idleMs = Date.now() - lastUserActivityTime;
+  if (idleMs >= minutes * 60 * 1000) {
+    try {
+      const nowStr = getNowTimestampString();
+      const snapshot = {
+        timestamp: nowStr,
+        clubId: getActiveClubId(),
+        clubName: AppState.config?.clubName || 'CLB',
+        data: JSON.parse(JSON.stringify(AppState))
+      };
+
+      let backups = [];
+      try {
+        const raw = localStorage.getItem('CLB_AUTO_BACKUP_SNAPSHOTS_V1');
+        if (raw) backups = JSON.parse(raw);
+      } catch (e) {}
+
+      backups.unshift(snapshot);
+      if (backups.length > 5) backups = backups.slice(0, 5);
+
+      localStorage.setItem('CLB_AUTO_BACKUP_SNAPSHOTS_V1', JSON.stringify(backups));
+      localStorage.setItem('CLB_AUTO_BACKUP_LAST_TIME', nowStr);
+
+      hasBackedUpCurrentIdle = true;
+      updateAutoBackupUI();
+
+      if (typeof pushDataToCloud === 'function') {
+        pushDataToCloud();
+      }
+
+      showToast(`💾 Đã tự động sao lưu an toàn dữ liệu CLB sau ${minutes} phút rảnh tay.`, 'info');
+    } catch (e) {
+      console.warn('Lỗi tự động sao lưu rảnh tay:', e);
+    }
+  }
+}
+
+/**
+ * 5. Sổ Chi Phí Cầu Lông Cá Nhân & Thống Kê Ví Theo Tháng
+ * Công thức: Tổng chi = Chi phí thanh toán cho CLB + Chi phí cá nhân (vợt, cước, quấn cán, nước, bia, kèo, khác)
+ */
+const PERSONAL_EXPENSE_CATEGORIES = {
+  RACKET: { label: 'Vợt', icon: '🏸', color: 'emerald', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  STRING: { label: 'Cước', icon: '🧵', color: 'blue', bg: 'bg-blue-50 text-blue-800 border-blue-200' },
+  GRIP: { label: 'Quấn cán', icon: '🧻', color: 'amber', bg: 'bg-amber-50 text-amber-800 border-amber-200' },
+  WATER: { label: 'Nước', icon: '🥤', color: 'cyan', bg: 'bg-cyan-50 text-cyan-800 border-cyan-200' },
+  BEER: { label: 'Bia', icon: '🍺', color: 'yellow', bg: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
+  SIDE_MATCH: { label: 'Kèo', icon: '⚔️', color: 'rose', bg: 'bg-rose-50 text-rose-800 border-rose-200' },
+  OTHER: { label: 'Khác', icon: '📦', color: 'purple', bg: 'bg-purple-50 text-purple-800 border-purple-200' }
+};
+
+function calculateMemberMonthlySpending(memberId, monthStr) {
+  const currentMonth = monthStr || (new Date().toISOString().substring(0, 7)); // 'YYYY-MM'
+  const member = (AppState.members || []).find(m => m.id === memberId);
+  const memberName = (member?.name || '').trim().toLowerCase();
+
+  // 1. Chi phí thanh toán cho CLB trong tháng
+  let shuttleCost = 0;
+  let fineCost = 0;
+  let fundCost = 0;
+  let courtCost = 0;
+
+  (AppState.activitySessions || []).forEach(ses => {
+    if (ses.date && ses.date.startsWith(currentMonth)) {
+      const attended = (ses.members || []).find(m => m.id === memberId || (m.name && (m.name.toLowerCase().includes(memberName) || memberName.includes(m.name.toLowerCase()))));
+      if (attended) {
+        shuttleCost += (attended.fee !== undefined ? attended.fee : (ses.shuttleFeePerMember || 0));
+      }
+    }
+  });
+
+  if (shuttleCost === 0 && member) {
+    const breakdown = calculateMemberWalletBreakdown(member);
+    shuttleCost = breakdown.dailyShuttleCost || 0;
+    fineCost = breakdown.fine || 0;
+    fundCost = breakdown.clubFund || 0;
+    courtCost = breakdown.courtFee || 0;
+  } else {
+    (AppState.transactions || []).forEach(tx => {
+      let txMonth = '';
+      if (tx.date) {
+        if (tx.date.includes('/')) {
+          const parts = tx.date.split(' ')[0].split('/');
+          if (parts.length === 3) txMonth = `${parts[2]}-${parts[1]}`;
+        } else if (tx.date.includes('-')) {
+          txMonth = tx.date.substring(0, 7);
+        }
+      }
+      if (txMonth === currentMonth) {
+        const isTarget = tx.memberId === memberId || 
+          (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase()))) ||
+          (tx.description && tx.description.toLowerCase().includes(memberName));
+        if (isTarget) {
+          if (tx.subType === 'FINE' || tx.type === 'FINE') {
+            fineCost += Math.abs(tx.amount || tx.walletImpact || 0);
+          } else if (tx.subType === 'MEM_FUND') {
+            fundCost += Math.abs(tx.walletImpact || tx.amount || 0);
+          } else if (tx.type === 'COURT_FEE' || tx.subType === 'COURT_ADV_IN') {
+            courtCost += Math.abs(tx.walletImpact || 0);
+          }
+        }
+      }
+    });
+  }
+
+  const totalClubCosts = shuttleCost + fineCost + fundCost + courtCost;
+
+  // 2. Chi phí cá nhân phát sinh trong tháng
+  const allPersonalExpenses = AppState.personalExpenses || [];
+  const memberExpenses = allPersonalExpenses.filter(p => {
+    if (p.memberId !== memberId) return false;
+    const pMonth = p.month || (p.date ? p.date.substring(0, 7) : '');
+    return pMonth === currentMonth;
+  });
+
+  const categoryTotals = {
+    RACKET: 0,
+    STRING: 0,
+    GRIP: 0,
+    WATER: 0,
+    BEER: 0,
+    SIDE_MATCH: 0,
+    OTHER: 0
+  };
+
+  let totalPersonalCosts = 0;
+  memberExpenses.forEach(exp => {
+    const amt = Number(exp.amount) || 0;
+    totalPersonalCosts += amt;
+    if (categoryTotals[exp.category] !== undefined) {
+      categoryTotals[exp.category] += amt;
+    } else {
+      categoryTotals.OTHER += amt;
+    }
+  });
+
+  // 3. TỔNG CHI TRONG THÁNG = Chi phí CLB + Chi phí cá nhân
+  const totalSpending = totalClubCosts + totalPersonalCosts;
+
+  return {
+    memberId,
+    member,
+    month: currentMonth,
+    shuttleCost,
+    fineCost,
+    fundCost,
+    courtCost,
+    totalClubCosts,
+    categoryTotals,
+    totalPersonalCosts,
+    totalSpending,
+    items: memberExpenses
+  };
+}
+
+function renderHomePersonalExpenseWidget(memberId) {
+  const currentUserId = memberId || AppState.auth?.user?.id || 'M001';
+  const nowMonth = new Date().toISOString().substring(0, 7);
+  const data = calculateMemberMonthlySpending(currentUserId, nowMonth);
+
+  const clubEl = document.getElementById('homeMemberClubExpense');
+  const personalEl = document.getElementById('homeMemberPersonalExpense');
+  const totalEl = document.getElementById('homeMemberTotalExpense');
+
+  if (clubEl) clubEl.textContent = formatMoney(data.totalClubCosts);
+  if (personalEl) personalEl.textContent = formatMoney(data.totalPersonalCosts);
+  if (totalEl) totalEl.textContent = formatMoney(data.totalSpending);
+}
+
+function openAddPersonalExpenseModal(memberId) {
+  const currentUserId = memberId || AppState.auth?.user?.id || 'M001';
+  const modal = document.getElementById('modalAddPersonalExpense');
+  if (!modal) return;
+
+  const memSelect = document.getElementById('pexpMemberSelect');
+  if (memSelect) {
+    const isMemberRole = AppState.auth && AppState.auth.user && AppState.auth.user.role === 'MEMBER';
+    if (isMemberRole) {
+      const u = (AppState.members || []).find(m => m.id === currentUserId) || AppState.auth.user;
+      memSelect.innerHTML = `<option value="${u.id}" selected>${u.chipName || u.name} (Tài khoản của bạn)</option>`;
+      memSelect.disabled = true;
+    } else {
+      memSelect.disabled = false;
+      const opts = (AppState.members || []).map(m => {
+        const isSel = m.id === currentUserId ? 'selected' : '';
+        return `<option value="${m.id}" ${isSel}>${m.chipName || m.name}</option>`;
+      }).join('');
+      memSelect.innerHTML = opts;
+    }
+  }
+
+  const dateInput = document.getElementById('pexpDate');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().substring(0, 10);
+  }
+
+  const amtInput = document.getElementById('pexpAmount');
+  if (amtInput) amtInput.value = '';
+
+  const noteInput = document.getElementById('pexpNote');
+  if (noteInput) noteInput.value = '';
+
+  openModal('modalAddPersonalExpense');
+}
+
+function handleAddPersonalExpenseSubmit(e) {
+  if (e) e.preventDefault();
+  const cat = document.getElementById('pexpCategory')?.value || 'OTHER';
+  const amt = Number(document.getElementById('pexpAmount')?.value) || 0;
+  const dateStr = document.getElementById('pexpDate')?.value || new Date().toISOString().substring(0, 10);
+  const memId = document.getElementById('pexpMemberSelect')?.value || AppState.auth?.user?.id || 'M001';
+  const note = document.getElementById('pexpNote')?.value.trim() || '';
+
+  if (amt <= 0) {
+    showToast('⚠️ Vui lòng nhập số tiền chi lớn hơn 0!', 'warning');
+    return;
+  }
+
+  const item = {
+    id: 'PEXP_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+    memberId: memId,
+    category: cat,
+    amount: amt,
+    date: dateStr,
+    month: dateStr.substring(0, 7),
+    note: note,
+    createdAt: new Date().toISOString()
+  };
+
+  if (!AppState.personalExpenses) AppState.personalExpenses = [];
+  AppState.personalExpenses.unshift(item);
+  saveData();
+
+  closeModal('modalAddPersonalExpense');
+  renderHomePersonalExpenseWidget(memId);
+  renderPersonalMonthlyStatsModal();
+
+  const catDef = PERSONAL_EXPENSE_CATEGORIES[cat] || PERSONAL_EXPENSE_CATEGORIES.OTHER;
+  showToast(`✓ Đã lưu khoản chi: ${catDef.icon} ${catDef.label} (${formatMoney(amt)})!`, 'success');
+}
+
+function deletePersonalExpense(id) {
+  if (!id) return;
+  if (!confirm('Bạn có chắc chắn muốn xóa khoản chi này?')) return;
+  if (!AppState.personalExpenses) return;
+
+  AppState.personalExpenses = AppState.personalExpenses.filter(p => p.id !== id);
+  saveData();
+
+  renderHomePersonalExpenseWidget();
+  renderPersonalMonthlyStatsModal();
+  showToast('Đã xóa khoản chi.', 'info');
+}
+
+function openPersonalMonthlyStatsModal(monthStr, memberId) {
+  const modal = document.getElementById('modalPersonalMonthlyStats');
+  if (!modal) return;
+
+  const currentUserId = memberId || AppState.auth?.user?.id || 'M001';
+  const nowMonth = monthStr || new Date().toISOString().substring(0, 7);
+
+  // 1. Populate month select
+  const monthSelect = document.getElementById('pstatMonthSelect');
+  if (monthSelect) {
+    const monthSet = new Set();
+    monthSet.add(nowMonth);
+    (AppState.activitySessions || []).forEach(ses => {
+      if (ses.date) monthSet.add(ses.date.substring(0, 7));
+    });
+    (AppState.personalExpenses || []).forEach(p => {
+      if (p.month) monthSet.add(p.month);
+      else if (p.date) monthSet.add(p.date.substring(0, 7));
+    });
+
+    const sortedMonths = Array.from(monthSet).sort().reverse();
+    monthSelect.innerHTML = sortedMonths.map(m => {
+      const isSel = m === nowMonth ? 'selected' : '';
+      const parts = m.split('-');
+      const label = parts.length === 2 ? `Tháng ${parts[1]}/${parts[0]}` : m;
+      return `<option value="${m}" ${isSel}>${label}</option>`;
+    }).join('');
+  }
+
+  // 2. Populate member select
+  const memSelect = document.getElementById('pstatMemberSelect');
+  if (memSelect) {
+    const isMemberRole = AppState.auth && AppState.auth.user && AppState.auth.user.role === 'MEMBER';
+    if (isMemberRole) {
+      const u = (AppState.members || []).find(m => m.id === currentUserId) || AppState.auth.user;
+      memSelect.innerHTML = `<option value="${u.id}" selected>${u.chipName || u.name} (Tài khoản của bạn)</option>`;
+      memSelect.disabled = true;
+    } else {
+      memSelect.disabled = false;
+      const opts = (AppState.members || []).map(m => {
+        const isSel = m.id === currentUserId ? 'selected' : '';
+        return `<option value="${m.id}" ${isSel}>${m.chipName || m.name}</option>`;
+      }).join('');
+      memSelect.innerHTML = opts;
+    }
+  }
+
+  renderPersonalMonthlyStatsModal();
+  openModal('modalPersonalMonthlyStats');
+}
+
+function renderPersonalMonthlyStatsModal() {
+  const monthSelect = document.getElementById('pstatMonthSelect');
+  const memSelect = document.getElementById('pstatMemberSelect');
+  if (!monthSelect || !memSelect) return;
+
+  const selectedMonth = monthSelect.value || new Date().toISOString().substring(0, 7);
+  const selectedMemberId = memSelect.value || AppState.auth?.user?.id || 'M001';
+
+  const data = calculateMemberMonthlySpending(selectedMemberId, selectedMonth);
+
+  // Update Summary cards
+  const clubEl = document.getElementById('pstatClubTotal');
+  const personalEl = document.getElementById('pstatPersonalTotal');
+  const grandEl = document.getElementById('pstatGrandTotal');
+
+  if (clubEl) clubEl.textContent = formatMoney(data.totalClubCosts);
+  if (personalEl) personalEl.textContent = formatMoney(data.totalPersonalCosts);
+  if (grandEl) grandEl.textContent = formatMoney(data.totalSpending);
+
+  // Render 7 Categories Breakdown Grid
+  const catGrid = document.getElementById('pstatCategoryGrid');
+  if (catGrid) {
+    const catKeys = ['RACKET', 'STRING', 'GRIP', 'WATER', 'BEER', 'SIDE_MATCH', 'OTHER'];
+    catGrid.innerHTML = catKeys.map(k => {
+      const catDef = PERSONAL_EXPENSE_CATEGORIES[k] || PERSONAL_EXPENSE_CATEGORIES.OTHER;
+      const amt = data.categoryTotals[k] || 0;
+      const percent = data.totalPersonalCosts > 0 ? Math.round((amt / data.totalPersonalCosts) * 100) : 0;
+      return `
+        <div class="p-2.5 rounded-xl border border-slate-200 bg-white flex flex-col justify-between shadow-2xs">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-700 flex items-center gap-1">${catDef.icon} ${catDef.label}</span>
+            <span class="text-[10px] text-slate-400 font-mono font-bold">${percent}%</span>
+          </div>
+          <div class="mt-1 text-xs font-black text-slate-900">${formatMoney(amt)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Render Expense Table Body
+  const tbody = document.getElementById('pstatExpenseTableBody');
+  const countBadge = document.getElementById('pstatExpenseCountBadge');
+  if (countBadge) countBadge.textContent = `${data.items.length} khoản chi`;
+
+  if (tbody) {
+    if (data.items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 text-xs">Chưa có khoản chi cá nhân nào trong tháng này. Bấm [Thêm chi phí] để bắt đầu ghi chép!</td></tr>`;
+    } else {
+      tbody.innerHTML = data.items.map(item => {
+        const catDef = PERSONAL_EXPENSE_CATEGORIES[item.category] || PERSONAL_EXPENSE_CATEGORIES.OTHER;
+        let dateFormatted = item.date || '';
+        if (dateFormatted.includes('-')) {
+          dateFormatted = dateFormatted.split('-').reverse().join('/');
+        }
+        return `
+          <tr class="hover:bg-slate-50 transition text-xs">
+            <td class="py-2.5 px-3 font-mono text-slate-600">${dateFormatted}</td>
+            <td class="py-2.5 px-3 font-bold text-slate-800">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] ${catDef.bg}">
+                ${catDef.icon} ${catDef.label}
+              </span>
+            </td>
+            <td class="py-2.5 px-3 text-slate-600 max-w-[200px] truncate" title="${item.note || ''}">${item.note || '<span class="text-slate-300 italic">Không có ghi chú</span>'}</td>
+            <td class="py-2.5 px-3 text-right font-black text-slate-900">${formatMoney(item.amount)}</td>
+            <td class="py-2.5 px-2 text-center">
+              <button onclick="deletePersonalExpense('${item.id}')" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 transition cursor-pointer" title="Xóa khoản chi">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  lucide.createIcons();
 }
