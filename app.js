@@ -1060,9 +1060,11 @@ function loadData() {
         AppState.config.autoBackupIdleSeconds = 15;
       }
       AppState.config.autoBackupIdleMinutes = Math.round(AppState.config.autoBackupIdleSeconds / 60);
+      refreshAllMembersWalletBreakdown();
       saveData();
     } else {
       AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
+      refreshAllMembersWalletBreakdown();
       saveData();
     }
   } catch (err) {
@@ -1070,6 +1072,7 @@ function loadData() {
     const activeClub = getActiveClub();
     const isSmash = activeClub.id === 'club_smash';
     AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
+    refreshAllMembersWalletBreakdown();
     saveData();
   }
 }
@@ -1408,9 +1411,19 @@ function getMemberRoleTypeText(type) {
 /**
  * Tính tổng tiền sân của thành viên dựa trên loại hội viên và số buổi tham gia
  */
+/**
+ * Tính tổng tiền sân của thành viên dựa trên loại hội viên và số buổi tham gia
+ * Áp dụng chuẩn theo Bậc tiền sân đã cấu hình:
+ * 0 buổi: 0đ
+ * 1–4 buổi: Bậc 1 (mặc định 50k)
+ * 5–9 buổi: Bậc 2 (mặc định 100k)
+ * 10–15 buổi: Bậc 3 (mặc định 150k)
+ * 16–30+ buổi: Bậc 4 (mặc định 200k)
+ */
 function getMemberTotalCourtFee(member, sessionsCount) {
   if (!member) return 0;
   const count = sessionsCount !== undefined ? sessionsCount : (member.monthlySessions || 0);
+  if (count <= 0) return 0; // Nếu chưa tham gia buổi nào thì tiền sân = 0đ
   
   if (member.type === 'GUEST_A') {
     const pA = (AppState.config && AppState.config.guestPrices && AppState.config.guestPrices.GUEST_A) || 90000;
@@ -1439,8 +1452,9 @@ function getMemberTotalCourtFee(member, sessionsCount) {
 /**
  * CÔNG THỨC CHUẨN THEO YÊU CẦU:
  * Số dư ví thành viên = Tiền nạp vào ví - chi phí cầu hàng ngày - tiền phạt - quỹ thành viên - tiền sân
+ * Tiền sân được tính theo bậc được quy định và trừ vào ví thành viên.
  * @param {string|object} memberOrId
- * @returns {object} { member, topUp, dailyShuttleCost, fine, clubFund, courtFee, balance, sessionsCount }
+ * @returns {object} { member, topUp, dailyShuttleCost, fine, clubFund, courtFee, balance, sessionsCount, tierName }
  */
 function calculateMemberWalletBreakdown(memberOrId) {
   const member = typeof memberOrId === 'string'
@@ -1456,7 +1470,8 @@ function calculateMemberWalletBreakdown(memberOrId) {
       clubFund: 0,
       courtFee: 0,
       balance: 0,
-      sessionsCount: 0
+      sessionsCount: 0,
+      tierName: 'Chưa xác định'
     };
   }
 
@@ -1508,12 +1523,14 @@ function calculateMemberWalletBreakdown(memberOrId) {
     clubFund = 200000;
   }
 
-  // 4. Tiền sân (courtFee)
+  // 4. Tiền sân theo bậc quy định (courtFee) - Tự động trừ vào ví thành viên
   let courtFee = 0;
   (AppState.transactions || []).forEach(tx => {
     if ((tx.type === 'COURT_FEE' || tx.subType === 'COURT_ADV_IN') && (tx.memberId === memberId || (tx.targetName && (tx.targetName.toLowerCase().includes(memberName) || memberName.includes(tx.targetName.toLowerCase()))))) {
       if (tx.walletImpact && tx.walletImpact < 0) {
         courtFee += Math.abs(tx.walletImpact);
+      } else if (tx.amount && tx.amount < 0) {
+        courtFee += Math.abs(tx.amount);
       }
     }
   });
@@ -1544,6 +1561,8 @@ function calculateMemberWalletBreakdown(memberOrId) {
 
   member.balance = balance;
 
+  const tierName = getTierNameForSession(sessionsCount);
+
   return {
     member,
     topUp,
@@ -1552,14 +1571,27 @@ function calculateMemberWalletBreakdown(memberOrId) {
     clubFund,
     courtFee,
     balance,
-    sessionsCount
+    sessionsCount,
+    tierName
   };
+}
+
+/**
+ * Tự động đồng bộ và tính lại số dư ví cho toàn bộ thành viên theo bậc tiền sân
+ */
+function refreshAllMembersWalletBreakdown() {
+  if (!AppState.members || !Array.isArray(AppState.members)) return;
+  AppState.members.forEach(member => {
+    calculateMemberWalletBreakdown(member);
+  });
 }
 
 // ==========================================
 // 8. TRANG CHỦ & KPI DASHBOARD
 // ==========================================
 function renderDashboard() {
+  refreshAllMembersWalletBreakdown();
+
   // 1. Tên CLB
   const clubNameEl = document.getElementById('headerClubName');
   if (clubNameEl) clubNameEl.textContent = AppState.config.clubName;
@@ -5827,6 +5859,7 @@ function calculateAdvanceFundStats() {
 }
 
 function renderFinanceTab() {
+  refreshAllMembersWalletBreakdown();
   const stats = calculateClubFundStats();
   const advStats = calculateAdvanceFundStats();
 
@@ -7518,6 +7551,7 @@ function setMemberListFilter(filter) {
 }
 
 function renderMemberManagementList() {
+  refreshAllMembersWalletBreakdown();
   const tbody = document.getElementById('memberManagementTableBody');
   const searchInput = document.getElementById('searchMemberList');
   if (!tbody) return;
@@ -12708,39 +12742,104 @@ function renderSettingsTab() {
 
 function renderFeeTiersConfigTable() {
   const tbody = document.getElementById('tierFeeConfigTableBody');
-  if (!tbody) return;
+  const mobileContainer = document.getElementById('tierFeeConfigMobileCards');
+  const tiers = (AppState.config && AppState.config.feeTiers) || [];
 
-  const tiers = AppState.config.feeTiers || [];
-  tbody.innerHTML = tiers.map((tier, idx) => `
-    <tr>
-      <td class="py-2.5 px-3">
-        <input type="text" value="${tier.name}" onchange="updateTierField(${idx}, 'name', this.value)" class="w-full px-2 py-1 border border-slate-200 rounded text-xs font-semibold" />
-      </td>
-      <td class="py-2.5 px-3">
-        <input type="number" value="${tier.minSessions}" onchange="updateTierField(${idx}, 'minSessions', Number(this.value))" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs" />
-      </td>
-      <td class="py-2.5 px-3">
-        <input type="number" value="${tier.maxSessions}" onchange="updateTierField(${idx}, 'maxSessions', Number(this.value))" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs" />
-      </td>
-      <td class="py-2.5 px-3">
-        <input type="number" step="5000" value="${tier.price}" onchange="updateTierField(${idx}, 'price', Number(this.value))" class="w-28 px-2 py-1 border border-slate-200 rounded text-xs font-bold text-brand-700" />
-      </td>
-      <td class="py-2.5 px-3 text-center">
-        <button onclick="deleteFeeTier(${idx})" class="p-1 text-rose-500 hover:bg-rose-50 rounded" title="Xóa bậc"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button>
-      </td>
-    </tr>
-  `).join('');
+  // 1. Render Table trên Desktop (Màn hình máy tính)
+  if (tbody) {
+    tbody.innerHTML = tiers.map((tier, idx) => `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="py-2.5 px-3">
+          <input type="text" value="${escapeHtml(tier.name)}" oninput="updateTierField(${idx}, 'name', this.value)" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 bg-white focus:outline-none focus:border-brand-500" />
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          <input type="number" min="0" value="${tier.minSessions}" oninput="updateTierField(${idx}, 'minSessions', Number(this.value))" class="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center font-bold text-slate-800 bg-white focus:outline-none focus:border-brand-500" />
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          <input type="number" min="0" value="${tier.maxSessions}" oninput="updateTierField(${idx}, 'maxSessions', Number(this.value))" class="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center font-bold text-slate-800 bg-white focus:outline-none focus:border-brand-500" />
+        </td>
+        <td class="py-2.5 px-3 text-right">
+          <div class="inline-flex items-center justify-end gap-1">
+            <input type="number" step="5000" min="0" value="${tier.price}" oninput="updateTierField(${idx}, 'price', Number(this.value))" class="w-32 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-right font-black text-brand-700 bg-white focus:outline-none focus:border-brand-500" />
+            <span class="text-xs font-bold text-slate-400">đ</span>
+          </div>
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          <button type="button" onclick="deleteFeeTier(${idx})" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" title="Xóa bậc"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // 2. Render Cards trên Mobile (Màn hình điện thoại)
+  if (mobileContainer) {
+    if (tiers.length === 0) {
+      mobileContainer.innerHTML = `<div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center text-xs text-slate-400">Chưa có bậc tiền sân nào. Bấm "+ Thêm bậc mới" để bắt đầu thiết lập.</div>`;
+    } else {
+      mobileContainer.innerHTML = tiers.map((tier, idx) => `
+        <div class="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-2.5 shadow-2xs">
+          <!-- Hàng tiêu đề bậc & Nút xóa -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <span class="w-6 h-6 rounded-lg bg-emerald-700 text-white font-black text-[11px] flex items-center justify-center shrink-0">#${idx + 1}</span>
+              <input type="text" value="${escapeHtml(tier.name)}" oninput="updateTierField(${idx}, 'name', this.value)" class="w-full px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-xl focus:border-brand-500 focus:outline-none" placeholder="Tên bậc..." />
+            </div>
+            <button type="button" onclick="deleteFeeTier(${idx})" class="p-2 text-rose-500 hover:bg-rose-100 rounded-xl border border-rose-200 bg-white transition cursor-pointer shrink-0" title="Xóa bậc này">
+              <i data-lucide="trash-2" class="w-4 h-4 text-rose-600"></i>
+            </button>
+          </div>
+
+          <!-- Khoảng số buổi: Từ buổi -> Đến buổi -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Từ buổi:</label>
+              <div class="relative">
+                <input type="number" min="0" value="${tier.minSessions}" oninput="updateTierField(${idx}, 'minSessions', Number(this.value))" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:border-brand-500 focus:outline-none" />
+                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold pointer-events-none">buổi</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Đến buổi:</label>
+              <div class="relative">
+                <input type="number" min="0" value="${tier.maxSessions}" oninput="updateTierField(${idx}, 'maxSessions', Number(this.value))" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:border-brand-500 focus:outline-none" />
+                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold pointer-events-none">buổi</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mức tiền sân (trừ ví thành viên) -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Mức tiền sân trừ vào ví:</label>
+            <div class="relative">
+              <input type="number" step="5000" min="0" value="${tier.price}" oninput="updateTierField(${idx}, 'price', Number(this.value))" class="w-full pl-3 pr-12 py-2 text-sm font-black text-brand-700 bg-white border border-slate-200 rounded-xl focus:border-brand-500 focus:outline-none" />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-700 pointer-events-none">VNĐ</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+              <span>Định dạng: <b id="tierPricePreviewMobile-${idx}" class="text-slate-700">${formatMoney(tier.price)}</b></span>
+              <span class="text-emerald-700 font-semibold">Phạm vi: ${tier.minSessions}–${tier.maxSessions} buổi</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 
   lucide.createIcons();
 }
 
 function updateTierField(index, field, value) {
-  if (AppState.config.feeTiers[index]) {
+  if (AppState.config && AppState.config.feeTiers && AppState.config.feeTiers[index]) {
     AppState.config.feeTiers[index][field] = value;
+    if (field === 'price') {
+      const preview = document.getElementById(`tierPricePreviewMobile-${index}`);
+      if (preview) preview.textContent = formatMoney(value);
+    }
   }
 }
 
 function addNewFeeTier() {
+  if (!AppState.config) AppState.config = {};
+  if (!AppState.config.feeTiers) AppState.config.feeTiers = [];
   const last = AppState.config.feeTiers[AppState.config.feeTiers.length - 1];
   const newMin = last ? last.maxSessions + 1 : 0;
   AppState.config.feeTiers.push({
@@ -12754,14 +12853,27 @@ function addNewFeeTier() {
 }
 
 function deleteFeeTier(index) {
-  AppState.config.feeTiers.splice(index, 1);
-  renderFeeTiersConfigTable();
+  if (!AppState.config?.feeTiers || AppState.config.feeTiers.length <= 1) {
+    showToast('⚠️ Cần duy trì tối thiểu 1 bậc tiền sân trong cấu hình!', 'warning');
+    return;
+  }
+  const t = AppState.config.feeTiers[index];
+  if (confirm(`Bạn có chắc chắn muốn xóa "${t?.name || 'bậc này'}"?`)) {
+    AppState.config.feeTiers.splice(index, 1);
+    renderFeeTiersConfigTable();
+    showToast('Đã xóa bậc tiền sân.', 'info');
+  }
 }
 
 function saveFeeTiersConfig() {
   saveData();
-  renderAttendanceTiersBadgeList();
-  showToast('Đã lưu cấu hình bậc tiền sân thành công!', 'success');
+  refreshAllMembersWalletBreakdown();
+  if (typeof renderAttendanceTiersBadgeList === 'function') renderAttendanceTiersBadgeList();
+  renderDashboard();
+  renderFinanceTab();
+  renderMemberManagementList();
+  if (typeof renderSettlementReport === 'function') renderSettlementReport();
+  showToast('✓ Đã lưu cấu hình bậc tiền sân và cập nhật trừ ví thành viên thành công!', 'success');
 }
 
 /**
@@ -13988,7 +14100,7 @@ function generateLiveSettlementReportData(monthStr) {
     const sessions = realSessions > 0 ? realSessions : (m.monthlySessions || 1);
     const rate = 100000;
     if (!m.type || m.type === 'OFFICIAL') {
-      const court = sessions * 75000;
+      const court = getMemberTotalCourtFee(m, sessions);
       const fund = 200000;
       const fine = (AppState.transactions || [])
         .filter(t => (t.subType === 'FINE' || t.categoryGroup === 'FINE') && ((t.memberId && t.memberId === m.id) || (t.targetName && t.targetName.includes(m.name))))
@@ -14005,7 +14117,7 @@ function generateLiveSettlementReportData(monthStr) {
         fine
       });
     } else if (m.type === 'HONORARY' || m.type === 'UNOFFICIAL') {
-      const court = Math.round(sessions * 75000);
+      const court = getMemberTotalCourtFee(m, sessions);
       const fund = Math.round(sessions * 25000);
       const total = court + fund;
       honorary.push({
@@ -14019,7 +14131,7 @@ function generateLiveSettlementReportData(monthStr) {
         fine: 0
       });
     } else if (m.type && m.type.startsWith('GUEST')) {
-      const court = sessions * 100000;
+      const court = getMemberTotalCourtFee(m, sessions);
       guests.push({
         stt: sttG++,
         name: m.name || m.chipName || `Khách ${sttG}`,
