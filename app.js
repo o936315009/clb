@@ -14644,8 +14644,14 @@ function initFirebaseCloudSync() {
     }
   } catch (e) {}
 
-  // 2. Kiểm tra thư viện Firebase SDK - nếu chưa sẵn sàng, giữ nguyên chế độ cục bộ siêu tốc
+  // 2. Kiểm tra thư viện Firebase SDK - nếu chưa tải xong, tự động thử lại sau (tối đa 15 lần)
   if (typeof firebase === 'undefined') {
+    if (!window._firebaseRetryCount) window._firebaseRetryCount = 0;
+    if (window._firebaseRetryCount < 15) {
+      window._firebaseRetryCount++;
+      setTimeout(initFirebaseCloudSync, 350);
+      return;
+    }
     updateCloudSyncUI('LOCAL_READY');
     return;
   }
