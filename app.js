@@ -1414,6 +1414,20 @@ function updateNavigationUI() {
       mNavSettings.classList.add('hidden');
     }
   }
+
+  // 3. Nút Đăng xuất trên Desktop Sidebar & Mobile Bottom Navigation
+  const isLoggedIn = AppState.auth && AppState.auth.isLoggedIn;
+  const navLogout = document.getElementById('nav-logout');
+  if (navLogout) {
+    if (isLoggedIn) navLogout.classList.remove('hidden');
+    else navLogout.classList.add('hidden');
+  }
+
+  const mNavLogout = document.getElementById('m-nav-logout');
+  if (mNavLogout) {
+    if (isLoggedIn) mNavLogout.classList.remove('hidden');
+    else mNavLogout.classList.add('hidden');
+  }
 }
 
 // ==========================================
@@ -13342,16 +13356,19 @@ function renderAuthBadge() {
     const user = AppState.auth.user;
     const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.MEMBER;
     badgeContainer.innerHTML = `
-      <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1 rounded-full border border-slate-200 text-xs transition shadow-2xs">
-        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-inner">
-          ${user.role === 'DEV_ADMIN' ? '🚀' : (user.name ? user.name.charAt(0).toUpperCase() : '👤')}
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 hover:bg-slate-200 text-xs transition shadow-2xs">
+          <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-inner">
+            ${user.role === 'DEV_ADMIN' ? '🚀' : (user.name ? user.name.charAt(0).toUpperCase() : '👤')}
+          </div>
+          <span class="font-bold text-slate-800 text-xs truncate max-w-[80px] sm:max-w-[130px]">${user.name || 'Hội viên'}</span>
+          <span class="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass}">
+            ${roleDef.icon} ${user.role === 'DEV_ADMIN' ? 'Admin Dev' : roleDef.label}
+          </span>
         </div>
-        <span class="font-bold text-slate-800 text-xs truncate max-w-[70px] sm:max-w-[130px] hidden xs:inline">${user.name}</span>
-        <span class="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass}">
-          ${roleDef.icon} ${user.role === 'DEV_ADMIN' ? 'Admin Dev' : roleDef.label}
-        </span>
-        <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer p-0.5" title="Đăng xuất">
-          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        <button onclick="handleLogout()" class="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 hover:border-rose-600 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer" title="Đăng xuất khỏi tài khoản">
+          <span class="text-xs">🚪</span>
+          <span class="font-bold">Đăng xuất</span>
         </button>
       </div>
     `;
