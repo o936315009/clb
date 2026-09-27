@@ -10,10 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- html2canvas for Exporting Crisp PNG Images -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Lucide Icons (Tải CDN ổn định, có fallback chống crash giao diện) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
+  <script>
+    if (typeof window.lucide === 'undefined') {
+      window.lucide = { createIcons: function() {} };
+    }
+  </script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -5717,11 +5720,14 @@ const firebaseConfig = {
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-16 sm:bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- Google Firebase Realtime Database SDK (compat) - Tải bất đồng bộ không chặn giao diện -->
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- html2canvas for Exporting Crisp PNG Images (Tải ngầm sau khi vẽ xong giao diện) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- Application Logic - Tải siêu tốc ngay khi HTML sẵn sàng -->
-  <script defer src="app.js"></script>
+  <!-- Google Firebase Realtime Database SDK (compat) - Tải bất đồng bộ hoàn toàn (async) -->
+  <script async src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script async src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Application Logic - Thực thi tức thì khi HTML đã dựng xong -->
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>

@@ -5,6 +5,21 @@
  * wallet deduction, financial transactions, matchmaking, and data backup.
  */
 
+// Bảo đảm ứng dụng không bao giờ bị crash nếu thiếu thư viện icon hoặc storage bị chặn
+if (typeof window !== 'undefined' && typeof window.lucide === 'undefined') {
+  window.lucide = { createIcons: function() {} };
+}
+
+function safeGetStorage(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function safeSetStorage(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+function safeRemoveStorage(key) {
+  try { localStorage.removeItem(key); } catch (e) {}
+}
+
 // ==========================================
 // HỆ THỐNG ĐA CÂU LẠC BỘ (MULTI-CLUB REGISTRY & STATE RESOLUTION)
 // ==========================================
@@ -230,6 +245,17 @@ function formatSlugToClubName(slug) {
   return 'CLB CẦU LÔNG ' + words.join(' ').toUpperCase();
 }
 
+function getSuggestedClubShortName(name) {
+  if (!name) return 'CLB';
+  const clean = name.replace(/^CLB\s*(?:CẦU\s*LÔNG)?\s*/i, '').trim();
+  return clean || 'CLB';
+}
+
+function getFormattedCurrentDate() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 function getActiveClubId() {
   const registry = getClubsRegistry();
   const urlClub = getClubIdFromUrl();
@@ -239,7 +265,7 @@ function getActiveClubId() {
     // Khớp bí danh CLB Lập Trí: 'lap-tri', 'laptri', 'lap_tri', 'smash'
     if (urlClubLower === 'lap-tri' || urlClubLower === 'laptri' || urlClubLower === 'lap_tri' || urlClubLower === 'smash') {
       const mainClub = registry.find(c => c.id === 'club_laptri' || c.accessSlug === 'lap-tri') || registry[0] || DEFAULT_DEFAULT_CLUB;
-      localStorage.setItem(ACTIVE_CLUB_ID_KEY, mainClub.id);
+      safeSetStorage(ACTIVE_CLUB_ID_KEY, mainClub.id);
       return mainClub.id;
     }
 
@@ -249,7 +275,7 @@ function getActiveClubId() {
       (c.shortName && c.shortName.toLowerCase() === urlClubLower)
     );
     if (matched) {
-      localStorage.setItem(ACTIVE_CLUB_ID_KEY, matched.id);
+      safeSetStorage(ACTIVE_CLUB_ID_KEY, matched.id);
       return matched.id;
     }
 
@@ -263,7 +289,7 @@ function getActiveClubId() {
     // Kiểm tra xem đã có dữ liệu lưu trước đó ở storageKey này chưa
     let existingData = null;
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = safeGetStorage(storageKey);
       if (raw) existingData = JSON.parse(raw);
     } catch (e) {}
 
@@ -288,39 +314,39 @@ function getActiveClubId() {
 
     if (!existingData) {
       const freshData = getBlankClubInitialData(newClubRecord);
-      localStorage.setItem(storageKey, JSON.stringify(freshData));
+      safeSetStorage(storageKey, JSON.stringify(freshData));
     }
 
-    localStorage.setItem('CLB_HIDE_DEV_DEMO', 'true');
-    localStorage.setItem(ACTIVE_CLUB_ID_KEY, newClubId);
+    safeSetStorage('CLB_HIDE_DEV_DEMO', 'true');
+    safeSetStorage(ACTIVE_CLUB_ID_KEY, newClubId);
     return newClubId;
   }
 
-  let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
+  let activeId = safeGetStorage(ACTIVE_CLUB_ID_KEY);
   if (!activeId || !registry.some(c => c.id === activeId)) {
     const mainClub = registry.find(c => c.id === 'club_laptri' || c.accessSlug === 'lap-tri');
     if (mainClub) {
       activeId = mainClub.id;
-      localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+      safeSetStorage(ACTIVE_CLUB_ID_KEY, activeId);
       return activeId;
     }
-    const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
+    const isHideDemo = safeGetStorage('CLB_HIDE_DEV_DEMO') === 'true';
     if (isHideDemo) {
       const userClub = registry.find(c => !c.isDeveloperSample && c.id !== 'club_lightning');
       if (userClub) {
         activeId = userClub.id;
-        localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+        safeSetStorage(ACTIVE_CLUB_ID_KEY, activeId);
         return activeId;
       }
     }
     activeId = registry[0]?.id || 'club_laptri';
-    localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+    safeSetStorage(ACTIVE_CLUB_ID_KEY, activeId);
   }
   return activeId;
 }
 
 function setActiveClubId(clubId) {
-  localStorage.setItem(ACTIVE_CLUB_ID_KEY, clubId);
+  safeSetStorage(ACTIVE_CLUB_ID_KEY, clubId);
 }
 
 function getClubDirectUrl(clubOrId) {
@@ -355,7 +381,12 @@ function getCurrentClubStorageKey() {
   return club?.storageKey || 'CLB_CAU_LONG_SMASH_DATA_V1';
 }
 
-let STORAGE_KEY = getCurrentClubStorageKey();
+let STORAGE_KEY = 'CLB_CAU_LONG_SMASH_DATA_V1';
+try {
+  STORAGE_KEY = getCurrentClubStorageKey();
+} catch (e) {
+  console.warn('Lỗi xác định storage key ban đầu:', e);
+}
 
 // ==========================================
 // 0. ĐỊNH NGHĨA VAI TRÒ & PHÂN QUYỀN HỆ THỐNG (USER ACCESS & PERMISSIONS)
@@ -14311,88 +14342,100 @@ async function copySettlementReportToClipboard() {
 }
 
 // ==========================================
-// 20. KHỞI TẠO ỨNG DỤNG KHI TẢI TRANG
+// 20. KHỞI TẠO ỨNG DỤNG KHI TẢI TRANG (TỨC THÌ & KHÔNG CHẶN)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  applyThemeColor(AppState.config.themeColor || 'emerald');
-  renderDashboard();
-  renderClubSwitcher();
-  updateDevDemoToggleUI();
-  updateDevAdminUI();
-  updateNavigationUI();
-  populateLeadershipSelects();
-  initTournamentModule();
-  lucide.createIcons();
-  setTimeout(initFirebaseCloudSync, 150);
-  setupInactivityAutoBackup();
-  updateAutoBackupUI();
-  setInterval(checkConcurrentSession, 8000);
-
-  // Kiểm tra tài khoản cần đổi mật khẩu lần đầu
-  if (AppState.auth?.isLoggedIn && AppState.auth?.user?.id) {
-    const currentMember = (AppState.members || []).find(m => m.id === AppState.auth.user.id);
-    if (currentMember && currentMember.mustChangePassword) {
-      setTimeout(() => openFirstLoginPasswordModal(currentMember), 400);
+function initApp() {
+  try {
+    loadData();
+    applyThemeColor(AppState.config?.themeColor || 'emerald');
+    renderDashboard();
+    renderClubSwitcher();
+    updateDevDemoToggleUI();
+    updateDevAdminUI();
+    updateNavigationUI();
+    populateLeadershipSelects();
+    initTournamentModule();
+    if (typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
+      try { lucide.createIcons(); } catch (e) {}
     }
-  }
+    setTimeout(initFirebaseCloudSync, 150);
+    setupInactivityAutoBackup();
+    updateAutoBackupUI();
+    setInterval(checkConcurrentSession, 8000);
 
-  if (window.location.hash) {
-    const rawHash = window.location.hash.replace('#', '');
-    if (rawHash === 'settings-collapsed') {
-      switchTab('settings');
-      toggleLeadershipCollapse();
-    } else if (rawHash === 'settings-access') {
-      switchTab('settings');
-      toggleLeadershipCollapse();
-    } else if (rawHash === 'multi-club-settings') {
-      switchTab('settings');
-      setTimeout(() => {
-        const el = document.getElementById('multiClubListContainer');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
-    } else if (rawHash === 'club-shortcut-modal') {
-      switchTab('settings');
-      setTimeout(() => {
-        openClubShortcutGuideModal();
-      }, 300);
-    } else if (rawHash === 'user-access-modal') {
-      switchTab('settings');
-      setTimeout(() => {
-        openUserAccessModal('M002');
-      }, 200);
-    } else if (rawHash === 'create-club-modal') {
-      setTimeout(() => {
-        openCreateClubModal();
-      }, 300);
-    } else if (rawHash === 'switch-lightning') {
-      setTimeout(() => {
-        switchActiveClub('club_lightning');
-      }, 200);
-    } else if (rawHash === 'switch-smash') {
-      setTimeout(() => {
-        switchActiveClub('club_smash');
-      }, 200);
-    } else if (rawHash.startsWith('tournament')) {
-      switchTab('tournament');
-      if (rawHash === 'tournament-schedule') switchTourSubtab('schedule');
-      else if (rawHash === 'tournament-players' || rawHash === 'tournament-clubs') switchTourSubtab('clubs');
-      else if (rawHash === 'tournament-config') switchTourSubtab('config');
-      else if (rawHash === 'tournament-awards') switchTourSubtab('awards');
-      else if (rawHash === 'tournament-xd') { switchTourSubtab('bracket'); switchTourDiscipline('XD'); }
-      else if (rawHash === 'tournament-score-modal') {
-        switchTourSubtab('bracket');
-        setTimeout(() => openEditScoreModal('MD', 'ga1', true), 150);
-      } else if (rawHash === 'tournament-add-club-modal') {
-        switchTourSubtab('clubs');
-        openAddClubModal();
-        loadSampleClubMembers();
+    // Kiểm tra tài khoản cần đổi mật khẩu lần đầu
+    if (AppState.auth?.isLoggedIn && AppState.auth?.user?.id) {
+      const currentMember = (AppState.members || []).find(m => m.id === AppState.auth.user.id);
+      if (currentMember && currentMember.mustChangePassword) {
+        setTimeout(() => openFirstLoginPasswordModal(currentMember), 400);
       }
-    } else if (['dashboard', 'attendance', 'finance', 'members', 'matchmaker', 'tournament', 'settings'].includes(rawHash)) {
-      switchTab(rawHash);
     }
+
+    if (window.location.hash) {
+      const rawHash = window.location.hash.replace('#', '');
+      if (rawHash === 'settings-collapsed') {
+        switchTab('settings');
+        toggleLeadershipCollapse();
+      } else if (rawHash === 'settings-access') {
+        switchTab('settings');
+        toggleLeadershipCollapse();
+      } else if (rawHash === 'multi-club-settings') {
+        switchTab('settings');
+        setTimeout(() => {
+          const el = document.getElementById('multiClubListContainer');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      } else if (rawHash === 'club-shortcut-modal') {
+        switchTab('settings');
+        setTimeout(() => {
+          openClubShortcutGuideModal();
+        }, 300);
+      } else if (rawHash === 'user-access-modal') {
+        switchTab('settings');
+        setTimeout(() => {
+          openUserAccessModal('M002');
+        }, 200);
+      } else if (rawHash === 'create-club-modal') {
+        setTimeout(() => {
+          openCreateClubModal();
+        }, 300);
+      } else if (rawHash === 'switch-lightning') {
+        setTimeout(() => {
+          switchActiveClub('club_lightning');
+        }, 200);
+      } else if (rawHash === 'switch-smash') {
+        setTimeout(() => {
+          switchActiveClub('club_smash');
+        }, 200);
+      } else if (rawHash.startsWith('tournament')) {
+        switchTab('tournament');
+        if (rawHash === 'tournament-schedule') switchTourSubtab('schedule');
+        else if (rawHash === 'tournament-players' || rawHash === 'tournament-clubs') switchTourSubtab('clubs');
+        else if (rawHash === 'tournament-config') switchTourSubtab('config');
+        else if (rawHash === 'tournament-awards') switchTourSubtab('awards');
+        else if (rawHash === 'tournament-xd') { switchTourSubtab('bracket'); switchTourDiscipline('XD'); }
+        else if (rawHash === 'tournament-score-modal') {
+          switchTourSubtab('bracket');
+          setTimeout(() => openEditScoreModal('MD', 'ga1', true), 150);
+        } else if (rawHash === 'tournament-add-club-modal') {
+          switchTourSubtab('clubs');
+          openAddClubModal();
+          loadSampleClubMembers();
+        }
+      } else if (['dashboard', 'attendance', 'finance', 'members', 'matchmaker', 'tournament', 'settings'].includes(rawHash)) {
+        switchTab(rawHash);
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi trong quá trình khởi tạo initApp:', err);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 // ==========================================
 // 21. MODULE ĐỒNG BỘ ĐÁM MÂY (FIREBASE REALTIME DATABASE)
