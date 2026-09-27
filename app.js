@@ -428,18 +428,18 @@ const PERMISSION_DEFINITIONS = {
 function getRoleDefaultPermissions(role) {
   switch (role) {
     case 'DEV_ADMIN':
-      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: true };
+      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: true, deleteClub: true };
     case 'ADMIN':
-      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: false };
+      return { attendance: true, finance: true, member: true, tournament: true, referee: true, config: true, createClub: false, deleteClub: false };
     case 'VICE_ADMIN':
-      return { attendance: true, finance: false, member: true, tournament: true, referee: true, config: false, createClub: false };
+      return { attendance: true, finance: false, member: true, tournament: true, referee: true, config: false, createClub: false, deleteClub: false };
     case 'TREASURER':
-      return { attendance: true, finance: true, member: false, tournament: false, referee: false, config: false, createClub: false };
+      return { attendance: true, finance: true, member: false, tournament: false, referee: false, config: false, createClub: false, deleteClub: false };
     case 'REFEREE':
-      return { attendance: false, finance: false, member: false, tournament: true, referee: true, config: false, createClub: false };
+      return { attendance: false, finance: false, member: false, tournament: true, referee: true, config: false, createClub: false, deleteClub: false };
     case 'MEMBER':
     default:
-      return { attendance: false, finance: false, member: false, tournament: false, referee: false, config: false, createClub: false };
+      return { attendance: false, finance: false, member: false, tournament: false, referee: false, config: false, createClub: false, deleteClub: false };
   }
 }
 
@@ -10122,24 +10122,57 @@ function handleCreateNewClubSubmit(event) {
 }
 
 function deleteClub(clubId) {
+  // 0. BẢO VỆ PHÂN QUYỀN TỐI CAO: CHỈ NHÀ PHÁT TRIỂN (DEV_ADMIN) MỚI CÓ QUYỀN XÓA TÀI KHOẢN CLB
+  if (!isDeveloperAdmin()) {
+    showToast('⚠️ Quyền hạn tối cao: Chỉ Nhà Phát Triển (Super Admin) mới có quyền xóa tài khoản Câu Lạc Bộ!', 'warning');
+    openDevAdminAuthModal();
+    return;
+  }
+
   const registry = getClubsRegistry();
   if (registry.length <= 1) {
-    showToast('Hệ thống cần tối thiểu 1 Câu Lạc Bộ hoạt động!', 'error');
+    showToast('⚠️ Không thể xóa: Hệ thống cần tối thiểu 1 Câu Lạc Bộ hoạt động!', 'error');
     return;
   }
 
   const club = registry.find(c => c.id === clubId);
-  if (!club) return;
-
-  if (!confirm(`Bạn có chắc chắn muốn xóa Câu Lạc Bộ "${club.name}"?\nToàn bộ dữ liệu quỹ, điểm danh và thành viên của CLB này sẽ bị xóa khỏi máy tính.`)) {
+  if (!club) {
+    showToast('Không tìm thấy thông tin Câu Lạc Bộ cần xóa!', 'error');
     return;
   }
 
-  localStorage.removeItem(club.storageKey);
+  const confirmMsg = `🚨 XÁC NHẬN XÓA TÀI KHOẢN CÂU LẠC BỘ (QUYỀN NHÀ PHÁT TRIỂN):\n\nBạn đang thực hiện xóa Câu Lạc Bộ: "${club.name}" (Mã truy cập: ${club.accessSlug || club.id}).\n\nToàn bộ dữ liệu quỹ, danh sách thành viên, nhật ký điểm danh và đồng bộ đám mây Firebase của CLB này sẽ bị xóa vĩnh viễn!\n\nBạn có chắc chắn 100% muốn xóa CLB này không?`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
 
+  // 1. Xóa dữ liệu cục bộ trong localStorage
+  localStorage.removeItem(club.storageKey);
+  try {
+    localStorage.removeItem('CLB_SESSION_' + club.id);
+    if (club.accessSlug) {
+      localStorage.removeItem('CLB_SESSION_' + club.accessSlug);
+      localStorage.removeItem('CLB_CAU_LONG_DATA_' + club.accessSlug);
+    }
+  } catch (e) {}
+
+  // 2. Xóa dữ liệu trên Google Firebase Realtime Database
+  if (firebaseDb) {
+    try {
+      const cleanSlug = getCanonicalClubSlug(club.accessSlug || club.id);
+      firebaseDb.ref('clubs/' + cleanSlug).remove().catch(() => {});
+      firebaseDb.ref('memberships/' + cleanSlug).remove().catch(() => {});
+      firebaseDb.ref('system/settings/clubs/' + cleanSlug).remove().catch(() => {});
+    } catch (fbErr) {
+      console.warn('Lỗi xóa CLB trên Firebase:', fbErr);
+    }
+  }
+
+  // 3. Cập nhật danh bạ CLB (Registry)
   const updated = registry.filter(c => c.id !== clubId);
   saveClubsRegistry(updated);
 
+  // 4. Nếu đang ở chính CLB vừa xóa -> tự động chuyển sang CLB còn lại
   if (getActiveClubId() === clubId) {
     const nextClub = updated[0];
     switchActiveClub(nextClub.id);
@@ -10148,7 +10181,7 @@ function deleteClub(clubId) {
     renderMultiClubSettingsSection();
   }
 
-  showToast(`Đã xóa Câu Lạc Bộ: ${club.name}`, 'info');
+  showToast(`✓ Nhà phát triển đã xóa thành công Câu Lạc Bộ: ${club.name}`, 'info');
 }
 
 function toggleHideDeveloperDemoClubs() {
@@ -10328,11 +10361,19 @@ function renderMultiClubSettingsSection() {
             🏦 ${club.bankInfo || 'Chưa thiết lập VietQR'}
           </span>
           <div class="flex items-center gap-1.5">
-            ${registry.length > 1 ? `
-              <button type="button" onclick="deleteClub('${club.id}')" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer" title="Xóa Câu Lạc Bộ này">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
-              </button>
-            ` : ''}
+            ${registry.length > 1 ? (
+              isDev ? `
+                <button type="button" onclick="deleteClub('${club.id}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg font-bold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs" title="Nhà phát triển: Xóa tài khoản Câu Lạc Bộ này khỏi hệ thống">
+                  <span>🗑️</span>
+                  <span>Xóa CLB</span>
+                </button>
+              ` : `
+                <button type="button" onclick="deleteClub('${club.id}')" class="px-2 py-1 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 rounded-lg text-[10px] font-semibold transition cursor-pointer flex items-center gap-1" title="Chỉ Nhà phát triển mới có quyền xóa Câu Lạc Bộ">
+                  <span>🔒</span>
+                  <span>Xóa CLB</span>
+                </button>
+              `
+            ) : ''}
           </div>
         </div>
 
