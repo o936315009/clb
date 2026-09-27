@@ -105,15 +105,15 @@
           <!-- Rendered via JS -->
         </div>
 
-        <!-- Cloud Sync Status Badge: Chỉ hiển thị biểu tượng đám mây & chấm xanh phát sáng, ẩn dòng chữ theo yêu cầu -->
-        <button type="button" onclick="openCloudSyncModal()" id="headerCloudSyncBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 transition cursor-pointer shadow-2xs" title="Đám mây: Đã kết nối (Dấu chấm xanh lá phát sáng): Hệ thống đang kết nối trực tiếp đến Google Firebase clblaptri">
+        <!-- Biểu tượng Đám mây [ ☁️ 🟢 ] (Hiện trạng thái kết nối hoặc mất kết nối) -->
+        <div id="headerCloudSyncBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300 shadow-2xs shrink-0 select-none cursor-default">
           <span class="text-sm leading-none select-none">☁️</span>
           <span class="relative flex h-2 w-2">
-            <span id="cloudSyncPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span id="cloudSyncDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
+            <span id="cloudSyncPing" class="hidden"></span>
+            <span id="cloudSyncDot" class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
           </span>
           <span id="cloudSyncText" class="hidden">Đám mây</span>
-        </button>
+        </div>
 
         <!-- Date display -->
         <div class="hidden xl:flex items-center text-xs font-semibold px-2.5 py-1 bg-slate-100 rounded-full text-slate-600 border border-slate-200">
@@ -159,10 +159,6 @@
           <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
             <i data-lucide="settings" class="w-4 h-4"></i>
             <span>Cấu hình & Sao lưu</span>
-          </button>
-          <button onclick="handleLogout()" id="nav-logout" class="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-t border-slate-100 mt-2 pt-2 cursor-pointer" title="Đăng xuất khỏi tài khoản">
-            <span class="text-sm">🚪</span>
-            <span>Đăng xuất</span>
           </button>
         </nav>
       </div>
@@ -5723,10 +5719,6 @@ const firebaseConfig = {
       <i data-lucide="settings" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[10px] font-bold">Cấu hình</span>
     </button>
-    <button type="button" onclick="handleLogout()" id="m-nav-logout" class="flex flex-col items-center justify-center py-1 px-1 text-rose-600 hover:text-rose-700 transition active:scale-95 text-center flex-1 cursor-pointer" title="Đăng xuất">
-      <span class="text-sm leading-none mb-0.5">🚪</span>
-      <span class="text-[10px] font-bold">Đăng xuất</span>
-    </button>
   </nav>
 
   <!-- TOAST NOTIFICATION CONTAINER -->
@@ -5740,6 +5732,6 @@ const firebaseConfig = {
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <!-- Application Logic - Thực thi tức thì khi HTML đã dựng xong -->
-  <script defer src="app.js?v=2.5"></script>
+  <script defer src="app.js?v=3.1"></script>
 </body>
 </html>

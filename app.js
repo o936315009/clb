@@ -1415,19 +1415,9 @@ function updateNavigationUI() {
     }
   }
 
-  // 3. Nút Đăng xuất trên Desktop Sidebar & Mobile Bottom Navigation
-  const isLoggedIn = AppState.auth && AppState.auth.isLoggedIn;
-  const navLogout = document.getElementById('nav-logout');
-  if (navLogout) {
-    if (isLoggedIn) navLogout.classList.remove('hidden');
-    else navLogout.classList.add('hidden');
-  }
-
-  const mNavLogout = document.getElementById('m-nav-logout');
-  if (mNavLogout) {
-    if (isLoggedIn) mNavLogout.classList.remove('hidden');
-    else mNavLogout.classList.add('hidden');
-  }
+  // 3. Quản lý hiển thị Đăng xuất:
+  // Nút đăng xuất dưới "Cấu hình & Sao lưu" và trên thanh menu dưới đã được gỡ bỏ hoàn toàn theo yêu cầu.
+  // Đăng xuất chỉ hiển thị trên Header (userAuthBadge) khi tài khoản đã đăng nhập.
 }
 
 // ==========================================
@@ -13356,17 +13346,17 @@ function renderAuthBadge() {
     const user = AppState.auth.user;
     const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.MEMBER;
     badgeContainer.innerHTML = `
-      <div class="flex items-center gap-1.5 sm:gap-2">
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 hover:bg-slate-200 text-xs transition shadow-2xs">
-          <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-inner">
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 hover:bg-slate-200 text-xs transition shadow-2xs shrink-0">
+          <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-inner">
             ${user.role === 'DEV_ADMIN' ? '🚀' : (user.name ? user.name.charAt(0).toUpperCase() : '👤')}
           </div>
-          <span class="font-bold text-slate-800 text-xs truncate max-w-[80px] sm:max-w-[130px]">${user.name || 'Hội viên'}</span>
-          <span class="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass}">
+          <span class="font-bold text-slate-800 text-xs truncate max-w-[70px] sm:max-w-[130px]">${user.name || 'Hội viên'}</span>
+          <span class="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black border ${roleDef.badgeClass} shrink-0">
             ${roleDef.icon} ${user.role === 'DEV_ADMIN' ? 'Admin Dev' : roleDef.label}
           </span>
         </div>
-        <button onclick="handleLogout()" class="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 hover:border-rose-600 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer" title="Đăng xuất khỏi tài khoản">
+        <button onclick="handleLogout()" class="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 hover:border-rose-600 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer shrink-0 whitespace-nowrap" title="Đăng xuất khỏi tài khoản">
           <span class="text-xs">🚪</span>
           <span class="font-bold">Đăng xuất</span>
         </button>
@@ -13374,7 +13364,7 @@ function renderAuthBadge() {
     `;
   } else {
     badgeContainer.innerHTML = `
-      <button onclick="openLoginModal()" class="inline-flex items-center px-2.5 sm:px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-full transition shadow-xs cursor-pointer">
+      <button onclick="openLoginModal()" class="inline-flex items-center px-2.5 sm:px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-full transition shadow-xs cursor-pointer shrink-0 whitespace-nowrap" title="Đăng nhập tài khoản">
         <i data-lucide="lock" class="w-3.5 h-3.5 mr-1"></i>
         <span>Đăng nhập</span>
       </button>
@@ -14591,17 +14581,19 @@ function updateCloudSyncUI(status, message = '') {
   let pingColor = 'bg-emerald-400';
 
   if (status === 'CONNECTED') {
+    // 🟢 TRẠNG THÁI KẾT NỐI: Chấm xanh lá phát sáng
     dotColor = 'bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse';
-    badgeText = 'Đám mây: Đã kết nối';
+    badgeText = 'Đã kết nối';
     badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
     icon = '🟢';
     title = 'Đã kết nối Google Firebase (clblaptri)';
     desc = 'Hệ thống đang kết nối trực tiếp đến Google Firebase clblaptri. Tất cả thay đổi sẽ đồng bộ tức thì.';
     headerTitle = 'Đám mây: Đã kết nối (Dấu chấm xanh lá phát sáng): Hệ thống đang kết nối trực tiếp đến Google Firebase clblaptri';
-    headerBadgeClass = 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-300 shadow-2xs';
+    headerBadgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs';
     showPing = true;
     pingColor = 'bg-emerald-400';
   } else if (status === 'SYNCING') {
+    // 🟡 TRẠNG THÁI ĐANG ĐỒNG BỘ: Chấm vàng quay
     dotColor = 'bg-amber-500 animate-spin';
     badgeText = 'Đang lưu...';
     badgeClass = 'bg-amber-100 text-amber-800 border border-amber-300';
@@ -14609,10 +14601,11 @@ function updateCloudSyncUI(status, message = '') {
     title = 'Đang đẩy dữ liệu lên đám mây...';
     desc = 'Đang cập nhật lên máy chủ Google Firebase clblaptri.';
     headerTitle = 'Đang đẩy dữ liệu lên Google Firebase clblaptri...';
-    headerBadgeClass = 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300 shadow-2xs';
+    headerBadgeClass = 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs';
     showPing = true;
     pingColor = 'bg-amber-400';
   } else if (status === 'CONNECTING') {
+    // 🔵 TRẠNG THÁI ĐANG KẾT NỐI: Chấm xanh dương nhấp nháy
     dotColor = 'bg-sky-500 animate-pulse';
     badgeText = 'Đang kết nối...';
     badgeClass = 'bg-sky-100 text-sky-800 border border-sky-300';
@@ -14620,35 +14613,30 @@ function updateCloudSyncUI(status, message = '') {
     title = 'Đang kiểm tra đám mây...';
     desc = 'Đang kết nối Google Firebase clblaptri trong nền.';
     headerTitle = 'Đang kiểm tra kết nối Google Firebase clblaptri...';
-    headerBadgeClass = 'bg-sky-50 text-sky-800 hover:bg-sky-100 border-sky-300 shadow-2xs';
+    headerBadgeClass = 'bg-sky-50 text-sky-800 border-sky-300 shadow-2xs';
     showPing = true;
     pingColor = 'bg-sky-400';
-  } else if (status === 'ERROR') {
-    dotColor = 'bg-slate-400';
-    badgeText = 'Ngoại tuyến (Bộ nhớ máy)';
-    badgeClass = 'bg-slate-200 text-slate-700';
-    icon = '⚪';
-    title = 'Chế độ cục bộ ngoại tuyến';
-    desc = message || 'Đang sử dụng dữ liệu cục bộ an toàn trên máy này.';
-    headerTitle = 'Đám mây: Ngoại tuyến (Bộ nhớ máy)';
-    headerBadgeClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 shadow-2xs';
-    showPing = false;
-  } else if (status === 'OFFLINE' || status === 'LOCAL_READY') {
-    dotColor = 'bg-emerald-500';
-    badgeText = 'Bộ nhớ máy (Siêu tốc)';
-    badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
-    icon = '⚡';
-    title = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
-    desc = 'Dữ liệu được lưu trữ trực tiếp và tức thì trên trình duyệt máy này.';
-    headerTitle = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
-    headerBadgeClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 shadow-2xs';
+  } else {
+    // 🔴 TRẠNG THÁI MẤT KẾT NỐI (DISCONNECTED / OFFLINE / ERROR / LOCAL_READY): Chấm đỏ cảnh báo mất kết nối
+    dotColor = 'bg-rose-500 shadow-[0_0_6px_#f43f5e]';
+    badgeText = 'Mất kết nối';
+    badgeClass = 'bg-rose-100 text-rose-800 border border-rose-300';
+    icon = '🔴';
+    title = 'Mất kết nối đám mây (Bộ nhớ máy)';
+    desc = message || 'Hệ thống đang hoạt động ngoại tuyến, dữ liệu lưu an toàn trên máy.';
+    headerTitle = 'Đám mây: Mất kết nối (Bộ nhớ máy)';
+    headerBadgeClass = 'bg-rose-50/80 text-rose-700 border-rose-300 shadow-2xs';
     showPing = false;
   }
 
-  // 1. Cập nhật Biểu tượng Header Badge (Ẩn dòng thông tin, chỉ để lại biểu tượng & chấm tròn phát sáng)
+  // 1. Giữ lại Biểu tượng Đám mây Header [ ☁️ 🟢 ] (Hiện trạng thái kết nối hoặc mất kết nối)
   if (badge) {
-    badge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition cursor-pointer ${headerBadgeClass}`;
-    badge.title = headerTitle;
+    badge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 select-none cursor-default ${headerBadgeClass}`;
+    badge.style.display = 'flex';
+    badge.onclick = null;
+    badge.removeAttribute('onclick');
+    badge.removeAttribute('title');
+    badge.title = '';
   }
   if (ping) {
     ping.className = showPing ? `animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75` : 'hidden';
@@ -14657,16 +14645,17 @@ function updateCloudSyncUI(status, message = '') {
     dot.className = `relative inline-flex rounded-full h-2 w-2 ${dotColor}`;
   }
   if (text) {
-    text.className = 'hidden'; // Luôn ẩn dòng chữ theo yêu cầu
+    text.className = 'hidden'; // Luôn ẩn dòng chữ thông tin, chỉ để lại biểu tượng [ ☁️ 🟢 ]
     text.textContent = badgeText;
   }
   if (modalBadge) {
     modalBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`;
     modalBadge.textContent = badgeText;
   }
+  // 2. Trạng thái Đám mây: Hiển thị nổi bật, rõ ràng trong tab Cấu hình & Sao lưu
   if (settingsBadge) {
-    settingsBadge.className = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeClass}`;
-    settingsBadge.innerHTML = `<span class="relative flex h-2 w-2">${showPing ? `<span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75"></span>` : ''}<span class="relative inline-flex rounded-full h-2 w-2 ${dotColor}"></span></span><span>${title}</span>`;
+    settingsBadge.className = `flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold ${badgeClass}`;
+    settingsBadge.innerHTML = `<span class="relative flex h-2.5 w-2.5 shrink-0">${showPing ? `<span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75"></span>` : ''}<span class="relative inline-flex rounded-full h-2.5 w-2.5 ${dotColor}"></span></span><span>${title}</span>`;
   }
   if (bannerIcon) bannerIcon.textContent = icon;
   if (bannerTitle) bannerTitle.textContent = title;
@@ -14729,7 +14718,7 @@ function initFirebaseCloudSync() {
     }
     firebaseDb = firebase.database();
 
-    // Theo dõi trạng thái kết nối mạng
+    // Theo dõi trạng thái kết nối mạng của Firebase
     firebaseDb.ref('.info/connected').on('value', snap => {
       const isConnected = snap.val() === true;
       isCloudActuallyConnected = isConnected;
@@ -14737,12 +14726,21 @@ function initFirebaseCloudSync() {
         clearTimeout(cloudInitTimeout);
         updateCloudSyncUI('CONNECTED');
       } else {
-        const dot = document.getElementById('cloudSyncDot');
-        if (!dot || (!dot.className.includes('bg-emerald-500') && !dot.className.includes('bg-slate-400'))) {
-          updateCloudSyncUI('LOCAL_READY');
-        }
+        updateCloudSyncUI('DISCONNECTED');
       }
     });
+
+    // Bắt sự kiện mạng của thiết bị (mất mạng / có mạng trở lại)
+    if (!window._networkOnlineOfflineAttached) {
+      window._networkOnlineOfflineAttached = true;
+      window.addEventListener('online', () => {
+        if (firebaseDb) updateCloudSyncUI('CONNECTING');
+      });
+      window.addEventListener('offline', () => {
+        isCloudActuallyConnected = false;
+        updateCloudSyncUI('DISCONNECTED');
+      });
+    }
 
     // Bắt đầu lắng nghe thay đổi của CLB hiện tại
     const club = getActiveClub();
@@ -14750,7 +14748,7 @@ function initFirebaseCloudSync() {
     subscribeToCloudClub(clubSlug);
   } catch (err) {
     console.warn('Firebase không thể khởi tạo, tiếp tục chế độ bộ nhớ máy siêu tốc:', err);
-    updateCloudSyncUI('LOCAL_READY');
+    updateCloudSyncUI('DISCONNECTED');
   }
 }
 
