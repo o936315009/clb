@@ -2364,7 +2364,7 @@
             
             <div class="flex items-center gap-2 flex-wrap">
               <span id="badgeDevAdminStatus" class="hidden"></span>
-              <button type="button" id="btnToggleDevAdminSession" class="hidden px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer" onclick="openDevAdminAuthModal()">
+              <button type="button" id="btnToggleDevAdminSession" class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer" onclick="openDevAdminAuthModal()">
                 <span>🚀</span>
                 <span>Đăng nhập Admin Nhà Phát Triển</span>
               </button>
@@ -2394,6 +2394,63 @@
             </div>
             <div class="text-[11px] text-slate-500 font-medium">
               💡 Mỗi CLB có link riêng biệt <code>?club=...</code> & phím tắt tải về Desktop / Thêm vào màn hình chính điện thoại
+            </div>
+          </div>
+
+          <!-- CỔNG THÔNG TIN & ĐƯỜNG LINK TRUY CẬP NHÀ PHÁT TRIỂN (DEVELOPER PORTAL) -->
+          <div id="devAdminPortalCard" class="p-4 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl shadow-md border border-purple-700/60 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/30 border border-purple-400/40 flex items-center justify-center text-lg shadow-inner">
+                  🚀
+                </div>
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-black text-sm text-white">Cổng Truy Cập Nhà Phát Triển (Developer Portal)</h3>
+                    <span id="devPortalLiveBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-400 text-purple-950 uppercase tracking-wider">Super Admin</span>
+                  </div>
+                  <p class="text-[11px] text-purple-200">Quản trị toàn bộ hệ sinh thái CLB, khởi tạo CLB mới và phân quyền tối cao</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="copyDeveloperPortalLink()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                  <span>📋</span>
+                  <span>Sao chép Link Dev</span>
+                </button>
+                <button type="button" id="btnDevPortalAction" onclick="handleDevPortalActionClick()" class="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                  <span>🔑</span>
+                  <span id="btnDevPortalStatusText">Đăng nhập Dev</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-purple-800/80 text-xs">
+              <div class="p-2.5 bg-purple-950/60 rounded-xl border border-purple-800/60">
+                <span class="text-[10px] text-purple-300 font-bold block">👤 Tên đăng nhập:</span>
+                <div class="flex items-center justify-between mt-0.5">
+                  <span class="font-mono font-black text-amber-300 text-xs select-all">developer</span>
+                  <span class="text-[10px] text-purple-300 italic">dev, admin</span>
+                </div>
+              </div>
+              <div class="p-2.5 bg-purple-950/60 rounded-xl border border-purple-800/60">
+                <span class="text-[10px] text-purple-300 font-bold block">🔑 Mật khẩu:</span>
+                <div class="flex items-center justify-between mt-0.5">
+                  <span class="font-mono font-black text-emerald-300 text-xs select-all">dev123</span>
+                  <span class="text-[10px] text-purple-300 italic">admin123</span>
+                </div>
+              </div>
+              <div class="p-2.5 bg-purple-950/60 rounded-xl border border-purple-800/60">
+                <span class="text-[10px] text-purple-300 font-bold block">🔗 Đường link truy cập trực tiếp:</span>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <input type="text" id="devDirectUrlDisplay" readonly onclick="this.select()" class="flex-1 bg-purple-900/60 border border-purple-700/60 rounded-lg px-2 py-1 font-mono text-[11px] font-bold text-sky-300 select-all outline-none truncate" value="/dev" />
+                  <button type="button" onclick="copyDeveloperPortalLink()" class="p-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition cursor-pointer" title="Sao chép link">
+                    <span>📋</span>
+                  </button>
+                  <button type="button" onclick="openDeveloperDirectUrl()" class="p-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition cursor-pointer" title="Mở link">
+                    <span>↗️</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -5476,7 +5533,7 @@ const firebaseConfig = {
           <label class="block font-bold text-slate-700 mb-1">Tên tài khoản Nhà phát triển (*):</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">👤</span>
-            <input type="text" id="devAdminAuthUser" value="admin" required placeholder="admin hoặc dev" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-purple-950 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <input type="text" id="devAdminAuthUser" value="developer" required placeholder="developer hoặc dev, admin" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-purple-950 focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
         </div>
 
@@ -5484,18 +5541,19 @@ const firebaseConfig = {
           <label class="block font-bold text-slate-700 mb-1">Mật khẩu Quản trị viên (*):</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">🔑</span>
-            <input type="password" id="devAdminAuthPass" value="admin123" required placeholder="Nhập mật khẩu..." class="w-full pl-9 pr-10 py-2.5 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <input type="password" id="devAdminAuthPass" value="dev123" required placeholder="Nhập mật khẩu..." class="w-full pl-9 pr-10 py-2.5 text-xs border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500" />
             <button type="button" onclick="togglePasswordVisibility('devAdminAuthPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">👁️</button>
           </div>
         </div>
 
         <!-- Hint / 1-Click fill -->
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+        <div class="p-3 bg-purple-50/70 rounded-xl border border-purple-200 flex items-center justify-between gap-2">
           <div>
-            <span class="text-[11px] text-slate-500 block">Tài khoản mặc định:</span>
-            <code class="font-mono font-bold text-purple-800 text-xs">admin / admin123</code>
+            <span class="text-[10px] text-purple-700 font-bold block">Tài khoản chính thức:</span>
+            <code class="font-mono font-bold text-purple-950 text-xs">developer / dev123</code>
+            <span class="text-[10px] text-purple-600 block">(Hỗ trợ cả: dev / dev123, admin / admin123)</span>
           </div>
-          <button type="button" onclick="fillSampleDevAdminCreds()" class="px-2.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-[11px] rounded-lg transition cursor-pointer">
+          <button type="button" onclick="fillSampleDevAdminCreds()" class="px-2.5 py-1.5 bg-purple-200 hover:bg-purple-300 text-purple-950 font-bold text-[11px] rounded-lg transition cursor-pointer">
             ⚡ Tự điền
           </button>
         </div>
@@ -5508,7 +5566,7 @@ const firebaseConfig = {
           </button>
           <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5">
             <span>🚀</span>
-            <span>Xác Thực & Mở Quyền Tạo CLB</span>
+            <span>Xác Thực Nhà Phát Triển (Super Admin)</span>
           </button>
         </div>
       </form>

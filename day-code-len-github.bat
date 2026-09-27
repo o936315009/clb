@@ -17,7 +17,7 @@ echo 2. Dang them tat ca cac thay doi moi (git add .) ...
 git add .
 
 echo.
-git commit -m "feat: nap vi thanh vien khong ghi vao so quy CLB, dong bo rieng vao vi va yeu cau nap tien"
+git commit -m "feat: thiet lap tai khoan va duong link truy cap nha phat trien (/dev)"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

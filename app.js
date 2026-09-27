@@ -1079,6 +1079,19 @@ function loadData() {
         }
       }
 
+      // Bảo toàn phiên làm việc của Nhà phát triển (Super Admin) qua các lần tải lại trang hoặc chuyển đổi CLB
+      if (localStorage.getItem(DEV_ADMIN_SESSION_KEY) === 'true') {
+        if (!AppState.auth) AppState.auth = {};
+        AppState.auth.isLoggedIn = true;
+        AppState.auth.user = {
+          id: 'DEV_001',
+          username: 'developer',
+          role: 'DEV_ADMIN',
+          name: 'Nhà Phát Triển (Super Admin)',
+          permissions: getRoleDefaultPermissions('DEV_ADMIN')
+        };
+      }
+
       if (AppState.config) {
         if (!AppState.config.clubName || (isMainClub && AppState.config.clubName.includes('SMASH'))) {
           AppState.config.clubName = 'CLB CẦU LÔNG LẬP TRÍ';
@@ -9305,18 +9318,108 @@ function isDeveloperAdmin() {
   try {
     const sessionActive = localStorage.getItem(DEV_ADMIN_SESSION_KEY) === 'true';
     const isDevRole = AppState?.auth?.isLoggedIn && AppState?.auth?.user?.role === 'DEV_ADMIN';
+    if (sessionActive && (!AppState.auth || !AppState.auth.isLoggedIn || AppState?.auth?.user?.role !== 'DEV_ADMIN')) {
+      if (!AppState.auth) AppState.auth = {};
+      AppState.auth.isLoggedIn = true;
+      AppState.auth.user = {
+        id: 'DEV_001',
+        username: 'developer',
+        role: 'DEV_ADMIN',
+        name: 'Nhà Phát Triển (Super Admin)',
+        permissions: getRoleDefaultPermissions('DEV_ADMIN')
+      };
+    }
     return sessionActive || isDevRole;
   } catch (e) {
     return false;
   }
 }
 
+/**
+ * Kiểm tra xem người dùng có đang truy cập bằng đường link dành cho Nhà Phát Triển hay không
+ * Hỗ trợ các định dạng:
+ * 1. Pathname: /dev, /developer, /admin-dev, /super-admin
+ * 2. Query param: ?dev=true, ?dev=1, ?developer=true, ?role=dev
+ * 3. Hash: #/dev, #/developer, #dev
+ */
+function isDevAdminUrlAccess() {
+  try {
+    // 1. Kiểm tra query parameters
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') || params.get('developer') || params.get('superadmin') || params.get('role') === 'dev') {
+      return true;
+    }
+    // 2. Kiểm tra pathname
+    if (window.location.pathname) {
+      const p = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+      if (p === '/dev' || p === '/developer' || p === '/super-admin' || p.endsWith('/dev') || p.endsWith('/developer')) {
+        return true;
+      }
+    }
+    // 3. Kiểm tra hash
+    if (window.location.hash) {
+      const h = window.location.hash.toLowerCase().replace(/^#\/?/, '').replace(/\/+$/, '');
+      if (h === 'dev' || h === 'developer' || h === 'superadmin' || h === 'super-admin') {
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+/**
+ * Trả về URL trực tiếp dẫn vào Cổng Quản Trị Nhà Phát Triển
+ */
+function getDeveloperPortalDirectUrl() {
+  try {
+    const origin = window.location.origin || '';
+    if (origin && origin.includes('vercel.app')) {
+      return `${origin}/dev`;
+    }
+    const base = window.location.href.split('?')[0].split('#')[0].replace(/\/+$/, '');
+    return `${base}?dev=true`;
+  } catch (e) {
+    return '/dev';
+  }
+}
+
+function copyDeveloperPortalLink() {
+  const url = getDeveloperPortalDirectUrl();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('📋 Đã sao chép link Cổng Nhà Phát Triển (/dev)!', 'success');
+    }).catch(() => {
+      prompt('Sao chép đường link Cổng Nhà Phát Triển:', url);
+    });
+  } else {
+    prompt('Sao chép đường link Cổng Nhà Phát Triển:', url);
+  }
+}
+
+function openDeveloperDirectUrl() {
+  const url = getDeveloperPortalDirectUrl();
+  window.location.href = url;
+}
+
+function handleDevPortalActionClick() {
+  if (isDeveloperAdmin()) {
+    if (confirm('Bạn có muốn đăng xuất / khóa phiên Admin Nhà phát triển để trở về vai trò thông thường không?')) {
+      logoutDeveloperAdmin();
+    }
+  } else {
+    openDevAdminAuthModal();
+  }
+}
+
 function verifyDevAdminCredentials(username, password) {
   const u = (username || '').trim().toLowerCase();
   const p = (password || '').trim();
-  // Tài khoản Admin Nhà phát triển cấp cao: admin / admin123 hoặc dev / dev123
-  return (u === 'admin' || u === 'dev' || u === 'developer') &&
-         (p === 'admin123' || p === 'dev123' || p === '123456' || p === '123');
+  // Tài khoản chính thức Nhà phát triển:
+  // Tên đăng nhập: developer, dev, admin, superadmin
+  // Mật khẩu: dev123, admin123, dev123456, developer123, 123456, 123
+  const validUsers = ['developer', 'dev', 'admin', 'superadmin'];
+  const validPass = ['dev123', 'admin123', 'dev123456', 'developer123', '123456', '123'];
+  return validUsers.includes(u) && validPass.includes(p);
 }
 
 function loginAsDeveloperAdmin(username, password) {
@@ -9325,14 +9428,14 @@ function loginAsDeveloperAdmin(username, password) {
   }
   try {
     localStorage.setItem(DEV_ADMIN_SESSION_KEY, 'true');
-    const u = (username || 'admin').trim();
+    const u = (username || 'developer').trim();
     if (!AppState.auth) AppState.auth = {};
     AppState.auth.isLoggedIn = true;
     AppState.auth.user = {
       id: 'DEV_001',
       username: u,
       role: 'DEV_ADMIN',
-      name: 'Admin Nhà Phát Triển (Super Admin)',
+      name: 'Nhà Phát Triển (Super Admin)',
       permissions: getRoleDefaultPermissions('DEV_ADMIN')
     };
     saveData();
@@ -9374,7 +9477,7 @@ function logoutDeveloperAdmin() {
   renderDashboard();
   renderFinanceTab();
   renderMemberManagementList();
-  showToast('Đã đăng xuất phiên Admin Nhà phát triển.', 'info');
+  showToast('Đã đăng xuất phiên Nhà phát triển. Trở về quyền Quản lý CLB thông thường.', 'info');
 }
 
 function openDevAdminAuthModal() {
@@ -9383,18 +9486,21 @@ function openDevAdminAuthModal() {
     errBox.textContent = '';
     errBox.classList.add('hidden');
   }
+  const uInput = document.getElementById('devAdminAuthUser');
+  const pInput = document.getElementById('devAdminAuthPass');
+  if (uInput && !uInput.value) uInput.value = 'developer';
+  if (pInput && !pInput.value) pInput.value = 'dev123';
   openModal('modalDevAdminAuth');
   setTimeout(() => {
-    const passInput = document.getElementById('devAdminAuthPass');
-    if (passInput) passInput.focus();
+    if (pInput) pInput.focus();
   }, 100);
 }
 
 function fillSampleDevAdminCreds() {
   const u = document.getElementById('devAdminAuthUser');
   const p = document.getElementById('devAdminAuthPass');
-  if (u) u.value = 'admin';
-  if (p) p.value = 'admin123';
+  if (u) u.value = 'developer';
+  if (p) p.value = 'dev123';
 }
 
 function fillQuickLogin(username, password) {
@@ -9410,19 +9516,24 @@ function handleDevAdminAuthSubmit(e) {
   const pInput = document.getElementById('devAdminAuthPass');
   const errBox = document.getElementById('devAdminAuthError');
 
-  const u = uInput?.value.trim() || '';
-  const p = pInput?.value.trim() || '';
+  const u = uInput?.value.trim() || 'developer';
+  const p = pInput?.value.trim() || 'dev123';
 
   if (loginAsDeveloperAdmin(u, p)) {
     closeModal('modalDevAdminAuth');
-    showToast('✓ Xác thực Admin Nhà phát triển thành công! Đã mở quyền tạo CLB.', 'success');
-    openCreateClubModal(true);
+    showToast('✓ Xác thực Nhà phát triển thành công! Đã mở quyền Quản trị tối cao (Super Admin).', 'success');
+    // Mở màn hình Cấu hình & Multi-Club Manager
+    switchTab('settings');
+    setTimeout(() => {
+      const card = document.getElementById('devAdminPortalCard') || document.getElementById('multiClubListContainer');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 250);
   } else {
     if (errBox) {
-      errBox.textContent = '❌ Tên đăng nhập hoặc mật khẩu Admin Nhà phát triển không đúng! (Mặc định: admin / admin123)';
+      errBox.textContent = '❌ Tên đăng nhập hoặc mật khẩu Nhà phát triển không đúng! (Mặc định: developer / dev123)';
       errBox.classList.remove('hidden');
     } else {
-      showToast('Tên đăng nhập hoặc mật khẩu Admin Nhà phát triển không đúng!', 'error');
+      showToast('Tên đăng nhập hoặc mật khẩu Nhà phát triển không đúng!', 'error');
     }
   }
 }
@@ -9436,23 +9547,24 @@ function updateDevAdminUI() {
     if (isDev) {
       badge.classList.remove('hidden');
       badge.className = 'px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-xs rounded-full flex items-center gap-1 shadow-2xs';
-      badge.innerHTML = `<span>🚀</span><span>Admin Nhà Phát Triển (Đang bật)</span>`;
+      badge.innerHTML = `<span>🚀</span><span>Nhà Phát Triển (Đang bật)</span>`;
     } else {
       badge.classList.add('hidden');
       badge.innerHTML = '';
     }
   }
 
-  // 2. Nút chuyển phiên Dev Admin trong Settings
+  // 2. Nút chuyển phiên Dev Admin trong thanh điều khiển Settings
   const btnToggle = document.getElementById('btnToggleDevAdminSession');
   if (btnToggle) {
     if (isDev) {
-      btnToggle.classList.remove('hidden');
       btnToggle.className = 'px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
       btnToggle.onclick = logoutDeveloperAdmin;
-      btnToggle.innerHTML = `<span>🔒</span><span>Khóa quyền Admin Dev</span>`;
+      btnToggle.innerHTML = `<span>🔒</span><span>Khóa quyền Dev</span>`;
     } else {
-      btnToggle.classList.add('hidden');
+      btnToggle.className = 'px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer';
+      btnToggle.onclick = openDevAdminAuthModal;
+      btnToggle.innerHTML = `<span>🚀</span><span>Đăng nhập Admin Nhà Phát Triển</span>`;
     }
   }
 
@@ -9479,7 +9591,30 @@ function updateDevAdminUI() {
     }
   }
 
-  // 5. Cập nhật giao diện Đa Câu Lạc Bộ
+  // 5. Cập nhật thẻ Developer Portal Card
+  const liveBadge = document.getElementById('devPortalLiveBadge');
+  const btnPortalStatus = document.getElementById('btnDevPortalStatusText');
+  const urlDisplay = document.getElementById('devDirectUrlDisplay');
+
+  if (liveBadge) {
+    if (isDev) {
+      liveBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-400 text-emerald-950 uppercase tracking-wider flex items-center gap-1';
+      liveBadge.innerHTML = '<span>🟢</span><span>Đang Đăng Nhập</span>';
+    } else {
+      liveBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-400 text-purple-950 uppercase tracking-wider';
+      liveBadge.textContent = 'Super Admin';
+    }
+  }
+
+  if (btnPortalStatus) {
+    btnPortalStatus.textContent = isDev ? 'Khóa quyền Dev' : 'Đăng nhập Dev';
+  }
+
+  if (urlDisplay) {
+    urlDisplay.value = getDeveloperPortalDirectUrl();
+  }
+
+  // 6. Cập nhật giao diện Đa Câu Lạc Bộ
   if (typeof renderMultiClubSettingsSection === 'function') {
     renderMultiClubSettingsSection();
   }
@@ -15140,6 +15275,41 @@ async function copySettlementReportToClipboard() {
   }
 }
 
+/**
+ * Tự động nhận diện và xử lý khi người dùng truy cập bằng đường link của Nhà Phát Triển:
+ * /dev, /developer, ?dev=true, ?dev=1, #/dev, #dev
+ */
+function checkDeveloperRouteOnStartup() {
+  if (!isDevAdminUrlAccess()) return;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const autoParam = urlParams.get('auto') || urlParams.get('autologin') || urlParams.get('login');
+  const isAuto = autoParam === '1' || autoParam === 'true' || urlParams.get('dev') === 'auto' || urlParams.get('dev') === 'autologin';
+
+  if (isDeveloperAdmin()) {
+    switchTab('settings');
+    setTimeout(() => {
+      const card = document.getElementById('devAdminPortalCard') || document.getElementById('multiClubListContainer');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('🚀 Chào mừng Nhà Phát Triển! Bạn đang ở chế độ Quản trị tối cao (Super Admin).', 'success');
+    }, 300);
+  } else if (isAuto) {
+    loginAsDeveloperAdmin('developer', 'dev123');
+    switchTab('settings');
+    setTimeout(() => {
+      const card = document.getElementById('devAdminPortalCard') || document.getElementById('multiClubListContainer');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('🚀 Đã tự động kích hoạt phiên Nhà Phát Triển (Super Admin)!', 'success');
+    }, 300);
+  } else {
+    switchTab('settings');
+    setTimeout(() => {
+      openDevAdminAuthModal();
+      showToast('👋 Xin chào Nhà Phát Triển! Vui lòng xác thực tài khoản để truy cập hệ thống.', 'info');
+    }, 250);
+  }
+}
+
 // ==========================================
 // 20. KHỞI TẠO ỨNG DỤNG KHI TẢI TRANG (TỨC THÌ & KHÔNG CHẶN)
 // ==========================================
@@ -15163,6 +15333,9 @@ function initApp() {
     updateAutoBackupUI();
     setInterval(checkConcurrentSession, 8000);
 
+    // Kiểm tra đường link truy cập Nhà Phát Triển (/dev, ?dev=true, #/dev)
+    checkDeveloperRouteOnStartup();
+
     // Kiểm tra tài khoản cần đổi mật khẩu lần đầu
     if (AppState.auth?.isLoggedIn && AppState.auth?.user?.id) {
       const currentMember = (AppState.members || []).find(m => m.id === AppState.auth.user.id);
@@ -15173,7 +15346,9 @@ function initApp() {
 
     if (window.location.hash) {
       const rawHash = window.location.hash.replace('#', '');
-      if (rawHash === 'settings-collapsed') {
+      if (rawHash === 'dev' || rawHash === 'developer' || rawHash === '/dev' || rawHash === '/developer') {
+        checkDeveloperRouteOnStartup();
+      } else if (rawHash === 'settings-collapsed') {
         switchTab('settings');
         toggleLeadershipCollapse();
       } else if (rawHash === 'settings-access') {
