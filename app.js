@@ -14448,50 +14448,66 @@ let cloudSyncDebounceTimer = null;
 let currentCloudClubRef = null;
 let currentCloudSlug = null;
 
+let isCloudActuallyConnected = false;
+
 // Phân tích mã cấu hình Firebase dù là JSON, biến Javascript hay chuỗi
 function parseFirebaseConfigInput(rawInput) {
   if (!rawInput || typeof rawInput !== 'string') return null;
   const str = rawInput.trim();
+  let obj = null;
   
   // 1. Thử parse JSON trực tiếp
   try {
-    const obj = JSON.parse(str);
-    if (obj.databaseURL || obj.projectId || obj.apiKey) return obj;
+    obj = JSON.parse(str);
   } catch (e) {}
 
   // 2. Tìm khối object { ... } trong đoạn mã JS
-  const match = str.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      const jsonStr = match[0]
-        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
-        .replace(/'/g, '"')
-        .replace(/,\s*}/g, '}');
-      const obj = JSON.parse(jsonStr);
-      if (obj.databaseURL || obj.projectId || obj.apiKey) return obj;
-    } catch (e) {}
+  if (!obj) {
+    const match = str.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        const jsonStr = match[0]
+          .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+          .replace(/'/g, '"')
+          .replace(/,\s*}/g, '}');
+        obj = JSON.parse(jsonStr);
+      } catch (e) {}
+    }
   }
 
   // 3. Tìm từng trường riêng lẻ bằng Regex
-  const extractField = (key) => {
-    const reg = new RegExp(`['"]?${key}['"]?\\s*:\\s*['"]([^'"]+)['"]`, 'i');
-    const m = str.match(reg);
-    return m ? m[1].trim() : '';
-  };
+  if (!obj) {
+    const extractField = (key) => {
+      const reg = new RegExp(`['"]?${key}['"]?\\s*:\\s*['"]([^'"]+)['"]`, 'i');
+      const m = str.match(reg);
+      return m ? m[1].trim() : '';
+    };
+    const projectId = extractField('projectId') || 'clblaptri';
+    if (projectId || extractField('apiKey')) {
+      obj = {
+        apiKey: extractField('apiKey'),
+        databaseURL: extractField('databaseURL'),
+        projectId: projectId,
+        authDomain: extractField('authDomain'),
+        appId: extractField('appId'),
+        storageBucket: extractField('storageBucket'),
+        messagingSenderId: extractField('messagingSenderId'),
+        measurementId: extractField('measurementId')
+      };
+    }
+  }
 
-  const apiKey = extractField('apiKey');
-  const databaseURL = extractField('databaseURL');
-  const projectId = extractField('projectId');
-  const authDomain = extractField('authDomain');
-  const appId = extractField('appId');
-
-  if (databaseURL || (projectId && apiKey)) {
+  if (obj && typeof obj === 'object') {
+    const pId = obj.projectId || DEFAULT_FIREBASE_CONFIG.projectId;
     return {
-      apiKey: apiKey,
-      databaseURL: databaseURL || `https://${projectId}-default-rtdb.firebaseio.com`,
-      projectId: projectId,
-      authDomain: authDomain || `${projectId}.firebaseapp.com`,
-      appId: appId
+      apiKey: obj.apiKey || DEFAULT_FIREBASE_CONFIG.apiKey,
+      databaseURL: obj.databaseURL || `https://${pId}-default-rtdb.firebaseio.com`,
+      projectId: pId,
+      authDomain: obj.authDomain || `${pId}.firebaseapp.com`,
+      storageBucket: obj.storageBucket || `${pId}.firebasestorage.app`,
+      messagingSenderId: obj.messagingSenderId || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+      appId: obj.appId || DEFAULT_FIREBASE_CONFIG.appId,
+      measurementId: obj.measurementId || DEFAULT_FIREBASE_CONFIG.measurementId
     };
   }
 
@@ -14513,7 +14529,22 @@ const DEFAULT_FIREBASE_CONFIG = {
 function getStoredFirebaseConfig() {
   try {
     const raw = localStorage.getItem(CLOUD_CONFIG_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg && typeof cfg === 'object') {
+        const pId = cfg.projectId || DEFAULT_FIREBASE_CONFIG.projectId;
+        return {
+          apiKey: cfg.apiKey || DEFAULT_FIREBASE_CONFIG.apiKey,
+          authDomain: cfg.authDomain || `${pId}.firebaseapp.com`,
+          databaseURL: cfg.databaseURL || `https://${pId}-default-rtdb.firebaseio.com`,
+          projectId: pId,
+          storageBucket: cfg.storageBucket || `${pId}.firebasestorage.app`,
+          messagingSenderId: cfg.messagingSenderId || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+          appId: cfg.appId || DEFAULT_FIREBASE_CONFIG.appId,
+          measurementId: cfg.measurementId || DEFAULT_FIREBASE_CONFIG.measurementId
+        };
+      }
+    }
   } catch (e) {}
   return DEFAULT_FIREBASE_CONFIG;
 }
@@ -14645,13 +14676,14 @@ function initFirebaseCloudSync() {
     // Theo dõi trạng thái kết nối mạng
     firebaseDb.ref('.info/connected').on('value', snap => {
       const isConnected = snap.val() === true;
+      isCloudActuallyConnected = isConnected;
       if (isConnected) {
         clearTimeout(cloudInitTimeout);
         updateCloudSyncUI('CONNECTED');
       } else {
         const dot = document.getElementById('cloudSyncDot');
-        if (!dot || !dot.className.includes('bg-emerald-500')) {
-          updateCloudSyncUI('CONNECTING');
+        if (!dot || (!dot.className.includes('bg-emerald-500') && !dot.className.includes('bg-slate-400'))) {
+          updateCloudSyncUI('LOCAL_READY');
         }
       }
     });
@@ -14794,11 +14826,17 @@ function openCloudSyncModal() {
     input.value = stored ? JSON.stringify(stored, null, 2) : '';
   }
 
-  const storedConfig = getStoredFirebaseConfig();
-  if (storedConfig) {
-    updateCloudSyncUI(firebaseDb ? 'CONNECTED' : 'CONNECTING');
+  // Tự động lưu cấu hình đầy đủ có databaseURL và apiKey
+  if (stored) {
+    try {
+      localStorage.setItem(CLOUD_CONFIG_STORAGE_KEY, JSON.stringify(stored));
+    } catch (e) {}
+  }
+
+  if (isCloudActuallyConnected) {
+    updateCloudSyncUI('CONNECTED');
   } else {
-    updateCloudSyncUI('OFFLINE');
+    updateCloudSyncUI('LOCAL_READY');
   }
 
   openModal('modalCloudSync');
@@ -14820,15 +14858,17 @@ function saveCloudConfigAndConnect() {
   }
 
   localStorage.setItem(CLOUD_CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+  if (input) {
+    input.value = JSON.stringify(parsed, null, 2);
+  }
   showToast('✓ Đã lưu cấu hình Firebase! Đang tiến hành kết nối...', 'info');
 
   initFirebaseCloudSync();
 
-  // Đẩy dữ liệu hiện tại lên đám mây ngay lập tức
   setTimeout(() => {
     if (firebaseDb) {
       pushDataToCloud();
-      showToast('🎉 Kết nối đám mây thành công! Dữ liệu đã được tải lên máy chủ Google.', 'success');
+      showToast('🎉 Đã kích hoạt đồng bộ đám mây!', 'success');
     }
   }, 1000);
 }
@@ -14842,6 +14882,7 @@ function disconnectCloudSync() {
     try { currentCloudClubRef.off(); } catch (e) {}
   }
   firebaseDb = null;
+  isCloudActuallyConnected = false;
   localStorage.removeItem(CLOUD_CONFIG_STORAGE_KEY);
   updateCloudSyncUI('OFFLINE');
 
@@ -14865,15 +14906,35 @@ function testCloudConnection() {
     initFirebaseCloudSync();
   }
 
-  setTimeout(() => {
-    if (firebaseDb) {
-      updateCloudSyncUI('CONNECTED');
-      showToast('✓ Kết nối đám mây hoạt động hoàn hảo!', 'success');
-    } else {
-      updateCloudSyncUI('ERROR', 'Không thể kết nối đến Firebase');
-      showToast('Không thể kết nối đến Firebase! Vui lòng kiểm tra quyền Realtime Database (Test mode).', 'error');
+  let resolved = false;
+  const timeout = setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
+      if (isCloudActuallyConnected) {
+        updateCloudSyncUI('CONNECTED');
+        showToast('✓ Kết nối đám mây hoạt động hoàn hảo!', 'success');
+      } else {
+        updateCloudSyncUI('LOCAL_READY');
+        showToast('💡 Đám mây chưa phản hồi. Dữ liệu đang được bảo vệ an toàn trên Bộ nhớ máy siêu tốc!', 'info');
+      }
     }
-  }, 1500);
+  }, 2500);
+
+  if (firebaseDb) {
+    firebaseDb.ref('.info/connected').once('value', snap => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      if (snap.val() === true) {
+        isCloudActuallyConnected = true;
+        updateCloudSyncUI('CONNECTED');
+        showToast('✓ Kết nối đám mây Google Firebase hoạt động hoàn hảo!', 'success');
+      } else {
+        updateCloudSyncUI('LOCAL_READY');
+        showToast('💡 Đang ở chế độ Bộ nhớ máy cục bộ siêu tốc. Dữ liệu lưu an toàn trên máy.', 'info');
+      }
+    });
+  }
 }
 
 function copyMobileSyncUrl() {
