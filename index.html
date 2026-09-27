@@ -5717,11 +5717,11 @@ const firebaseConfig = {
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-16 sm:bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- Google Firebase Realtime Database SDK (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- Google Firebase Realtime Database SDK (compat) - Tải bất đồng bộ không chặn giao diện -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- Application Logic -->
-  <script src="app.js"></script>
+  <!-- Application Logic - Tải siêu tốc ngay khi HTML sẵn sàng -->
+  <script defer src="app.js"></script>
 </body>
 </html>

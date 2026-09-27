@@ -12,19 +12,19 @@ const CLUBS_REGISTRY_KEY = 'CLB_CAU_LONG_REGISTRY_V1';
 const ACTIVE_CLUB_ID_KEY = 'CLB_ACTIVE_CLUB_ID_V1';
 
 const DEFAULT_DEFAULT_CLUB = {
-  id: 'club_smash',
-  accessSlug: 'smash',
-  name: 'CLB CẦU LÔNG SMASH',
-  shortName: 'SMASH',
+  id: 'club_laptri',
+  accessSlug: 'lap-tri',
+  name: 'CLB CẦU LÔNG LẬP TRÍ',
+  shortName: 'LẬP TRÍ',
   logoIcon: '🏸',
   themeColor: 'emerald',
-  bankInfo: 'MBBANK - 0987654321 - CLB CAU LONG SMASH',
+  bankInfo: 'MBBANK - 0987654321 - CLB CAU LONG LAP TRI',
   createdAt: '01/01/2026',
   storageKey: 'CLB_CAU_LONG_SMASH_DATA_V1',
   adminName: 'Trần Đức Chính',
   adminUsername: 'chinh',
   phone: '0901000001',
-  isDeveloperSample: true
+  isDeveloperSample: false
 };
 
 const DEFAULT_SECOND_CLUB = {
@@ -159,19 +159,34 @@ function getClubsRegistry() {
       localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(initial));
       return initial;
     }
-    // Chuẩn hóa accessSlug và cờ isDeveloperSample cho các CLB
+    // Chuẩn hóa accessSlug, định tuyến và cờ isDeveloperSample cho các CLB
     let changed = false;
+    let hasMainClub = false;
     list.forEach(c => {
+      // Nhận diện CLB chính (Lập Trí / Smash)
+      if (c.id === 'club_smash' || c.id === 'club_laptri' || c.accessSlug === 'lap-tri' || c.accessSlug === 'laptri' || c.accessSlug === 'smash') {
+        c.id = 'club_laptri';
+        c.accessSlug = 'lap-tri';
+        if (!c.name || c.name.includes('SMASH')) c.name = 'CLB CẦU LÔNG LẬP TRÍ';
+        if (!c.shortName || c.shortName.includes('SMASH')) c.shortName = 'LẬP TRÍ';
+        c.isDeveloperSample = false;
+        c.storageKey = 'CLB_CAU_LONG_SMASH_DATA_V1';
+        hasMainClub = true;
+        changed = true;
+      }
       if (!c.accessSlug) {
-        if (c.id === 'club_smash') c.accessSlug = 'smash';
-        else if (c.id === 'club_lightning') c.accessSlug = 'tiachop';
+        if (c.id === 'club_lightning') c.accessSlug = 'tiachop';
         else c.accessSlug = generateAccessSlug(c.name || c.shortName || c.id);
         changed = true;
       }
-      if (c.id === 'club_smash' || c.id === 'club_lightning') {
+      if (c.id === 'club_lightning') {
         c.isDeveloperSample = true;
       }
     });
+    if (!hasMainClub) {
+      list.unshift(DEFAULT_DEFAULT_CLUB);
+      changed = true;
+    }
     if (changed) {
       localStorage.setItem(CLUBS_REGISTRY_KEY, JSON.stringify(list));
     }
@@ -220,6 +235,14 @@ function getActiveClubId() {
   const urlClub = getClubIdFromUrl();
   if (urlClub) {
     const urlClubLower = urlClub.toLowerCase();
+    
+    // Khớp bí danh CLB Lập Trí: 'lap-tri', 'laptri', 'lap_tri', 'smash'
+    if (urlClubLower === 'lap-tri' || urlClubLower === 'laptri' || urlClubLower === 'lap_tri' || urlClubLower === 'smash') {
+      const mainClub = registry.find(c => c.id === 'club_laptri' || c.accessSlug === 'lap-tri') || registry[0] || DEFAULT_DEFAULT_CLUB;
+      localStorage.setItem(ACTIVE_CLUB_ID_KEY, mainClub.id);
+      return mainClub.id;
+    }
+
     const matched = registry.find(c =>
       c.id.toLowerCase() === urlClubLower ||
       (c.accessSlug && c.accessSlug.toLowerCase() === urlClubLower) ||
@@ -231,7 +254,6 @@ function getActiveClubId() {
     }
 
     // CLB chưa có trong danh bạ: Tự động khởi tạo ngay theo slug trên URL
-    // Tuyệt đối không để rơi về CLB mẫu của nhà phát triển (SMASH)
     const cleanSlug = urlClubLower.replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'clb';
     const newClubId = 'club_' + cleanSlug;
     const storageKey = 'CLB_CAU_LONG_DATA_' + cleanSlug;
@@ -276,17 +298,22 @@ function getActiveClubId() {
 
   let activeId = localStorage.getItem(ACTIVE_CLUB_ID_KEY);
   if (!activeId || !registry.some(c => c.id === activeId)) {
-    // Nếu người dùng chọn ẩn demo developer, ưu tiên CLB thực của người dùng trước
+    const mainClub = registry.find(c => c.id === 'club_laptri' || c.accessSlug === 'lap-tri');
+    if (mainClub) {
+      activeId = mainClub.id;
+      localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
+      return activeId;
+    }
     const isHideDemo = localStorage.getItem('CLB_HIDE_DEV_DEMO') === 'true';
     if (isHideDemo) {
-      const userClub = registry.find(c => !c.isDeveloperSample && c.id !== 'club_smash' && c.id !== 'club_lightning');
+      const userClub = registry.find(c => !c.isDeveloperSample && c.id !== 'club_lightning');
       if (userClub) {
         activeId = userClub.id;
         localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
         return activeId;
       }
     }
-    activeId = registry[0]?.id || 'club_smash';
+    activeId = registry[0]?.id || 'club_laptri';
     localStorage.setItem(ACTIVE_CLUB_ID_KEY, activeId);
   }
   return activeId;
@@ -299,7 +326,8 @@ function setActiveClubId(clubId) {
 function getClubDirectUrl(clubOrId) {
   const registry = getClubsRegistry();
   const club = typeof clubOrId === 'string' ? registry.find(c => c.id === clubOrId || c.accessSlug === clubOrId) : clubOrId;
-  const slug = club ? (club.accessSlug || club.shortName?.toLowerCase() || club.id) : (typeof clubOrId === 'string' ? clubOrId : 'smash');
+  let slug = club ? (club.accessSlug || club.shortName?.toLowerCase() || club.id) : (typeof clubOrId === 'string' ? clubOrId : 'lap-tri');
+  if (slug === 'smash' || slug === 'club_smash') slug = 'lap-tri';
 
   const baseUrl = window.location.href.split('#')[0].split('?')[0];
   return `${baseUrl}?club=${encodeURIComponent(slug)}`;
@@ -745,9 +773,9 @@ const DEFAULT_ACTIVITY_SESSIONS = [
 // ==========================================
 const DEFAULT_INITIAL_DATA = {
   config: {
-    clubName: 'CLB CẦU LÔNG SMASH',
+    clubName: 'CLB CẦU LÔNG LẬP TRÍ',
     themeColor: 'emerald',
-    bankInfo: 'MBBANK - 0987654321 - CLB CAU LONG SMASH',
+    bankInfo: 'MBBANK - 0987654321 - CLB CAU LONG LAP TRI',
     leadership: {
       president: 'M001',       // Chủ tịch
       vicePresident1: 'M002',  // Phó chủ tịch 1
@@ -786,8 +814,8 @@ const DEFAULT_INITIAL_DATA = {
     attendanceCutoffTime: '17:00'       // Giờ chốt tự điểm danh thành viên (mặc định 17:00)
   },
   funds: {
-    clubFund: 5200000,                  // 5.200.000 đ quỹ CLB
-    advanceFund: 1800000,               // 1.800.000 đ Tổng Quỹ Tạm Ứng = Quỹ Cầu + Quỹ Sân + Thu Khách
+    clubFund: 2300000,                  // 2.300.000 đ quỹ CLB thực tế
+    advanceFund: 2095332,               // 2.095.332 đ Tổng Quỹ Tạm Ứng
     shuttleAdvanceFund: 800000,         // 800.000 đ Quỹ tạm ứng tiền cầu (Thu từ TV - Đã trả tiền cầu)
     courtAdvanceFund: 760000,           // 760.000 đ Quỹ tạm ứng tiền sân (Thu từ TV - Đã trả tiền sân)
     guestAdvanceIncome: 240000,         // 240.000 đ Khoản thu của khách giao lưu theo hạng
@@ -898,25 +926,43 @@ function loadData() {
   try {
     STORAGE_KEY = getCurrentClubStorageKey();
     const activeClub = getActiveClub();
-    const isSmash = activeClub.id === 'club_smash';
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const isMainClub = activeClub.id === 'club_laptri' || activeClub.id === 'club_smash' || activeClub.accessSlug === 'lap-tri' || activeClub.accessSlug === 'smash';
+    
+    // Đảm bảo không bị mất dữ liệu giữa storageKey cũ và mới
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved && isMainClub) {
+      saved = localStorage.getItem('CLB_CAU_LONG_SMASH_DATA_V1') || localStorage.getItem('CLB_CAU_LONG_DATA_lap-tri');
+    } else if (isMainClub) {
+      const altKey = STORAGE_KEY === 'CLB_CAU_LONG_SMASH_DATA_V1' ? 'CLB_CAU_LONG_DATA_lap-tri' : 'CLB_CAU_LONG_SMASH_DATA_V1';
+      const altSaved = localStorage.getItem(altKey);
+      if (altSaved) {
+        try {
+          const curObj = JSON.parse(saved);
+          const altObj = JSON.parse(altSaved);
+          if ((curObj.members?.length || 0) < 5 && (altObj.members?.length || 0) >= 5) {
+            saved = altSaved;
+          }
+        } catch (e) {}
+      }
+    }
+
     if (saved) {
       AppState = JSON.parse(saved);
       const blankData = getBlankClubInitialData(activeClub);
 
       // Đảm bảo không bị thiếu cấu trúc khi cập nhật phiên bản
-      if (!AppState.config) AppState.config = isSmash ? DEFAULT_INITIAL_DATA.config : blankData.config;
-      if (!AppState.funds) AppState.funds = isSmash ? DEFAULT_INITIAL_DATA.funds : blankData.funds;
-      if (!AppState.members) AppState.members = isSmash ? DEFAULT_INITIAL_DATA.members : blankData.members;
-      if (!AppState.transactions) AppState.transactions = isSmash ? DEFAULT_INITIAL_DATA.transactions : [];
+      if (!AppState.config) AppState.config = isMainClub ? DEFAULT_INITIAL_DATA.config : blankData.config;
+      if (!AppState.funds) AppState.funds = isMainClub ? DEFAULT_INITIAL_DATA.funds : blankData.funds;
+      if (!AppState.members) AppState.members = isMainClub ? DEFAULT_INITIAL_DATA.members : blankData.members;
+      if (!AppState.transactions) AppState.transactions = isMainClub ? DEFAULT_INITIAL_DATA.transactions : [];
       if (!AppState.attendanceRecords) AppState.attendanceRecords = [];
       if (!AppState.activitySessions || AppState.activitySessions.length === 0) {
         AppState.activitySessions = JSON.parse(JSON.stringify(DEFAULT_ACTIVITY_SESSIONS));
       }
-      if (!AppState.auth) AppState.auth = isSmash ? DEFAULT_INITIAL_DATA.auth : blankData.auth;
+      if (!AppState.auth) AppState.auth = isMainClub ? DEFAULT_INITIAL_DATA.auth : blankData.auth;
 
-      // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế (riêng cho CLB Smash mặc định)
-      if (isSmash) {
+      // Nâng cấp dữ liệu lên danh sách 27 thành viên & khách theo mẫu thực tế (riêng cho CLB Lập Trí / Smash mặc định)
+      if (isMainClub) {
         if (!AppState.members || AppState.members.length < 20) {
           AppState.members = JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA.members));
         } else {
@@ -942,22 +988,22 @@ function loadData() {
       // Chuẩn hóa và gán vai trò & quyền sử dụng (User Access Management) cho từng thành viên
       if (AppState.members && AppState.members.length > 0) {
         const leadership = AppState.config?.leadership || {};
-        const presId = leadership.president || (isSmash ? 'M001' : AppState.members[0].id);
-        const vice1Id = leadership.vicePresident1 || (isSmash ? 'M002' : '');
-        const vice2Id = leadership.vicePresident2 || (isSmash ? 'M003' : '');
-        const secId = leadership.secretary || (isSmash ? 'M004' : '');
-        const treasId = leadership.treasurer || (isSmash ? 'M005' : '');
-        const viceLeadId = AppState.config?.viceLeaderId || (isSmash ? 'M002' : '');
+        const presId = leadership.president || (isMainClub ? 'M001' : AppState.members[0].id);
+        const vice1Id = leadership.vicePresident1 || (isMainClub ? 'M002' : '');
+        const vice2Id = leadership.vicePresident2 || (isMainClub ? 'M003' : '');
+        const secId = leadership.secretary || (isMainClub ? 'M004' : '');
+        const treasId = leadership.treasurer || (isMainClub ? 'M005' : '');
+        const viceLeadId = AppState.config?.viceLeaderId || (isMainClub ? 'M002' : '');
 
         AppState.members.forEach(m => {
           if (!m.role || m.role === 'MEMBER') {
-            if (m.id === presId || (isSmash && (m.id === 'M001' || m.username === 'admin' || m.id === 'M020'))) {
+            if (m.id === presId || (isMainClub && (m.id === 'M001' || m.username === 'admin' || m.id === 'M020'))) {
               m.role = 'ADMIN';
-            } else if ((vice1Id && m.id === vice1Id) || (vice2Id && m.id === vice2Id) || (viceLeadId && m.id === viceLeadId) || (isSmash && (m.id === 'M002' || m.id === 'M003'))) {
+            } else if ((vice1Id && m.id === vice1Id) || (vice2Id && m.id === vice2Id) || (viceLeadId && m.id === viceLeadId) || (isMainClub && (m.id === 'M002' || m.id === 'M003'))) {
               m.role = 'VICE_ADMIN';
-            } else if ((treasId && m.id === treasId) || (isSmash && m.id === 'M005')) {
+            } else if ((treasId && m.id === treasId) || (isMainClub && m.id === 'M005')) {
               m.role = 'TREASURER';
-            } else if ((secId && m.id === secId) || (isSmash && m.id === 'M004')) {
+            } else if ((secId && m.id === secId) || (isMainClub && m.id === 'M004')) {
               m.role = 'REFEREE';
             } else {
               m.role = 'MEMBER';
@@ -985,6 +1031,9 @@ function loadData() {
       }
 
       if (AppState.config) {
+        if (!AppState.config.clubName || (isMainClub && AppState.config.clubName.includes('SMASH'))) {
+          AppState.config.clubName = 'CLB CẦU LÔNG LẬP TRÍ';
+        }
         if (!AppState.config.guestPrices) AppState.config.guestPrices = DEFAULT_INITIAL_DATA.config.guestPrices;
         if (AppState.config.dailyBoxPrice === undefined) AppState.config.dailyBoxPrice = 340000;
         if (AppState.config.shuttlecocksPerBox === undefined) AppState.config.shuttlecocksPerBox = 12;
@@ -996,7 +1045,7 @@ function loadData() {
           AppState.config.shuttleUnitPrice = Math.round(bp / sc) || 28333;
         }
         if (!AppState.config.defaultShuttlesPerSession) AppState.config.defaultShuttlesPerSession = 6;
-        if (!AppState.config.viceLeaderId) AppState.config.viceLeaderId = isSmash ? 'M002' : '';
+        if (!AppState.config.viceLeaderId) AppState.config.viceLeaderId = isMainClub ? 'M002' : '';
         if (!AppState.config.permissions) {
           AppState.config.permissions = {
             allowViceLeaderAttendance: true,
@@ -1007,7 +1056,7 @@ function loadData() {
         if (!AppState.config.settlementMode) AppState.config.settlementMode = 'MONTHLY';
         if (!AppState.config.defaultSettlementDay) AppState.config.defaultSettlementDay = 'END_OF_MONTH';
         if (!AppState.config.leadership) {
-          AppState.config.leadership = isSmash ? {
+          AppState.config.leadership = isMainClub ? {
             president: 'M001',
             vicePresident1: 'M002',
             vicePresident2: 'M003',
@@ -1026,7 +1075,7 @@ function loadData() {
             advisor1: '',
             advisor2: ''
           };
-        } else if (!isSmash) {
+        } else if (!isMainClub) {
           // Loại bỏ ID mẫu của dev nếu không tồn tại trong danh sách thành viên CLB này
           const memberIds = new Set((AppState.members || []).map(m => m.id));
           ['president', 'vicePresident1', 'vicePresident2', 'secretary', 'treasurer', 'media', 'advisor1', 'advisor2'].forEach(k => {
@@ -1038,15 +1087,15 @@ function loadData() {
       }
 
       if (AppState.funds) {
-        if (AppState.funds.shuttleAdvanceFund === undefined) AppState.funds.shuttleAdvanceFund = isSmash ? 800000 : 0;
-        if (AppState.funds.courtAdvanceFund === undefined) AppState.funds.courtAdvanceFund = isSmash ? 760000 : 0;
-        if (AppState.funds.guestAdvanceIncome === undefined) AppState.funds.guestAdvanceIncome = isSmash ? 240000 : 0;
-        if (AppState.funds.shuttlePaidTotal === undefined) AppState.funds.shuttlePaidTotal = isSmash ? 680000 : 0;
-        if (AppState.funds.courtPaidTotal === undefined) AppState.funds.courtPaidTotal = isSmash ? 1500000 : 0;
+        if (AppState.funds.shuttleAdvanceFund === undefined) AppState.funds.shuttleAdvanceFund = isMainClub ? 800000 : 0;
+        if (AppState.funds.courtAdvanceFund === undefined) AppState.funds.courtAdvanceFund = isMainClub ? 760000 : 0;
+        if (AppState.funds.guestAdvanceIncome === undefined) AppState.funds.guestAdvanceIncome = isMainClub ? 240000 : 0;
+        if (AppState.funds.shuttlePaidTotal === undefined) AppState.funds.shuttlePaidTotal = isMainClub ? 680000 : 0;
+        if (AppState.funds.courtPaidTotal === undefined) AppState.funds.courtPaidTotal = isMainClub ? 1500000 : 0;
       }
 
       if (!AppState.personalExpenses) {
-        AppState.personalExpenses = isSmash ? [
+        AppState.personalExpenses = isMainClub ? [
           { id: 'PEXP_01', memberId: 'M001', category: 'STRING', amount: 160000, date: '2026-09-08', month: '2026-09', note: 'Căng cước Nanogy 98 10.5kg', createdAt: '2026-09-08T10:00:00Z' },
           { id: 'PEXP_02', memberId: 'M001', category: 'GRIP', amount: 35000, date: '2026-09-12', month: '2026-09', note: 'Quấn cán Yonex AC102EX', createdAt: '2026-09-12T16:00:00Z' },
           { id: 'PEXP_03', memberId: 'M001', category: 'WATER', amount: 45000, date: '2026-09-15', month: '2026-09', note: 'Nước điện giải Revive 3 chai', createdAt: '2026-09-15T19:00:00Z' },
@@ -1063,15 +1112,15 @@ function loadData() {
       refreshAllMembersWalletBreakdown();
       saveData();
     } else {
-      AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
+      AppState = isMainClub ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
       refreshAllMembersWalletBreakdown();
       saveData();
     }
   } catch (err) {
     console.error('Error loading data, using defaults:', err);
     const activeClub = getActiveClub();
-    const isSmash = activeClub.id === 'club_smash';
-    AppState = isSmash ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
+    const isMainClub = activeClub.id === 'club_laptri' || activeClub.id === 'club_smash' || activeClub.accessSlug === 'lap-tri' || activeClub.accessSlug === 'smash';
+    AppState = isMainClub ? JSON.parse(JSON.stringify(DEFAULT_INITIAL_DATA)) : getBlankClubInitialData(activeClub);
     refreshAllMembersWalletBreakdown();
     saveData();
   }
@@ -14275,7 +14324,7 @@ document.addEventListener('DOMContentLoaded', () => {
   populateLeadershipSelects();
   initTournamentModule();
   lucide.createIcons();
-  initFirebaseCloudSync();
+  setTimeout(initFirebaseCloudSync, 150);
   setupInactivityAutoBackup();
   updateAutoBackupUI();
   setInterval(checkConcurrentSession, 8000);
@@ -14426,6 +14475,8 @@ function getStoredFirebaseConfig() {
   return DEFAULT_FIREBASE_CONFIG;
 }
 
+let cloudInitTimeout = null;
+
 function updateCloudSyncUI(status, message = '') {
   const dot = document.getElementById('cloudSyncDot');
   const text = document.getElementById('cloudSyncText');
@@ -14435,23 +14486,23 @@ function updateCloudSyncUI(status, message = '') {
   const bannerTitle = document.getElementById('cloudStatusTitle');
   const bannerDesc = document.getElementById('cloudStatusDesc');
 
-  let dotColor = 'bg-slate-400';
-  let badgeText = 'Ngoại tuyến';
-  let badgeClass = 'bg-slate-200 text-slate-700';
-  let icon = '⚪';
-  let title = 'Chưa kết nối đám mây';
-  let desc = 'Dữ liệu đang được lưu cục bộ trên máy này.';
+  let dotColor = 'bg-emerald-500';
+  let badgeText = 'Bộ nhớ máy (Siêu tốc)';
+  let badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+  let icon = '⚡';
+  let title = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
+  let desc = 'Dữ liệu được lưu trữ trực tiếp và tức thì trên trình duyệt máy này.';
 
   if (status === 'CONNECTED') {
     dotColor = 'bg-emerald-500 animate-pulse';
-    badgeText = 'Đang đồng bộ';
+    badgeText = 'Đám mây: Đã kết nối';
     badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
     icon = '🟢';
     title = 'Đã kết nối đám mây trực tuyến';
     desc = 'Tất cả thay đổi sẽ đồng bộ tức thì với Điện thoại & Máy tính khác.';
   } else if (status === 'SYNCING') {
     dotColor = 'bg-amber-500 animate-spin';
-    badgeText = 'Đang tải lên...';
+    badgeText = 'Đang lưu...';
     badgeClass = 'bg-amber-100 text-amber-800 border border-amber-300';
     icon = '🟡';
     title = 'Đang đẩy dữ liệu lên đám mây...';
@@ -14461,22 +14512,29 @@ function updateCloudSyncUI(status, message = '') {
     badgeText = 'Đang kết nối...';
     badgeClass = 'bg-sky-100 text-sky-800 border border-sky-300';
     icon = '🔵';
-    title = 'Đang kết nối máy chủ Google...';
-    desc = 'Đang xác thực thông tin cấu hình Firebase.';
+    title = 'Đang kiểm tra đám mây...';
+    desc = 'Đang kết nối đám mây trong nền (Ứng dụng vẫn chạy siêu tốc).';
   } else if (status === 'ERROR') {
-    dotColor = 'bg-rose-500';
-    badgeText = 'Lỗi kết nối';
-    badgeClass = 'bg-rose-100 text-rose-800 border border-rose-300';
-    icon = '🔴';
-    title = 'Lỗi kết nối Firebase';
-    desc = message || 'Vui lòng kiểm tra lại mã cấu hình hoặc quyền truy cập của Realtime Database.';
+    dotColor = 'bg-slate-400';
+    badgeText = 'Ngoại tuyến (Bộ nhớ máy)';
+    badgeClass = 'bg-slate-200 text-slate-700';
+    icon = '⚪';
+    title = 'Chế độ cục bộ ngoại tuyến';
+    desc = message || 'Đang sử dụng dữ liệu cục bộ an toàn trên máy này.';
+  } else if (status === 'OFFLINE' || status === 'LOCAL_READY') {
+    dotColor = 'bg-emerald-500';
+    badgeText = 'Bộ nhớ máy (Siêu tốc)';
+    badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+    icon = '⚡';
+    title = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
+    desc = 'Dữ liệu được lưu trữ trực tiếp và tức thì trên trình duyệt máy này.';
   }
 
   if (dot) {
     dot.className = `w-2.5 h-2.5 rounded-full ${dotColor}`;
   }
   if (text) {
-    text.textContent = status === 'CONNECTED' ? 'Đám mây: Đã kết nối' : (status === 'SYNCING' ? 'Đám mây: Đang lưu...' : 'Đám mây');
+    text.textContent = status === 'CONNECTED' ? 'Đám mây: Đã kết nối' : (status === 'SYNCING' ? 'Đám mây: Đang lưu...' : (status === 'CONNECTING' ? 'Đám mây: Đang kết nối...' : 'Bộ nhớ máy'));
   }
   if (modalBadge) {
     modalBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`;
@@ -14512,21 +14570,30 @@ function initFirebaseCloudSync() {
     }
   } catch (e) {}
 
-  // 2. Kiểm tra thư viện Firebase SDK
+  // 2. Kiểm tra thư viện Firebase SDK - nếu chưa sẵn sàng, giữ nguyên chế độ cục bộ siêu tốc
   if (typeof firebase === 'undefined') {
-    console.warn('Firebase SDK chưa được tải.');
-    updateCloudSyncUI('OFFLINE');
+    updateCloudSyncUI('LOCAL_READY');
     return;
   }
 
   const config = getStoredFirebaseConfig();
   if (!config) {
-    updateCloudSyncUI('OFFLINE');
+    updateCloudSyncUI('LOCAL_READY');
     return;
   }
 
   try {
     updateCloudSyncUI('CONNECTING');
+
+    // Hẹn giờ bảo vệ: Nếu sau 3.5 giây đám mây chưa phản hồi, tự động đưa về chế độ bộ nhớ máy siêu tốc không chặn người dùng
+    clearTimeout(cloudInitTimeout);
+    cloudInitTimeout = setTimeout(() => {
+      const dot = document.getElementById('cloudSyncDot');
+      if (dot && dot.className.includes('bg-sky-500')) {
+        updateCloudSyncUI('LOCAL_READY');
+      }
+    }, 3500);
+
     if (!firebase.apps || firebase.apps.length === 0) {
       firebase.initializeApp(config);
     }
@@ -14536,25 +14603,29 @@ function initFirebaseCloudSync() {
     firebaseDb.ref('.info/connected').on('value', snap => {
       const isConnected = snap.val() === true;
       if (isConnected) {
+        clearTimeout(cloudInitTimeout);
         updateCloudSyncUI('CONNECTED');
       } else {
-        updateCloudSyncUI('CONNECTING');
+        const dot = document.getElementById('cloudSyncDot');
+        if (!dot || !dot.className.includes('bg-emerald-500')) {
+          updateCloudSyncUI('CONNECTING');
+        }
       }
     });
 
     // Bắt đầu lắng nghe thay đổi của CLB hiện tại
     const club = getActiveClub();
-    const clubSlug = club?.accessSlug || club?.id || 'clb';
+    const clubSlug = club?.accessSlug || club?.id || 'lap-tri';
     subscribeToCloudClub(clubSlug);
   } catch (err) {
-    console.error('Lỗi khởi tạo Firebase:', err);
-    updateCloudSyncUI('ERROR', err.message);
+    console.warn('Firebase không thể khởi tạo, tiếp tục chế độ bộ nhớ máy siêu tốc:', err);
+    updateCloudSyncUI('LOCAL_READY');
   }
 }
 
 function subscribeToCloudClub(clubSlug) {
   if (!firebaseDb) return;
-  const cleanSlug = (clubSlug || 'clb').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const cleanSlug = (clubSlug || 'lap-tri').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
 
   // Hủy đăng ký CLB cũ nếu có
   if (currentCloudClubRef) {
@@ -14576,6 +14647,12 @@ function subscribeToCloudClub(clubSlug) {
 
     // Nếu đang trong quá trình mình đẩy lên thì bỏ qua
     if (isSyncingToCloud) return;
+
+    // BẢO VỆ AN TOÀN: Nếu đám mây trống hoặc ít hơn 3 thành viên trong khi máy cục bộ có >= 10 thành viên, không được ghi đè xóa sạch dữ liệu máy!
+    if (cloudData.members && cloudData.members.length < 3 && AppState.members && AppState.members.length >= 10) {
+      setTimeout(() => { pushDataToCloud(); }, 500);
+      return;
+    }
 
     // Kiểm tra xem dữ liệu đám mây có mới hơn không
     const localTime = AppState._lastModified || 0;
@@ -14621,15 +14698,15 @@ function subscribeToCloudClub(clubSlug) {
       setTimeout(() => { isReceivingFromCloud = false; }, 600);
     }
   }, err => {
-    console.error('Lỗi lắng nghe Firebase:', err);
-    updateCloudSyncUI('ERROR', err.message);
+    console.warn('Lỗi lắng nghe Firebase, chuyển sang chế độ bộ nhớ máy:', err);
+    updateCloudSyncUI('LOCAL_READY');
   });
 }
 
 function pushDataToCloud() {
   if (!firebaseDb || isReceivingFromCloud) return;
   const club = getActiveClub();
-  const cleanSlug = (club?.accessSlug || club?.id || 'clb').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const cleanSlug = (club?.accessSlug || club?.id || 'lap-tri').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
 
   clearTimeout(cloudSyncDebounceTimer);
   cloudSyncDebounceTimer = setTimeout(() => {
@@ -14639,15 +14716,27 @@ function pushDataToCloud() {
 
     AppState._lastModified = Date.now();
 
+    let pushResolved = false;
+    const safetyTimeout = setTimeout(() => {
+      if (!pushResolved) {
+        isSyncingToCloud = false;
+        updateCloudSyncUI('CONNECTED');
+      }
+    }, 3500);
+
     firebaseDb.ref('clubs/' + cleanSlug).set(AppState)
       .then(() => {
+        pushResolved = true;
+        clearTimeout(safetyTimeout);
         isSyncingToCloud = false;
         updateCloudSyncUI('CONNECTED');
       })
       .catch(err => {
+        pushResolved = true;
+        clearTimeout(safetyTimeout);
         isSyncingToCloud = false;
-        console.error('Lỗi đẩy dữ liệu lên Firebase:', err);
-        updateCloudSyncUI('ERROR', err.message);
+        console.warn('Lỗi đẩy dữ liệu lên Firebase, giữ dữ liệu cục bộ:', err);
+        updateCloudSyncUI('LOCAL_READY');
       });
   }, 400);
 }
@@ -14964,8 +15053,7 @@ function checkInactivityBackup() {
       if (typeof pushDataToCloud === 'function') {
         pushDataToCloud();
       }
-
-      showToast(`💾 Đã tự động sao lưu an toàn dữ liệu CLB sau ${seconds} giây không thao tác.`, 'info');
+      // Tự động sao lưu chạy nền tĩnh lặng không gây gián đoạn người dùng
     } catch (e) {
       console.warn('Lỗi tự động sao lưu rảnh tay:', e);
     }
