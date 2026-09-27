@@ -540,6 +540,7 @@ function getBlankClubInitialData(club) {
     members: [adminMember],
     attendanceRecords: [],
     transactions: initialTx,
+    topUpRequests: [],
     auth: {
       isLoggedIn: true,
       user: {
@@ -947,6 +948,7 @@ const DEFAULT_INITIAL_DATA = {
     // Tất toán dư nợ: Thu nợ ví âm
     { id: 'TX_3001', date: '16/09/2026 19:45', categoryGroup: 'WALLET_SETTLEMENT', subType: 'SETTLEMENT', categoryName: 'Tất toán dư nợ', amount: 50000, targetName: 'Phạm Đức Long', memberId: 'M006', walletImpact: 50000, fundImpact: 0, description: 'Tất toán công nợ cuối ngày - nộp tiền xóa số dư âm ví về 0đ', operator: 'admin' }
   ],
+  topUpRequests: [],
   auth: {
     isLoggedIn: true,
     user: {
@@ -997,7 +999,12 @@ function loadData() {
       if (!AppState.funds) AppState.funds = isMainClub ? DEFAULT_INITIAL_DATA.funds : blankData.funds;
       if (!AppState.members) AppState.members = isMainClub ? DEFAULT_INITIAL_DATA.members : blankData.members;
       if (!AppState.transactions) AppState.transactions = isMainClub ? DEFAULT_INITIAL_DATA.transactions : [];
+      if (!AppState.topUpRequests) AppState.topUpRequests = [];
       if (!AppState.attendanceRecords) AppState.attendanceRecords = [];
+      // Đảm bảo các giao dịch nạp ví không ghi nhận vào Sổ quỹ CLB
+      if (AppState.transactions && Array.isArray(AppState.transactions)) {
+        AppState.transactions = AppState.transactions.filter(tx => !tx.requestId);
+      }
       if (!AppState.activitySessions || AppState.activitySessions.length === 0) {
         AppState.activitySessions = JSON.parse(JSON.stringify(DEFAULT_ACTIVITY_SESSIONS));
       }
@@ -1650,6 +1657,16 @@ function calculateMemberWalletBreakdown(memberOrId) {
     }
   });
 
+  // Đồng bộ số tiền nạp ví đã được Kế toán duyệt từ danh sách yêu cầu nạp tiền (không phụ thuộc vào sổ quỹ CLB)
+  (AppState.topUpRequests || []).forEach(req => {
+    if (req.status === 'APPROVED' && (req.memberId === memberId || (req.memberName && (req.memberName.toLowerCase().includes(memberName) || memberName.includes(req.memberName.toLowerCase()))))) {
+      const alreadyInTx = (AppState.transactions || []).some(tx => tx.requestId === req.id || tx.id === req.id);
+      if (!alreadyInTx) {
+        topUpTransactions += Math.abs(req.amount || 0);
+      }
+    }
+  });
+
   if (member.initialBalance === undefined) {
     const curBal = Number(member.balance) || 0;
     member.initialBalance = curBal + dailyShuttleCost + fine + clubFund + courtFee - topUpTransactions;
@@ -1751,6 +1768,9 @@ function renderDashboard() {
 
   // 10. Multi-Club Switcher in Header
   renderClubSwitcher();
+
+  // 11. Cập nhật thông báo yêu cầu nạp tiền chờ xác thực
+  renderTopUpBadges();
 }
 
 function renderDashboardWalletList() {
@@ -6159,6 +6179,9 @@ function renderFinanceTab() {
 
   // Render bảng giao dịch
   renderFullTransactionTable();
+
+  // Render danh sách yêu cầu nạp tiền chờ xác thực & thông báo
+  renderTopUpBadges();
 }
 
 /**
@@ -7019,20 +7042,74 @@ function populateTopUpMemberSelect(preselectId = null) {
   const select = document.getElementById('topUpMemberSelect');
   if (!select) return;
 
-  select.innerHTML = AppState.members.map(m => `
-    <option value="${m.id}" ${m.id === preselectId ? 'selected' : ''}>
-      ${m.name} (${getMemberRoleTypeText(m.type)}) - Ví: ${formatMoney(m.balance || 0)}
-    </option>
-  `).join('');
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+
+  if (isMemberRole && currentUserId) {
+    const m = (AppState.members || []).find(x => x.id === currentUserId) || AppState.auth?.user;
+    select.innerHTML = `
+      <option value="${m.id}" selected>
+        ${escapeHtml(m.name)} (${getMemberRoleTypeText(m.type)}) - Ví hiện tại: ${formatMoney(m.balance || 0)}
+      </option>
+    `;
+    select.disabled = true;
+  } else {
+    select.disabled = false;
+    select.innerHTML = (AppState.members || []).map(m => `
+      <option value="${m.id}" ${m.id === preselectId ? 'selected' : ''}>
+        ${escapeHtml(m.name)} (${getMemberRoleTypeText(m.type)}) - Ví: ${formatMoney(m.balance || 0)}
+      </option>
+    `).join('');
+  }
 }
 
 function openTopUpModal() {
-  populateTopUpMemberSelect();
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+
+  populateTopUpMemberSelect(isMemberRole ? currentUserId : null);
+
+  const notice = document.getElementById('topUpMemberNotice');
+  const titleText = document.getElementById('topUpModalTitleText');
+  const submitBtn = document.getElementById('topUpSubmitBtn');
+
+  if (isMemberRole) {
+    if (notice) notice.classList.remove('hidden');
+    if (titleText) titleText.textContent = 'Gửi yêu cầu nạp tiền vào ví';
+    if (submitBtn) submitBtn.innerHTML = '<span>📩</span> <span>Gửi Yêu Cầu Đến Kế Toán</span>';
+  } else {
+    if (notice) notice.classList.add('hidden');
+    if (titleText) titleText.textContent = 'Nạp tiền vào ví thành viên';
+    if (submitBtn) submitBtn.innerHTML = '<span>✓</span> <span>Xác nhận Nạp tiền ngay</span>';
+  }
+
   openModal('topUpModal');
 }
 
 function openTopUpModalForMember(memberId) {
-  populateTopUpMemberSelect(memberId);
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+
+  const targetId = isMemberRole ? currentUserId : memberId;
+  populateTopUpMemberSelect(targetId);
+
+  const notice = document.getElementById('topUpMemberNotice');
+  const titleText = document.getElementById('topUpModalTitleText');
+  const submitBtn = document.getElementById('topUpSubmitBtn');
+
+  if (isMemberRole) {
+    if (notice) notice.classList.remove('hidden');
+    if (titleText) titleText.textContent = 'Gửi yêu cầu nạp tiền vào ví';
+    if (submitBtn) submitBtn.innerHTML = '<span>📩</span> <span>Gửi Yêu Cầu Đến Kế Toán</span>';
+  } else {
+    if (notice) notice.classList.add('hidden');
+    if (titleText) titleText.textContent = 'Nạp tiền vào ví thành viên';
+    if (submitBtn) submitBtn.innerHTML = '<span>✓</span> <span>Xác nhận Nạp tiền ngay</span>';
+  }
+
   openModal('topUpModal');
 }
 
@@ -7042,45 +7119,543 @@ function setTopUpAmount(amount) {
 }
 
 function handleTopUpSubmit(e) {
-  e.preventDefault();
-  const memberId = document.getElementById('topUpMemberSelect').value;
-  const amount = Number(document.getElementById('topUpAmount').value);
-  const method = document.querySelector('input[name="topUpMethod"]:checked').value;
-  const note = document.getElementById('topUpNote').value.trim();
+  if (e) e.preventDefault();
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
 
-  const member = AppState.members.find(m => m.id === memberId);
+  let memberId = document.getElementById('topUpMemberSelect')?.value;
+  if (isMemberRole && currentUserId) {
+    memberId = currentUserId;
+  }
+  const amount = Number(document.getElementById('topUpAmount')?.value) || 0;
+  const methodInput = document.querySelector('input[name="topUpMethod"]:checked');
+  const method = methodInput ? methodInput.value : 'TRANSFER';
+  const note = document.getElementById('topUpNote')?.value.trim() || '';
+
+  const member = (AppState.members || []).find(m => m.id === memberId);
   if (!member || amount <= 0) {
     showToast('Dữ liệu nạp ví không hợp lệ!', 'error');
     return;
   }
 
-  // Cộng tiền vào ví thành viên
-  member.balance = (member.balance || 0) + amount;
+  // 1. NẾU LÀ THÀNH VIÊN: Gửi yêu cầu nạp tiền đến Kế toán / Thủ quỹ chờ xác thực
+  if (isMemberRole) {
+    if (!AppState.topUpRequests) AppState.topUpRequests = [];
 
+    const newReq = {
+      id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      memberId: member.id,
+      memberName: member.name,
+      amount: amount,
+      method: method,
+      note: note,
+      date: getNowTimestampString(),
+      createdAt: Date.now(),
+      status: 'PENDING', // 'PENDING' | 'APPROVED' | 'REJECTED'
+      verifiedBy: null,
+      verifiedAt: null
+    };
+
+    AppState.topUpRequests.unshift(newReq);
+    saveData();
+    closeModal('topUpModal');
+    renderDashboard();
+    renderFinanceTab();
+    renderTopUpBadges();
+    showToast(`📩 Đã gửi yêu cầu nạp ${formatMoney(amount)} đến Kế toán / Thủ quỹ! Tiền sẽ được cộng vào ví ngay sau khi xác thực.`, 'success');
+    return;
+  }
+
+  // 2. NẾU LÀ KẾ TOÁN / THỦ QUỸ / ADMIN: Nạp tiền trực tiếp vào ví
+  member.balance = (member.balance || 0) + amount;
   const methodDesc = method === 'TRANSFER' ? 'Chuyển khoản VietQR' : 'Tiền mặt';
   const desc = note ? `${note} (${methodDesc})` : `Nạp tiền vào ví (${methodDesc})`;
+  const verifierName = AppState.auth?.user?.name || getFinanceOperatorName() || 'Kế toán CLB';
 
-  // Ghi nhật ký giao dịch
-  AppState.transactions.push({
-    id: 'TX_' + Date.now(),
-    date: getNowTimestampString(),
-    categoryGroup: 'WALLET_TOPUP',
-    subType: 'TOPUP',
-    categoryName: 'Nạp ví TV',
-    amount: amount,
-    targetName: member.name,
+  if (!AppState.topUpRequests) AppState.topUpRequests = [];
+  AppState.topUpRequests.unshift({
+    id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     memberId: member.id,
-    walletImpact: amount, // Cộng ví thành viên
-    fundImpact: 0,        // Không tác động Quỹ CLB
-    description: desc,
-    operator: getFinanceOperatorName()
+    memberName: member.name,
+    amount: amount,
+    method: method,
+    note: desc,
+    date: getNowTimestampString(),
+    createdAt: Date.now(),
+    status: 'APPROVED',
+    verifiedBy: verifierName,
+    verifiedAt: getNowTimestampString()
   });
+
+  // KHÔNG ghi nhận vào sổ quỹ CLB (AppState.transactions) - tiền chỉ cộng trực tiếp vào ví thành viên
+  refreshAllMembersWalletBreakdown();
 
   saveData();
   closeModal('topUpModal');
   renderDashboard();
   renderFinanceTab();
+  renderTopUpBadges();
   showToast(`Đã nạp thành công ${formatMoney(amount)} cho ${member.name}!`, 'success');
+}
+
+/**
+ * Kế toán / Thủ quỹ duyệt và xác thực yêu cầu nạp tiền
+ */
+function approveTopUpRequest(requestId) {
+  if (!canPerformFinance()) {
+    showToast('⚠️ Bạn không có quyền duyệt nạp tiền ví! Vui lòng liên hệ Kế toán hoặc Quản trị viên.', 'warning');
+    return;
+  }
+
+  if (!AppState.topUpRequests) AppState.topUpRequests = [];
+  const req = AppState.topUpRequests.find(r => r.id === requestId);
+  if (!req) {
+    showToast('Không tìm thấy yêu cầu nạp tiền!', 'error');
+    return;
+  }
+  if (req.status !== 'PENDING') {
+    showToast(`Yêu cầu này đã được xử lý (${req.status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'})!`, 'info');
+    return;
+  }
+
+  const verifierName = AppState.auth?.user?.name || getFinanceOperatorName() || 'Kế toán CLB';
+  req.status = 'APPROVED';
+  req.verifiedBy = verifierName;
+  req.verifiedAt = getNowTimestampString();
+
+  const member = (AppState.members || []).find(m => m.id === req.memberId);
+  if (member) {
+    member.balance = (member.balance || 0) + req.amount;
+  }
+
+  const methodDesc = req.method === 'TRANSFER' ? 'Chuyển khoản VietQR' : 'Tiền mặt';
+  const desc = req.note ? `${req.note} (${methodDesc} - Duyệt bởi ${verifierName})` : `Nạp tiền vào ví (${methodDesc} - Duyệt bởi ${verifierName})`;
+
+  // KHÔNG ghi nhận vào sổ quỹ CLB (AppState.transactions) - tiền chỉ cộng trực tiếp vào ví thành viên
+  refreshAllMembersWalletBreakdown();
+  saveData();
+
+  renderDashboard();
+  renderFinanceTab();
+  renderTopUpBadges();
+  renderPendingTopUpModalList(currentTopUpModalFilter);
+
+  showToast(`✅ Đã xác thực nhận ${formatMoney(req.amount)} và cộng tiền vào ví của ${req.memberName} thành công!`, 'success');
+}
+
+/**
+ * Kế toán / Thủ quỹ từ chối yêu cầu nạp tiền
+ */
+function rejectTopUpRequest(requestId) {
+  if (!canPerformFinance()) {
+    showToast('⚠️ Bạn không có quyền thao tác!', 'warning');
+    return;
+  }
+
+  if (!AppState.topUpRequests) AppState.topUpRequests = [];
+  const req = AppState.topUpRequests.find(r => r.id === requestId);
+  if (!req) return;
+  if (req.status !== 'PENDING') {
+    showToast(`Yêu cầu này đã được xử lý trước đó!`, 'info');
+    return;
+  }
+
+  const reason = prompt('Nhập lý do từ chối yêu cầu nạp tiền:', 'Chưa nhận được chuyển khoản / Thông tin chưa khớp');
+  if (reason === null) return; // Người dùng bấm Hủy prompt
+
+  const verifierName = AppState.auth?.user?.name || getFinanceOperatorName() || 'Kế toán CLB';
+  req.status = 'REJECTED';
+  req.rejectReason = reason.trim() || 'Chưa nhận được chuyển khoản';
+  req.verifiedBy = verifierName;
+  req.verifiedAt = getNowTimestampString();
+
+  saveData();
+  renderDashboard();
+  renderFinanceTab();
+  renderTopUpBadges();
+  renderPendingTopUpModalList(currentTopUpModalFilter);
+
+  showToast(`Đã từ chối yêu cầu nạp tiền của ${req.memberName}.`, 'info');
+}
+
+/**
+ * Xóa yêu cầu nạp tiền (chỉ dành cho Admin/Kế toán đối với các yêu cầu cũ đã duyệt hoặc từ chối)
+ */
+function deleteTopUpRequest(requestId) {
+  if (!canPerformFinance()) return;
+  if (!confirm('Bạn có chắc chắn muốn xóa bản ghi yêu cầu này khỏi danh sách?')) return;
+  AppState.topUpRequests = (AppState.topUpRequests || []).filter(r => r.id !== requestId);
+  saveData();
+  renderFinanceTab();
+  renderTopUpBadges();
+  renderPendingTopUpModalList(currentTopUpModalFilter);
+  showToast('Đã xóa bản ghi yêu cầu.', 'info');
+}
+
+let currentTopUpModalFilter = 'PENDING';
+
+function filterPendingTopUpModalList(filterType) {
+  currentTopUpModalFilter = filterType;
+
+  ['PENDING', 'APPROVED', 'ALL'].forEach(ft => {
+    const btn = document.getElementById(`btnFilterTopUp${ft.charAt(0) + ft.slice(1).toLowerCase()}`);
+    if (btn) {
+      if (ft === filterType) {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white transition shadow-2xs cursor-pointer';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer';
+      }
+    }
+  });
+
+  renderPendingTopUpModalList(filterType);
+}
+
+function openPendingTopUpRequestsModal() {
+  currentTopUpModalFilter = 'PENDING';
+  filterPendingTopUpModalList('PENDING');
+  openModal('modalPendingTopUpRequests');
+}
+
+function renderPendingTopUpModalList(filterType = 'PENDING') {
+  const container = document.getElementById('modalPendingTopUpListContainer');
+  const countBadge = document.getElementById('modalPendingTopUpPendingCount');
+  if (!container) return;
+
+  const allRequests = AppState.topUpRequests || [];
+  const pendingCount = allRequests.filter(r => r.status === 'PENDING').length;
+  if (countBadge) countBadge.textContent = String(pendingCount);
+
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+
+  let list = allRequests;
+  // Nếu là thành viên: chỉ thấy yêu cầu của chính mình
+  if (isMemberRole && currentUserId) {
+    list = list.filter(r => r.memberId === currentUserId);
+  }
+
+  if (filterType === 'PENDING') {
+    list = list.filter(r => r.status === 'PENDING');
+  } else if (filterType === 'APPROVED') {
+    list = list.filter(r => r.status === 'APPROVED');
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="py-12 text-center text-slate-400 text-xs">
+        <span class="text-3xl block mb-2">📭</span>
+        <span>Không có yêu cầu nạp tiền nào ${filterType === 'PENDING' ? 'đang chờ xác thực' : 'phù hợp'}.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = list.map(req => {
+    const isPending = req.status === 'PENDING';
+    const isApproved = req.status === 'APPROVED';
+    const isRejected = req.status === 'REJECTED';
+    const methodDesc = req.method === 'TRANSFER' ? 'Chuyển khoản VietQR' : 'Tiền mặt';
+
+    let statusBadge = '';
+    if (isPending) {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ xác thực</span>';
+    } else if (isApproved) {
+      statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">✅ Đã duyệt (+${formatMoney(req.amount)})</span>`;
+    } else {
+      statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">❌ Đã từ chối</span>';
+    }
+
+    const currentMember = (AppState.members || []).find(m => m.id === req.memberId);
+    const curBalance = currentMember ? currentMember.balance : 0;
+
+    return `
+      <div class="p-3.5 rounded-2xl border ${isPending ? 'border-amber-300 bg-amber-50/50 shadow-xs' : 'border-slate-200 bg-white'} space-y-2">
+        <div class="flex items-start justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl ${isPending ? 'bg-amber-200 text-amber-900' : (isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')} flex items-center justify-center font-bold text-sm shrink-0">
+              ${isPending ? '⏳' : (isApproved ? '✓' : '✕')}
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <b class="text-xs sm:text-sm text-slate-900">${escapeHtml(req.memberName)}</b>
+                <span class="text-[10px] text-slate-500">(${escapeHtml(req.memberId)})</span>
+                ${statusBadge}
+              </div>
+              <div class="text-[11px] text-slate-500 mt-0.5">
+                Ví hiện tại: <b class="${curBalance < 0 ? 'text-rose-600' : 'text-slate-800'}">${formatMoney(curBalance)}</b>
+                • Gửi lúc: <span class="font-mono">${req.date || ''}</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm sm:text-base font-black text-emerald-600">+${formatMoney(req.amount)}</div>
+            <span class="text-[10px] text-slate-400 block">${methodDesc}</span>
+          </div>
+        </div>
+
+        ${req.note ? `
+          <div class="p-2 rounded-xl bg-white/80 border border-slate-100 text-xs text-slate-700 flex items-start gap-1.5">
+            <span class="text-slate-400">📝</span>
+            <span class="italic">"${escapeHtml(req.note)}"</span>
+          </div>
+        ` : ''}
+
+        ${req.rejectReason ? `
+          <div class="p-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-1.5">
+            <span class="text-rose-500">⚠️</span>
+            <span>Lý do từ chối: <b>${escapeHtml(req.rejectReason)}</b></span>
+          </div>
+        ` : ''}
+
+        ${req.verifiedBy ? `
+          <div class="text-[10px] text-slate-400 flex items-center gap-1">
+            <span>Xác nhận bởi: <b>${escapeHtml(req.verifiedBy)}</b> (${req.verifiedAt || ''})</span>
+          </div>
+        ` : ''}
+
+        <!-- Actions for Accountant -->
+        ${canPerformFinance() && isPending ? `
+          <div class="pt-2 border-t border-amber-200/80 flex items-center justify-end gap-2">
+            <button type="button" onclick="rejectTopUpRequest('${req.id}')" class="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+              ✕ Từ chối
+            </button>
+            <button type="button" onclick="approveTopUpRequest('${req.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm flex items-center gap-1">
+              <span>✓</span>
+              <span>Xác nhận đã nhận tiền (Cộng ví)</span>
+            </button>
+          </div>
+        ` : ''}
+
+        ${canPerformFinance() && !isPending ? `
+          <div class="pt-1 flex items-center justify-end">
+            <button type="button" onclick="deleteTopUpRequest('${req.id}')" class="text-slate-400 hover:text-rose-600 text-[11px] p-1 transition cursor-pointer" title="Xóa lịch sử yêu cầu này">
+              🗑️ Xóa bản ghi
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+/**
+ * Cập nhật chuông thông báo Header, Badges menu và Banner
+ */
+function renderTopUpBadges() {
+  const allRequests = AppState.topUpRequests || [];
+  const pendingRequests = allRequests.filter(r => r.status === 'PENDING');
+  const pendingCount = pendingRequests.length;
+
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+  const myPendingRequests = isMemberRole && currentUserId ? pendingRequests.filter(r => r.memberId === currentUserId) : [];
+
+  // 1. Header Notification Bell
+  const bellBtn = document.getElementById('headerTopUpNoticeBtn');
+  const bellBadge = document.getElementById('headerTopUpNoticeBadge');
+
+  if (bellBtn && bellBadge) {
+    if (canPerformFinance()) {
+      if (pendingCount > 0) {
+        bellBtn.classList.remove('hidden');
+        bellBtn.classList.add('flex');
+        bellBadge.textContent = String(pendingCount);
+        bellBadge.classList.remove('hidden');
+        bellBtn.title = `Có ${pendingCount} yêu cầu nạp tiền chờ bạn xác thực!`;
+      } else {
+        bellBtn.classList.add('hidden');
+        bellBtn.classList.remove('flex');
+      }
+    } else if (isMemberRole) {
+      if (myPendingRequests.length > 0) {
+        bellBtn.classList.remove('hidden');
+        bellBtn.classList.add('flex');
+        bellBadge.textContent = String(myPendingRequests.length);
+        bellBadge.classList.remove('hidden');
+        bellBtn.title = `Bạn có ${myPendingRequests.length} yêu cầu nạp tiền đang chờ kế toán duyệt`;
+      } else {
+        bellBtn.classList.add('hidden');
+        bellBtn.classList.remove('flex');
+      }
+    } else {
+      bellBtn.classList.add('hidden');
+      bellBtn.classList.remove('flex');
+    }
+  }
+
+  // 2. Sidebar Navigation Badge
+  const navBadge = document.getElementById('navFinancePendingBadge');
+  if (navBadge) {
+    const showCount = canPerformFinance() ? pendingCount : myPendingRequests.length;
+    if (showCount > 0) {
+      navBadge.textContent = String(showCount);
+      navBadge.classList.remove('hidden');
+    } else {
+      navBadge.classList.add('hidden');
+    }
+  }
+
+  // 3. Mobile Bottom Navigation Dot
+  const mNavDot = document.getElementById('mNavFinancePendingDot');
+  if (mNavDot) {
+    const showCount = canPerformFinance() ? pendingCount : myPendingRequests.length;
+    if (showCount > 0) {
+      mNavDot.classList.remove('hidden');
+    } else {
+      mNavDot.classList.add('hidden');
+    }
+  }
+
+  // 4. Dashboard Alert Banner
+  const dashContainer = document.getElementById('dashboardTopUpNoticeContainer');
+  if (dashContainer) {
+    if (canPerformFinance() && pendingCount > 0) {
+      dashContainer.innerHTML = `
+        <div class="p-3 sm:p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-100/60 to-orange-50 border border-amber-300 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl select-none">🔔</span>
+            <div>
+              <div class="text-xs font-black text-amber-950 flex items-center gap-1.5 flex-wrap">
+                <span>CÓ ${pendingCount} YÊU CẦU NẠP TIỀN CHỜ BẠN XÁC THỰC</span>
+                <span class="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">Chờ duyệt</span>
+              </div>
+              <div class="text-[11px] text-amber-900 mt-0.5">
+                Thành viên đã gửi yêu cầu nạp ví. Vui lòng kiểm tra tài khoản ngân hàng và xác thực để tiền hiện trên ví của họ!
+              </div>
+            </div>
+          </div>
+          <button type="button" onclick="openPendingTopUpRequestsModal()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer shrink-0 flex items-center gap-1">
+            <span>Duyệt ngay</span> <span>➔</span>
+          </button>
+        </div>
+      `;
+    } else if (isMemberRole && myPendingRequests.length > 0) {
+      const myTotal = myPendingRequests.reduce((sum, r) => sum + (r.amount || 0), 0);
+      dashContainer.innerHTML = `
+        <div class="p-3 sm:p-3.5 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl select-none">⏳</span>
+            <div>
+              <div class="text-xs font-black text-blue-950 flex items-center gap-1.5 flex-wrap">
+                <span>YÊU CẦU NẠP VÍ ĐANG CHỜ KẾ TOÁN XÁC THỰC</span>
+                <span class="px-2 py-0.2 rounded-full bg-blue-500 text-white text-[10px] font-bold">${myPendingRequests.length} yêu cầu</span>
+              </div>
+              <div class="text-[11px] text-blue-800 mt-0.5">
+                Bạn đã gửi yêu cầu nạp tổng cộng <b>${formatMoney(myTotal)}</b>. Số tiền sẽ tự động hiện lên ví ngay khi Kế toán kiểm tra và duyệt!
+              </div>
+            </div>
+          </div>
+          <button type="button" onclick="openPendingTopUpRequestsModal()" class="px-3 py-1.5 bg-white hover:bg-blue-100 text-blue-900 border border-blue-300 font-bold text-xs rounded-xl transition cursor-pointer shrink-0">
+            Xem trạng thái
+          </button>
+        </div>
+      `;
+    } else {
+      dashContainer.innerHTML = '';
+    }
+  }
+
+  // 5. Finance Tab Section (#financePendingTopUpSection)
+  renderFinancePendingTopUpSection();
+}
+
+/**
+ * Hiển thị khối quản lý yêu cầu nạp tiền trong tab "Thanh toán & Quỹ"
+ */
+function renderFinancePendingTopUpSection() {
+  const section = document.getElementById('financePendingTopUpSection');
+  if (!section) return;
+
+  const allRequests = AppState.topUpRequests || [];
+  const pendingRequests = allRequests.filter(r => r.status === 'PENDING');
+  const curRole = getCurrentUserRole();
+  const isMemberRole = curRole === 'MEMBER' || !canPerformFinance();
+  const currentUserId = AppState.auth?.user?.id;
+  const myPendingRequests = isMemberRole && currentUserId ? pendingRequests.filter(r => r.memberId === currentUserId) : [];
+
+  const displayList = canPerformFinance() ? pendingRequests : myPendingRequests;
+
+  if (displayList.length === 0) {
+    section.classList.add('hidden');
+    section.innerHTML = '';
+    return;
+  }
+
+  section.classList.remove('hidden');
+
+  const title = canPerformFinance() 
+    ? `🔔 CÓ ${pendingRequests.length} YÊU CẦU NẠP VÍ CHỜ KẾ TOÁN XÁC THỰC`
+    : `📩 YÊU CẦU NẠP VÍ CỦA BẠN ĐANG CHỜ KẾ TOÁN DUYỆT (${myPendingRequests.length} yêu cầu)`;
+
+  const subtitle = canPerformFinance()
+    ? 'Thành viên đã gửi yêu cầu nạp tiền. Hãy kiểm tra biến động số dư tài khoản nhận tiền và bấm "Xác nhận đã nhận tiền" để tiền lập tức hiện lên ví của họ.'
+    : 'Yêu cầu của bạn đang được Kế toán / Thủ quỹ đối soát. Tiền sẽ được cộng tự động vào ví của bạn ngay sau khi xác thực.';
+
+  section.innerHTML = `
+    <div class="flex items-center justify-between pb-2 border-b border-amber-300/80 flex-wrap gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🔔</span>
+        <div>
+          <b class="text-xs sm:text-sm font-black text-amber-950 block">${title}</b>
+          <p class="text-[11px] text-amber-900">${subtitle}</p>
+        </div>
+      </div>
+      <button type="button" onclick="openPendingTopUpRequestsModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1">
+        <span>Xem tất cả & lịch sử</span> <span>➔</span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+      ${displayList.slice(0, 4).map(req => {
+        const methodDesc = req.method === 'TRANSFER' ? 'Chuyển khoản VietQR' : 'Tiền mặt';
+        const currentMember = (AppState.members || []).find(m => m.id === req.memberId);
+        const curBal = currentMember ? currentMember.balance : 0;
+        return `
+          <div class="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <b class="text-xs text-slate-900 block">${escapeHtml(req.memberName)}</b>
+                <span class="text-[10px] text-slate-500">Ví hiện tại: <b>${formatMoney(curBal)}</b> • Lúc: ${req.date || ''}</span>
+              </div>
+              <div class="text-right">
+                <b class="text-sm font-black text-emerald-600">+${formatMoney(req.amount)}</b>
+                <span class="text-[10px] text-slate-400 block">${methodDesc}</span>
+              </div>
+            </div>
+
+            ${req.note ? `
+              <div class="text-[11px] text-slate-600 italic bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                "${escapeHtml(req.note)}"
+              </div>
+            ` : ''}
+
+            ${canPerformFinance() ? `
+              <div class="pt-1.5 border-t border-slate-100 flex items-center justify-end gap-1.5">
+                <button type="button" onclick="rejectTopUpRequest('${req.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-slate-200 hover:border-rose-300 rounded-lg text-xs font-bold transition cursor-pointer">
+                  ✕ Từ chối
+                </button>
+                <button type="button" onclick="approveTopUpRequest('${req.id}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
+                  <span>✓</span> <span>Xác nhận & Cộng ví</span>
+                </button>
+              </div>
+            ` : `
+              <div class="pt-1 text-right">
+                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">⏳ Đang chờ Kế toán duyệt</span>
+              </div>
+            `}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  lucide.createIcons();
 }
 
 // ==========================================
@@ -13518,6 +14093,7 @@ function renderAuthBadge() {
 
   lucide.createIcons();
   updateNavigationUI();
+  renderTopUpBadges();
 }
 
 function openLoginModal() {
@@ -15134,6 +15710,7 @@ function subscribeToCloudClub(clubSlug) {
     let incomingClosedMonths = cloudData.wallets?.closedMonths || cloudData.closedMonths || [];
     let incomingTransactions = cloudData.transactions || [];
     let incomingTournaments = cloudData.tournaments || cloudData.tournamentData || [];
+    let incomingTopUpRequests = cloudData.wallets?.topUpRequests || cloudData.topUpRequests || [];
 
     // Bảo toàn mật khẩu lưu cục bộ của các thành viên (do đám mây đã bảo mật loại bỏ password)
     if (AppState.members && AppState.members.length > 0) {
@@ -15158,6 +15735,7 @@ function subscribeToCloudClub(clubSlug) {
     AppState.attendanceRecords = incomingAttRecords;
     AppState.closedMonths = incomingClosedMonths;
     AppState.transactions = incomingTransactions;
+    AppState.topUpRequests = incomingTopUpRequests;
     if (incomingCurrentSession) AppState.currentSession = incomingCurrentSession;
     if (localAuth) AppState.auth = localAuth;
 
@@ -15191,6 +15769,7 @@ function subscribeToCloudClub(clubSlug) {
     renderFinanceTab();
     renderClubSwitcher();
     populateLeadershipSelects();
+    renderTopUpBadges();
 
     if (currentTab === 'attendance') {
       renderAttendanceTab();
@@ -15266,9 +15845,11 @@ function pushDataToCloud() {
       },
       wallets: {
         funds: AppState.funds || {},
-        closedMonths: AppState.closedMonths || []
+        closedMonths: AppState.closedMonths || [],
+        topUpRequests: AppState.topUpRequests || []
       },
       transactions: AppState.transactions || [],
+      topUpRequests: AppState.topUpRequests || [],
       tournaments: TournamentState.tournaments || AppState.tournamentData || [],
       // Thuộc tính tương thích ngược cho các client cũ
       funds: AppState.funds || {},

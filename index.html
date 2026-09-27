@@ -121,6 +121,12 @@
           <span id="currentDateDisplay">--/--/----</span>
         </div>
 
+        <!-- Nút Chuông Thông Báo Yêu Cầu Nạp Tiền Chờ Kế Toán Xác Thực -->
+        <button id="headerTopUpNoticeBtn" type="button" onclick="openPendingTopUpRequestsModal()" class="relative hidden items-center justify-center w-8 h-8 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 transition cursor-pointer shadow-2xs shrink-0" title="Yêu cầu nạp tiền chờ xác thực">
+          <span class="text-sm select-none">🔔</span>
+          <span id="headerTopUpNoticeBadge" class="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-white select-none">0</span>
+        </button>
+
         <!-- Auth Status -->
         <div id="userAuthBadge" class="flex items-center space-x-1.5 sm:space-x-2">
           <!-- Rendered via JS -->
@@ -144,9 +150,12 @@
             <i data-lucide="user-check" class="w-4 h-4"></i>
             <span>Điểm danh</span>
           </button>
-          <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
-            <i data-lucide="wallet" class="w-4 h-4"></i>
-            <span>Thanh toán & Quỹ</span>
+          <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            <div class="flex items-center space-x-2.5">
+              <i data-lucide="wallet" class="w-4 h-4"></i>
+              <span>Thanh toán & Quỹ</span>
+            </div>
+            <span id="navFinancePendingBadge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black">0</span>
           </button>
           <button onclick="switchTab('members')" id="nav-members" class="nav-btn w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100">
             <i data-lucide="users" class="w-4 h-4"></i>
@@ -169,6 +178,9 @@
 
       <!-- ================= 1. TAB: TRANG CHỦ ================= -->
       <section id="tab-dashboard" class="tab-pane space-y-3 sm:space-y-3.5">
+        <!-- BANNER THÔNG BÁO YÊU CẦU NẠP TIỀN CHỜ XÁC THỰC -->
+        <div id="dashboardTopUpNoticeContainer"></div>
+
         <!-- 3 KPI CARDS (HIỂN THỊ ĐỦ TRÊN 1 DÒNG CHUẨN ĐIỆN THOẠI) -->
         <div class="grid grid-cols-3 gap-2 sm:gap-4">
           <!-- Card 1: Quỹ CLB -->
@@ -751,6 +763,11 @@
       <!-- ================= 3. TAB: THANH TOÁN & QUỸ ================= -->
       <section id="tab-finance" class="tab-pane hidden space-y-4">
         
+        <!-- KHỐI QUẢN LÝ YÊU CẦU NẠP TIỀN CHỜ KẾ TOÁN XÁC THỰC -->
+        <div id="financePendingTopUpSection" class="hidden bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-orange-50 border border-amber-300 rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3">
+          <!-- Rendered via JS -->
+        </div>
+
         <!-- 1. BẢNG CHỈ SỐ CÔNG THỨC QUỸ CLB & ĐỐI SOÁT VÍ (DASHBOARD TÀI CHÍNH - GỌN GÀNG) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
           
@@ -3119,17 +3136,28 @@
   <div id="topUpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-100">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <h3 id="topUpModalTitle" class="text-base font-bold text-slate-900 flex items-center gap-2">
           <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i>
-          Nạp tiền vào ví thành viên
+          <span id="topUpModalTitleText">Nạp tiền vào ví thành viên</span>
         </h3>
-        <button onclick="closeModal('topUpModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button type="button" onclick="closeModal('topUpModal')" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       <form onsubmit="handleTopUpSubmit(event)" class="space-y-4">
+        <!-- Thông báo quy trình dành cho Thành viên thường -->
+        <div id="topUpMemberNotice" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-2.5 shadow-2xs">
+          <span class="text-lg select-none">📩</span>
+          <div>
+            <b class="text-amber-950 font-bold">Quy trình nạp ví qua Kế toán / Thủ quỹ:</b>
+            <p class="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+              Yêu cầu nạp tiền sẽ được chuyển tức thì đến <b>Kế toán / Thủ quỹ</b> của CLB. Sau khi kế toán kiểm tra và xác thực nhận tiền, số dư sẽ lập tức được cộng vào ví của bạn trong thời gian thực!
+            </p>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Chọn thành viên:</label>
-          <select id="topUpMemberSelect" required class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none">
+          <select id="topUpMemberSelect" required class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none bg-white">
             <!-- Rendered dynamically -->
           </select>
         </div>
@@ -3138,10 +3166,10 @@
           <label class="block text-xs font-semibold text-slate-700 mb-1">Số tiền nạp (VNĐ):</label>
           <input type="number" id="topUpAmount" required min="10000" step="10000" value="200000" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-slate-900" />
           <div class="flex gap-2 mt-2">
-            <button type="button" onclick="setTopUpAmount(100000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700">+100k</button>
-            <button type="button" onclick="setTopUpAmount(200000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700">+200k</button>
-            <button type="button" onclick="setTopUpAmount(500000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700">+500k</button>
-            <button type="button" onclick="setTopUpAmount(1000000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700">+1.000k</button>
+            <button type="button" onclick="setTopUpAmount(100000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer">+100k</button>
+            <button type="button" onclick="setTopUpAmount(200000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer">+200k</button>
+            <button type="button" onclick="setTopUpAmount(500000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer">+500k</button>
+            <button type="button" onclick="setTopUpAmount(1000000)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer">+1.000k</button>
           </div>
         </div>
 
@@ -3149,30 +3177,75 @@
           <label class="block text-xs font-semibold text-slate-700 mb-1">Hình thức nạp tiền:</label>
           <div class="grid grid-cols-2 gap-2">
             <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-xl text-xs cursor-pointer hover:bg-slate-50">
-              <input type="radio" name="topUpMethod" value="CASH" checked class="text-brand-600 focus:ring-brand-500">
-              <span>Tiền mặt trực tiếp</span>
+              <input type="radio" name="topUpMethod" value="TRANSFER" checked class="text-brand-600 focus:ring-brand-500">
+              <span>Chuyển khoản (VietQR)</span>
             </label>
             <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-xl text-xs cursor-pointer hover:bg-slate-50">
-              <input type="radio" name="topUpMethod" value="TRANSFER" class="text-brand-600 focus:ring-brand-500">
-              <span>Chuyển khoản (VietQR)</span>
+              <input type="radio" name="topUpMethod" value="CASH" class="text-brand-600 focus:ring-brand-500">
+              <span>Tiền mặt trực tiếp</span>
             </label>
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Ghi chú giao dịch:</label>
-          <input type="text" id="topUpNote" placeholder="VD: Nạp tiền ví tháng này" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
+          <input type="text" id="topUpNote" placeholder="VD: Nạp tiền ví tuần này / tháng này" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none" />
         </div>
 
         <div class="pt-2 flex gap-3">
-          <button type="button" onclick="closeModal('topUpModal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+          <button type="button" onclick="closeModal('topUpModal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">
             Hủy
           </button>
-          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition">
+          <button type="submit" id="topUpSubmitBtn" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition shadow-sm cursor-pointer">
             Xác nhận Nạp tiền
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL QUẢN LÝ VÀ DUYỆT YÊU CẦU NẠP TIỀN VÍ DÀNH CHO KẾ TOÁN / THỦ QUỸ / ADMIN -->
+  <div id="modalPendingTopUpRequests" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold">🔔</span>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-tight">Yêu Cầu Nạp Tiền Chờ Kế Toán Xác Thực</h3>
+            <p class="text-[11px] text-slate-500">Kế toán / Thủ quỹ kiểm tra tài khoản nhận tiền và bấm xác nhận để cộng tiền ví</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('modalPendingTopUpRequests')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex items-center gap-2 py-3 shrink-0 border-b border-slate-100 flex-wrap">
+        <button type="button" onclick="filterPendingTopUpModalList('PENDING')" id="btnFilterTopUpPending" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white transition shadow-2xs cursor-pointer">
+          ⏳ Chờ xác thực (<span id="modalPendingTopUpPendingCount">0</span>)
+        </button>
+        <button type="button" onclick="filterPendingTopUpModalList('APPROVED')" id="btnFilterTopUpApproved" class="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+          ✅ Đã xác thực
+        </button>
+        <button type="button" onclick="filterPendingTopUpModalList('ALL')" id="btnFilterTopUpAll" class="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+          Tất cả
+        </button>
+      </div>
+
+      <!-- Body / List -->
+      <div id="modalPendingTopUpListContainer" class="flex-1 overflow-y-auto py-3 space-y-3 min-h-[200px]">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Footer -->
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0 text-xs">
+        <span class="text-[11px] text-slate-500">Sau khi xác thực, tiền sẽ lập tức hiện trên ví thành viên qua Realtime Sync.</span>
+        <button type="button" onclick="closeModal('modalPendingTopUpRequests')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer">
+          Đóng
+        </button>
+      </div>
     </div>
   </div>
 
@@ -5708,8 +5781,11 @@ const firebaseConfig = {
       <i data-lucide="user-check" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[10px] font-bold">Điểm danh</span>
     </button>
-    <button type="button" onclick="switchTab('finance')" id="m-nav-finance" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
-      <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>
+    <button type="button" onclick="switchTab('finance')" id="m-nav-finance" class="relative flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
+      <div class="relative">
+        <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>
+        <span id="mNavFinancePendingDot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+      </div>
       <span class="text-[10px] font-bold">Thu / Chi</span>
     </button>
     <button type="button" onclick="switchTab('members')" id="m-nav-members" class="flex flex-col items-center justify-center py-1 px-1 text-slate-500 hover:text-brand-700 transition active:scale-95 text-center flex-1 cursor-pointer">
@@ -5738,6 +5814,6 @@ const firebaseConfig = {
   <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- Application Logic - Thực thi tức thì khi HTML đã dựng xong -->
-  <script defer src="app.js?v=3.4"></script>
+  <script defer src="app.js?v=3.5"></script>
 </body>
 </html>

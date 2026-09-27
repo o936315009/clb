@@ -17,7 +17,7 @@ echo 2. Dang them tat ca cac thay doi moi (git add .) ...
 git add .
 
 echo.
-git commit -m "Cau hinh vercel.json SPA rewrites, toi uu Real-time Firebase RTDB va Bieu tuong Dam may"
+git commit -m "feat: nap vi thanh vien khong ghi vao so quy CLB, dong bo rieng vao vi va yeu cau nap tien"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...
