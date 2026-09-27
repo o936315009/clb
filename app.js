@@ -13740,7 +13740,7 @@ function escapeHtml(str) {
 // 19.5 BẢNG THỐNG KÊ CHI TIẾT TẤT TOÁN HOẠT ĐỘNG CLB & XUẤT FILE ẢNH
 // ==========================================
 
-let currentSettlementReportDataSource = 'PRESET'; // 'PRESET' (theo mẫu thiết kế) hoặc 'LIVE' (từ dữ liệu thực tế)
+let currentSettlementReportDataSource = 'LIVE'; // Mặc định từ dữ liệu thực tế của CLB
 
 const SETTLEMENT_REPORT_PRESET = {
   monthText: 'Tháng 09/2026',
@@ -13825,14 +13825,14 @@ function renderSettlementReport() {
   if (tbodyOfficial) {
     tbodyOfficial.innerHTML = data.official.map(row => `
       <tr class="hover:bg-emerald-50/40 transition divide-x divide-slate-100 text-xs text-slate-800">
-        <td class="py-2 px-2 text-center font-bold text-slate-600">${row.stt}</td>
-        <td class="py-2 px-3 font-bold text-slate-900">${escapeHtml(row.name)}</td>
-        <td class="py-2 px-2 text-center font-bold">${row.sessions}</td>
-        <td class="py-2 px-2 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
-        <td class="py-2 px-2 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
-        <td class="py-2 px-2 text-right text-slate-700">${formatNumberDot(row.court)}</td>
-        <td class="py-2 px-2 text-right text-slate-700">${formatNumberDot(row.fund)}</td>
-        <td class="py-2 px-2 text-right ${row.fine > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${formatNumberDot(row.fine)}</td>
+        <td class="py-1 px-1 text-center font-bold text-slate-600">${row.stt}</td>
+        <td class="py-1 px-2.5 font-bold text-slate-900 truncate" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</td>
+        <td class="py-1 px-1.5 text-center font-bold">${row.sessions}</td>
+        <td class="py-1 px-1.5 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-700">${formatNumberDot(row.court)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-700">${formatNumberDot(row.fund)}</td>
+        <td class="py-1 px-1.5 text-right ${row.fine > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${formatNumberDot(row.fine)}</td>
       </tr>
     `).join('');
   }
@@ -13856,14 +13856,14 @@ function renderSettlementReport() {
   if (tbodyHonorary) {
     tbodyHonorary.innerHTML = data.honorary.map(row => `
       <tr class="hover:bg-sky-50/40 transition divide-x divide-slate-100 text-xs text-slate-800">
-        <td class="py-2 px-2 text-center font-bold text-slate-600">${row.stt}</td>
-        <td class="py-2 px-3 font-bold text-slate-900">${escapeHtml(row.name)}</td>
-        <td class="py-2 px-2 text-center font-bold">${row.sessions}</td>
-        <td class="py-2 px-2 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
-        <td class="py-2 px-2 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
-        <td class="py-2 px-2 text-right text-slate-700">${formatNumberDot(row.court)}</td>
-        <td class="py-2 px-2 text-right text-slate-700">${formatNumberDot(row.fund)}</td>
-        <td class="py-2 px-2 text-right ${row.fine > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${formatNumberDot(row.fine)}</td>
+        <td class="py-1 px-1 text-center font-bold text-slate-600">${row.stt}</td>
+        <td class="py-1 px-2.5 font-bold text-slate-900 truncate" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</td>
+        <td class="py-1 px-1.5 text-center font-bold">${row.sessions}</td>
+        <td class="py-1 px-1.5 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-700">${formatNumberDot(row.court)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-700">${formatNumberDot(row.fund)}</td>
+        <td class="py-1 px-1.5 text-right ${row.fine > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${formatNumberDot(row.fine)}</td>
       </tr>
     `).join('');
   }
@@ -13887,14 +13887,14 @@ function renderSettlementReport() {
   if (tbodyGuest) {
     tbodyGuest.innerHTML = data.guests.map(row => `
       <tr class="hover:bg-orange-50/40 transition divide-x divide-slate-100 text-xs text-slate-800">
-        <td class="py-2 px-2 text-center font-bold text-slate-600">${row.stt}</td>
-        <td class="py-2 px-3 font-bold text-slate-900">${escapeHtml(row.name)}</td>
-        <td class="py-2 px-2 text-center font-bold">${row.sessions}</td>
-        <td class="py-2 px-2 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
-        <td class="py-2 px-2 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
-        <td class="py-2 px-2 text-right text-slate-700">${formatNumberDot(row.court)}</td>
-        <td class="py-2 px-2 text-right text-slate-400">0</td>
-        <td class="py-2 px-2 text-right text-slate-400">0</td>
+        <td class="py-1 px-1 text-center font-bold text-slate-600">${row.stt}</td>
+        <td class="py-1 px-2.5 font-bold text-slate-900 truncate" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</td>
+        <td class="py-1 px-1.5 text-center font-bold">${row.sessions}</td>
+        <td class="py-1 px-1.5 text-right font-black text-slate-900">${formatNumberDot(row.total)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-600">${formatNumberDot(row.rate)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-700">${formatNumberDot(row.court)}</td>
+        <td class="py-1 px-1.5 text-right text-slate-400">0</td>
+        <td class="py-1 px-1.5 text-right text-slate-400">0</td>
       </tr>
     `).join('');
   }
@@ -13948,7 +13948,16 @@ function setElText(id, text) {
  * Sinh dữ liệu báo cáo tất toán từ danh sách thành viên thực tế trong AppState
  */
 function generateLiveSettlementReportData(monthStr) {
-  const members = AppState.members || [];
+  let members = AppState.members || [];
+  // Nếu người xem là thành viên thông thường (MEMBER), ẩn tài khoản Quản lý toàn quyền CLB (Master Admin)
+  if (AppState.auth?.user?.role === 'MEMBER') {
+    members = members.filter(m => !isClubMasterAdmin(m));
+  }
+
+  if (!members || members.length === 0) {
+    return SETTLEMENT_REPORT_PRESET;
+  }
+
   const official = [];
   const honorary = [];
   const guests = [];
@@ -13957,14 +13966,32 @@ function generateLiveSettlementReportData(monthStr) {
   let sttHon = 1;
   let sttG = 1;
 
+  // Lấy các buổi trong tháng để tính chính xác số buổi thực tế
+  let monthPrefix = '';
+  if (monthStr && monthStr.includes('/')) {
+    const parts = monthStr.split('/');
+    if (parts.length === 2) {
+      monthPrefix = `${parts[1]}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+
   members.forEach(m => {
-    const sessions = m.monthlySessions || 1;
+    let realSessions = 0;
+    if (monthPrefix) {
+      (AppState.activitySessions || []).forEach(ses => {
+        if (ses.date && ses.date.startsWith(monthPrefix)) {
+          const attended = (ses.members || []).some(att => att.id === m.id || (att.name && att.name.toLowerCase() === (m.name || '').toLowerCase()));
+          if (attended) realSessions++;
+        }
+      });
+    }
+    const sessions = realSessions > 0 ? realSessions : (m.monthlySessions || 1);
     const rate = 100000;
-    if (m.type === 'OFFICIAL') {
+    if (!m.type || m.type === 'OFFICIAL') {
       const court = sessions * 75000;
       const fund = 200000;
       const fine = (AppState.transactions || [])
-        .filter(t => t.subType === 'FINE' && t.targetName && t.targetName.includes(m.name))
+        .filter(t => (t.subType === 'FINE' || t.categoryGroup === 'FINE') && ((t.memberId && t.memberId === m.id) || (t.targetName && t.targetName.includes(m.name))))
         .reduce((sum, t) => sum + (t.amount || 0), 0);
       const total = court + fund + fine;
       official.push({
@@ -13977,7 +14004,7 @@ function generateLiveSettlementReportData(monthStr) {
         fund,
         fine
       });
-    } else if (m.type === 'HONORARY') {
+    } else if (m.type === 'HONORARY' || m.type === 'UNOFFICIAL') {
       const court = Math.round(sessions * 75000);
       const fund = Math.round(sessions * 25000);
       const total = court + fund;
@@ -13991,7 +14018,7 @@ function generateLiveSettlementReportData(monthStr) {
         fund,
         fine: 0
       });
-    } else if (m.type.startsWith('GUEST')) {
+    } else if (m.type && m.type.startsWith('GUEST')) {
       const court = sessions * 100000;
       guests.push({
         stt: sttG++,
@@ -14006,6 +14033,10 @@ function generateLiveSettlementReportData(monthStr) {
     }
   });
 
+  if (official.length === 0 && honorary.length === 0 && guests.length === 0) {
+    return SETTLEMENT_REPORT_PRESET;
+  }
+
   const grandTotalSessions = official.concat(honorary, guests).reduce((s, r) => s + r.sessions, 0);
   const grandTotalCollected = official.concat(honorary, guests).reduce((s, r) => s + r.total, 0);
   const grandTotalCourt = official.concat(honorary, guests).reduce((s, r) => s + r.court, 0);
@@ -14014,9 +14045,9 @@ function generateLiveSettlementReportData(monthStr) {
 
   return {
     monthText: `Tháng ${monthStr}`,
-    official: official.slice(0, 10),
-    honorary: honorary.slice(0, 7),
-    guests: guests.slice(0, 6),
+    official: official,
+    honorary: honorary,
+    guests: guests,
     kpi: {
       participants: official.length + honorary.length + guests.length,
       participantsDetail: `(${official.length + honorary.length} TV + ${guests.length} Khách)`,

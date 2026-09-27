@@ -3531,100 +3531,96 @@
   </div>
 
   <!-- 4E. MODAL BẢNG THỐNG KÊ CHI TIẾT TẤT TOÁN HOẠT ĐỘNG CLB (XUẤT FILE ẢNH GỬI NHANH) -->
-  <div id="settlementReportModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-    <div class="bg-slate-100 w-full max-w-5xl rounded-3xl p-3 sm:p-5 shadow-2xl border border-slate-300 flex flex-col max-h-[96vh] my-auto">
+  <div id="settlementReportModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-3 overflow-y-auto">
+    <div class="bg-slate-100 w-full max-w-5xl rounded-2xl p-2.5 sm:p-3.5 shadow-2xl border border-slate-300 flex flex-col max-h-[97vh] my-auto">
       
       <!-- Top Control Bar (Không nằm trong file ảnh khi xuất) -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 mb-3 shrink-0 bg-white p-3 rounded-2xl shadow-2xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200 mb-2 shrink-0 bg-white p-2.5 rounded-xl shadow-2xs">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow">📊</div>
+          <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-xs">📊</div>
           <div>
-            <h3 class="text-sm font-black text-slate-900 leading-tight">Bảng Thống Kê Tất Toán Hoạt Động CLB Trong Tháng</h3>
-            <p class="text-[11px] text-slate-500">Phân loại Thành viên chính thức, Danh dự & Khách • Tự động xuất file ảnh chuẩn HD</p>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight">Bảng Thống Kê Tất Toán Hoạt Động CLB Trong Tháng</h3>
+            <p class="text-[10px] text-slate-500 hidden sm:block">Phân loại Thành viên chính thức, Danh dự & Khách • Tự động xuất file ảnh chuẩn HD</p>
           </div>
         </div>
 
-        <!-- Controls: Month & Source & Actions -->
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 text-xs">
+        <!-- Controls: Month & Actions -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <div class="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 text-xs">
             <span class="text-slate-500 font-semibold text-[11px]">Tháng:</span>
-            <input type="month" id="settlementReportMonth" value="2026-09" onchange="renderSettlementReport()" class="bg-white px-2 py-0.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none" />
+            <input type="month" id="settlementReportMonth" value="2026-09" onchange="renderSettlementReport()" class="bg-white px-1.5 py-0.5 border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-none" />
           </div>
 
-          <button type="button" onclick="toggleSettlementReportDataSource()" id="btnSettlementDataSource" class="px-2.5 py-1.5 text-xs font-bold rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer flex items-center gap-1">
-            <span>🔄</span> <span id="btnSettlementDataSourceText">Dữ liệu: Mẫu thiết kế chuẩn</span>
-          </button>
-
-          <button type="button" onclick="toggleCurrentMonthSettlementLock()" id="btnToggleMonthLock" class="px-2.5 py-1.5 text-xs font-bold rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 transition cursor-pointer flex items-center gap-1 shadow-2xs" title="Chốt sổ cuối tháng để khóa quyền sửa các buổi hoạt động trong tháng này">
+          <button type="button" onclick="toggleCurrentMonthSettlementLock()" id="btnToggleMonthLock" class="px-2.5 py-1 text-xs font-bold rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 transition cursor-pointer flex items-center gap-1 shadow-2xs" title="Chốt sổ cuối tháng để khóa quyền sửa các buổi hoạt động trong tháng này">
             <span id="btnMonthLockIcon">🔒</span> <span id="btnMonthLockText">Chốt sổ tháng</span>
           </button>
 
-          <button type="button" onclick="copySettlementReportToClipboard()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer flex items-center gap-1.5">
+          <button type="button" onclick="copySettlementReportToClipboard()" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer flex items-center gap-1">
             <span>📋</span>
             <span>Sao Chép Ảnh (Zalo)</span>
           </button>
 
-          <button type="button" onclick="exportSettlementReportAsImage()" class="px-3.5 py-1.5 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md transition cursor-pointer flex items-center gap-1.5">
+          <button type="button" onclick="exportSettlementReportAsImage()" class="px-3 py-1 text-xs font-black rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs transition cursor-pointer flex items-center gap-1">
             <span>📸</span>
             <span>Xuất File Ảnh (PNG)</span>
           </button>
 
-          <button type="button" onclick="closeModal('settlementReportModal')" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+          <button type="button" onclick="closeModal('settlementReportModal')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer" title="Đóng">
             <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
       </div>
 
       <!-- Scrollable Preview Area -->
-      <div class="overflow-y-auto overflow-x-auto flex-1 p-1 sm:p-2 bg-slate-200/60 rounded-2xl">
+      <div class="overflow-y-auto overflow-x-auto flex-1 p-1 sm:p-2 bg-slate-200/60 rounded-xl">
         
-        <!-- KHUNG CHỨA TOÀN BỘ BẢNG TẤT TOÁN ĐỂ XUẤT ẢNH (EXACT MATCH REFERENCE DESIGN) -->
-        <div id="settlementReportExportContainer" class="bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-slate-200 min-w-[860px] max-w-[1000px] mx-auto text-slate-900 font-sans select-none">
+        <!-- KHUNG CHỨA TOÀN BỘ BẢNG TẤT TOÁN ĐỂ XUẤT ẢNH -->
+        <div id="settlementReportExportContainer" class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-slate-200 min-w-[780px] max-w-[920px] mx-auto text-slate-900 font-sans select-none">
           
           <!-- 1. HEADER BANNER: LOGO + TITLE + SLOGAN -->
-          <div class="flex items-center justify-between gap-4 pb-3.5 border-b-2 border-slate-100">
+          <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-slate-200">
             <!-- Left: Logo & CLB -->
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-full bg-[#0a4d8c] text-white flex items-center justify-center text-2xl shadow font-black shrink-0">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-full bg-[#0a4d8c] text-white flex items-center justify-center text-xl shadow-xs font-black shrink-0">
                 🏸
               </div>
               <div>
-                <h2 class="text-xl font-black text-[#0a4d8c] tracking-tight uppercase leading-tight">CLB CẦU LÔNG</h2>
-                <p class="text-[11px] font-semibold text-slate-500 italic">Kết nối đam mê - Cùng nhau phát triển</p>
+                <h2 class="text-lg font-black text-[#0a4d8c] tracking-tight uppercase leading-tight">CLB CẦU LÔNG</h2>
+                <p class="text-[10.5px] font-semibold text-slate-500 italic">Kết nối đam mê - Cùng nhau phát triển</p>
               </div>
             </div>
 
             <!-- Center: Pill Banner TẤT TOÁN HOẠT ĐỘNG CLB -->
-            <div class="bg-[#0a4d8c] text-white px-7 py-2.5 rounded-2xl shadow text-center min-w-[280px]">
-              <h1 class="text-lg font-black uppercase tracking-wider leading-none">TẤT TOÁN HOẠT ĐỘNG CLB</h1>
-              <p id="repHeaderMonthText" class="text-xs font-bold text-sky-200 mt-1">Tháng 09/2026</p>
+            <div class="bg-[#0a4d8c] text-white px-6 py-1.5 rounded-xl shadow-xs text-center min-w-[240px]">
+              <h1 class="text-base font-black uppercase tracking-wider leading-none">TẤT TOÁN HOẠT ĐỘNG CLB</h1>
+              <p id="repHeaderMonthText" class="text-[11px] font-bold text-sky-200 mt-0.5">Tháng 09/2026</p>
             </div>
 
             <!-- Right: Slogan cursive italic -->
-            <div class="text-right text-[#0a4d8c] font-bold italic leading-tight text-xs pr-1">
-              <div class="text-sm font-black">Cùng chơi</div>
-              <div class="pl-2">Cùng vui</div>
-              <div class="pl-4">Cùng tiến bộ</div>
+            <div class="text-right text-[#0a4d8c] font-bold italic leading-tight text-[11px] pr-1">
+              <div class="text-xs font-black">Cùng chơi</div>
+              <div class="pl-1.5">Cùng vui</div>
+              <div class="pl-3">Cùng tiến bộ</div>
             </div>
           </div>
 
           <!-- 2. SECTION I: THÀNH VIÊN CHÍNH THỨC (GREEN EMERALD THEME) -->
-          <div class="mt-3.5 overflow-hidden rounded-xl border border-[#00875a]/30 shadow-xs">
-            <div class="bg-[#00875a] text-white px-3.5 py-1.5 font-black text-xs sm:text-sm flex items-center gap-2">
+          <div class="mt-2.5 overflow-hidden rounded-xl border border-[#00875a]/30 shadow-xs">
+            <div class="bg-[#00875a] text-white px-3 py-1 font-black text-xs flex items-center gap-1.5">
               <span>👥</span>
               <span>I. THÀNH VIÊN CHÍNH THỨC</span>
             </div>
-            <table class="w-full text-xs text-left border-collapse">
+            <table class="w-full text-xs text-left border-collapse table-fixed">
               <thead class="bg-[#00875a] text-white text-[11px] font-bold">
                 <tr class="divide-x divide-emerald-600/40">
-                  <th class="py-2 px-2 text-center w-10">STT</th>
-                  <th class="py-2 px-3">Thành viên</th>
-                  <th class="py-2 px-2 text-center">Số lượng<br><span class="font-normal text-[10px]">(buổi chơi)</span></th>
-                  <th class="py-2 px-2 text-right">Tổng Nộp<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Chi phí mỗi buổi<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Tiền sân<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Quỹ CLB<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Phạt<br><span class="font-normal text-[10px]">(đồng)</span></th>
+                  <th class="py-1 px-1 text-center w-[5%]">STT</th>
+                  <th class="py-1 px-2.5 w-[24%]">Thành viên</th>
+                  <th class="py-1 px-1.5 text-center w-[11%]">Số lượng<span class="block font-normal text-[9px] opacity-90 leading-tight">(buổi)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">Tổng Nộp<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">CP mỗi buổi<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Tiền sân<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Quỹ CLB<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[10%]">Phạt<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
                 </tr>
               </thead>
               <tbody id="repTableOfficialBody" class="divide-y divide-slate-200 bg-white">
@@ -3632,35 +3628,35 @@
               </tbody>
               <tfoot>
                 <tr class="bg-[#d1fae5] font-black text-slate-900 divide-x divide-emerald-200 text-xs">
-                  <td colspan="2" class="py-2 px-3">Tổng (Thành viên chính thức)</td>
-                  <td id="repTotalOfficialSessions" class="py-2 px-2 text-center">44</td>
-                  <td id="repTotalOfficialPaid" class="py-2 px-2 text-right text-emerald-950 font-black">4.350.000</td>
-                  <td id="repAvgOfficialRate" class="py-2 px-2 text-right text-slate-700">100.000</td>
-                  <td id="repTotalOfficialCourt" class="py-2 px-2 text-right text-slate-800">3.300.000</td>
-                  <td id="repTotalOfficialFund" class="py-2 px-2 text-right text-slate-800">950.000</td>
-                  <td id="repTotalOfficialFine" class="py-2 px-2 text-right text-rose-700 font-black">100.000</td>
+                  <td colspan="2" class="py-1.5 px-2.5 text-left font-bold">Tổng (Thành viên chính thức)</td>
+                  <td id="repTotalOfficialSessions" class="py-1.5 px-1.5 text-center font-bold">44</td>
+                  <td id="repTotalOfficialPaid" class="py-1.5 px-1.5 text-right text-emerald-950 font-black">4.350.000</td>
+                  <td id="repAvgOfficialRate" class="py-1.5 px-1.5 text-right text-slate-700">100.000</td>
+                  <td id="repTotalOfficialCourt" class="py-1.5 px-1.5 text-right text-slate-800">3.300.000</td>
+                  <td id="repTotalOfficialFund" class="py-1.5 px-1.5 text-right text-slate-800">950.000</td>
+                  <td id="repTotalOfficialFine" class="py-1.5 px-1.5 text-right text-rose-700 font-black">100.000</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           <!-- 3. SECTION II: THÀNH VIÊN DANH DỰ (OCEAN BLUE THEME) -->
-          <div class="mt-3 overflow-hidden rounded-xl border border-[#0284c7]/30 shadow-xs">
-            <div class="bg-[#0284c7] text-white px-3.5 py-1.5 font-black text-xs sm:text-sm flex items-center gap-2">
+          <div class="mt-2.5 overflow-hidden rounded-xl border border-[#0284c7]/30 shadow-xs">
+            <div class="bg-[#0284c7] text-white px-3 py-1 font-black text-xs flex items-center gap-1.5">
               <span>⭐</span>
               <span>II. THÀNH VIÊN DANH DỰ</span>
             </div>
-            <table class="w-full text-xs text-left border-collapse">
+            <table class="w-full text-xs text-left border-collapse table-fixed">
               <thead class="bg-[#0284c7] text-white text-[11px] font-bold">
                 <tr class="divide-x divide-sky-600/40">
-                  <th class="py-2 px-2 text-center w-10">STT</th>
-                  <th class="py-2 px-3">Thành viên</th>
-                  <th class="py-2 px-2 text-center">Số lượng<br><span class="font-normal text-[10px]">(buổi chơi)</span></th>
-                  <th class="py-2 px-2 text-right">Tổng Nộp<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Chi phí mỗi buổi<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Tiền sân<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Quỹ CLB<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Phạt<br><span class="font-normal text-[10px]">(đồng)</span></th>
+                  <th class="py-1 px-1 text-center w-[5%]">STT</th>
+                  <th class="py-1 px-2.5 w-[24%]">Thành viên</th>
+                  <th class="py-1 px-1.5 text-center w-[11%]">Số lượng<span class="block font-normal text-[9px] opacity-90 leading-tight">(buổi)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">Tổng Nộp<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">CP mỗi buổi<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Tiền sân<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Quỹ CLB<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[10%]">Phạt<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
                 </tr>
               </thead>
               <tbody id="repTableHonoraryBody" class="divide-y divide-slate-200 bg-white">
@@ -3668,35 +3664,35 @@
               </tbody>
               <tfoot>
                 <tr class="bg-[#e0f2fe] font-black text-slate-900 divide-x divide-sky-200 text-xs">
-                  <td colspan="2" class="py-2 px-3">Tổng (Thành viên danh dự)</td>
-                  <td id="repTotalHonorarySessions" class="py-2 px-2 text-center">15</td>
-                  <td id="repTotalHonoraryPaid" class="py-2 px-2 text-right text-sky-950 font-black">1.500.000</td>
-                  <td id="repAvgHonoraryRate" class="py-2 px-2 text-right text-slate-700">100.000</td>
-                  <td id="repTotalHonoraryCourt" class="py-2 px-2 text-right text-slate-800">1.125.000</td>
-                  <td id="repTotalHonoraryFund" class="py-2 px-2 text-right text-slate-800">375.000</td>
-                  <td id="repTotalHonoraryFine" class="py-2 px-2 text-right text-slate-500">0</td>
+                  <td colspan="2" class="py-1.5 px-2.5 text-left font-bold">Tổng (Thành viên danh dự)</td>
+                  <td id="repTotalHonorarySessions" class="py-1.5 px-1.5 text-center font-bold">15</td>
+                  <td id="repTotalHonoraryPaid" class="py-1.5 px-1.5 text-right text-sky-950 font-black">1.500.000</td>
+                  <td id="repAvgHonoraryRate" class="py-1.5 px-1.5 text-right text-slate-700">100.000</td>
+                  <td id="repTotalHonoraryCourt" class="py-1.5 px-1.5 text-right text-slate-800">1.125.000</td>
+                  <td id="repTotalHonoraryFund" class="py-1.5 px-1.5 text-right text-slate-800">375.000</td>
+                  <td id="repTotalHonoraryFine" class="py-1.5 px-1.5 text-right text-slate-500">0</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           <!-- 4. SECTION III: KHÁCH GIAO LƯU (WARM ORANGE THEME) -->
-          <div class="mt-3 overflow-hidden rounded-xl border border-[#ea580c]/30 shadow-xs">
-            <div class="bg-[#ea580c] text-white px-3.5 py-1.5 font-black text-xs sm:text-sm flex items-center gap-2">
+          <div class="mt-2.5 overflow-hidden rounded-xl border border-[#ea580c]/30 shadow-xs">
+            <div class="bg-[#ea580c] text-white px-3 py-1 font-black text-xs flex items-center gap-1.5">
               <span>👥</span>
               <span>III. KHÁCH GIAO LƯU</span>
             </div>
-            <table class="w-full text-xs text-left border-collapse">
+            <table class="w-full text-xs text-left border-collapse table-fixed">
               <thead class="bg-[#ea580c] text-white text-[11px] font-bold">
                 <tr class="divide-x divide-orange-600/40">
-                  <th class="py-2 px-2 text-center w-10">STT</th>
-                  <th class="py-2 px-3">Khách giao lưu</th>
-                  <th class="py-2 px-2 text-center">Số lượng<br><span class="font-normal text-[10px]">(buổi chơi)</span></th>
-                  <th class="py-2 px-2 text-right">Tổng Nộp<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Chi phí mỗi buổi<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Tiền sân<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Quỹ CLB<br><span class="font-normal text-[10px]">(đồng)</span></th>
-                  <th class="py-2 px-2 text-right">Phạt<br><span class="font-normal text-[10px]">(đồng)</span></th>
+                  <th class="py-1 px-1 text-center w-[5%]">STT</th>
+                  <th class="py-1 px-2.5 w-[24%]">Khách giao lưu</th>
+                  <th class="py-1 px-1.5 text-center w-[11%]">Số lượng<span class="block font-normal text-[9px] opacity-90 leading-tight">(buổi)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">Tổng Nộp<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[13%]">CP mỗi buổi<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Tiền sân<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[12%]">Quỹ CLB<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
+                  <th class="py-1 px-1.5 text-right w-[10%]">Phạt<span class="block font-normal text-[9px] opacity-90 leading-tight">(đồng)</span></th>
                 </tr>
               </thead>
               <tbody id="repTableGuestBody" class="divide-y divide-slate-200 bg-white">
@@ -3704,92 +3700,92 @@
               </tbody>
               <tfoot>
                 <tr class="bg-[#ffedd5] font-black text-slate-900 divide-x divide-orange-200 text-xs">
-                  <td colspan="2" class="py-2 px-3">Tổng (Khách giao lưu)</td>
-                  <td id="repTotalGuestSessions" class="py-2 px-2 text-center">10</td>
-                  <td id="repTotalGuestPaid" class="py-2 px-2 text-right text-orange-950 font-black">1.000.000</td>
-                  <td id="repAvgGuestRate" class="py-2 px-2 text-right text-slate-700">100.000</td>
-                  <td id="repTotalGuestCourt" class="py-2 px-2 text-right text-slate-800">1.000.000</td>
-                  <td id="repTotalGuestFund" class="py-2 px-2 text-right text-slate-500">0</td>
-                  <td id="repTotalGuestFine" class="py-2 px-2 text-right text-slate-500">0</td>
+                  <td colspan="2" class="py-1.5 px-2.5 text-left font-bold">Tổng (Khách giao lưu)</td>
+                  <td id="repTotalGuestSessions" class="py-1.5 px-1.5 text-center font-bold">10</td>
+                  <td id="repTotalGuestPaid" class="py-1.5 px-1.5 text-right text-orange-950 font-black">1.000.000</td>
+                  <td id="repAvgGuestRate" class="py-1.5 px-1.5 text-right text-slate-700">100.000</td>
+                  <td id="repTotalGuestCourt" class="py-1.5 px-1.5 text-right text-slate-800">1.000.000</td>
+                  <td id="repTotalGuestFund" class="py-1.5 px-1.5 text-right text-slate-500">0</td>
+                  <td id="repTotalGuestFine" class="py-1.5 px-1.5 text-right text-slate-500">0</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           <!-- 5. FOOTER SUMMARY & RECONCILIATION (DEEP PURPLE THEME) -->
-          <div class="mt-3.5 border border-purple-200 rounded-xl overflow-hidden bg-white shadow-xs">
-            <div class="bg-[#6b21a8] text-white px-3.5 py-1.5 font-black text-xs sm:text-sm flex items-center gap-2">
+          <div class="mt-2.5 border border-purple-200 rounded-xl overflow-hidden bg-white shadow-xs">
+            <div class="bg-[#6b21a8] text-white px-3 py-1 font-black text-xs flex items-center gap-1.5">
               <span>📊</span>
               <span id="repFooterMonthTitle">TỔNG KẾT TẤT TOÁN THÁNG 09/2026</span>
             </div>
             
-            <div class="p-3 grid grid-cols-1 lg:grid-cols-4 gap-3 items-center">
+            <div class="p-2 sm:p-2.5 grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-2.5 items-stretch">
               <!-- 6 Metric Cards -->
-              <div class="lg:col-span-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <div class="lg:col-span-3 grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 <!-- Card 1 -->
-                <div class="bg-[#0284c7] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">👥</span>
+                <div class="bg-[#0284c7] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">👥</span>
                   <span class="text-[8px] font-bold text-sky-100 uppercase tracking-tighter">Tổng người</span>
-                  <b id="repKpiParticipants" class="text-lg font-black mt-0.5 leading-none">17</b>
-                  <span id="repKpiParticipantsDetail" class="text-[7.5px] text-sky-200 font-medium">(14 TV + 3 Khách)</span>
+                  <b id="repKpiParticipants" class="text-base font-black leading-none my-0.5">17</b>
+                  <span id="repKpiParticipantsDetail" class="text-[7.5px] text-sky-200 font-medium leading-none">(14 TV + 3 Khách)</span>
                 </div>
 
                 <!-- Card 2 -->
-                <div class="bg-[#059669] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">🏸</span>
-                  <span class="text-[8px] font-bold text-emerald-100 uppercase tracking-tighter">Số buổi chơi</span>
-                  <b id="repKpiTotalSessions" class="text-lg font-black mt-0.5 leading-none">69</b>
-                  <span class="text-[7.5px] text-emerald-200 font-medium">Lượt chơi</span>
+                <div class="bg-[#059669] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">🏸</span>
+                  <span class="text-[8px] font-bold text-emerald-100 uppercase tracking-tighter">Số buổi</span>
+                  <b id="repKpiTotalSessions" class="text-base font-black leading-none my-0.5">69</b>
+                  <span class="text-[7.5px] text-emerald-200 font-medium leading-none">Lượt chơi</span>
                 </div>
 
                 <!-- Card 3 -->
-                <div class="bg-[#0891b2] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">🪙</span>
+                <div class="bg-[#0891b2] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">🪙</span>
                   <span class="text-[8px] font-bold text-cyan-100 uppercase tracking-tighter">Tổng nộp</span>
-                  <b id="repKpiTotalCollected" class="text-xs sm:text-sm font-black mt-0.5 leading-none">6.850.000</b>
-                  <span class="text-[7.5px] text-cyan-200 font-medium">(đồng)</span>
+                  <b id="repKpiTotalCollected" class="text-xs sm:text-[13px] font-black leading-none my-0.5">6.850.000</b>
+                  <span class="text-[7.5px] text-cyan-200 font-medium leading-none">(đồng)</span>
                 </div>
 
                 <!-- Card 4 -->
-                <div class="bg-[#ea580c] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">🏟️</span>
+                <div class="bg-[#ea580c] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">🏟️</span>
                   <span class="text-[8px] font-bold text-orange-100 uppercase tracking-tighter">Tiền sân</span>
-                  <b id="repKpiTotalCourt" class="text-xs sm:text-sm font-black mt-0.5 leading-none">5.425.000</b>
-                  <span class="text-[7.5px] text-orange-200 font-medium">(đồng)</span>
+                  <b id="repKpiTotalCourt" class="text-xs sm:text-[13px] font-black leading-none my-0.5">5.425.000</b>
+                  <span class="text-[7.5px] text-orange-200 font-medium leading-none">(đồng)</span>
                 </div>
 
                 <!-- Card 5 -->
-                <div class="bg-[#7c3aed] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">📥</span>
-                  <span class="text-[8px] font-bold text-purple-100 uppercase tracking-tighter">Vào Quỹ CLB</span>
-                  <b id="repKpiTotalClubFund" class="text-xs sm:text-sm font-black mt-0.5 leading-none">1.325.000</b>
-                  <span class="text-[7.5px] text-purple-200 font-medium">(đồng)</span>
+                <div class="bg-[#7c3aed] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">📥</span>
+                  <span class="text-[8px] font-bold text-purple-100 uppercase tracking-tighter">Quỹ CLB</span>
+                  <b id="repKpiTotalClubFund" class="text-xs sm:text-[13px] font-black leading-none my-0.5">1.325.000</b>
+                  <span class="text-[7.5px] text-purple-200 font-medium leading-none">(đồng)</span>
                 </div>
 
                 <!-- Card 6 -->
-                <div class="bg-[#dc2626] text-white p-2 rounded-xl text-center flex flex-col justify-between shadow-2xs">
-                  <span class="text-xs block">⚠️</span>
+                <div class="bg-[#dc2626] text-white p-1.5 rounded-lg text-center flex flex-col justify-between shadow-2xs">
+                  <span class="text-[11px] block">⚠️</span>
                   <span class="text-[8px] font-bold text-rose-100 uppercase tracking-tighter">Tiền phạt</span>
-                  <b id="repKpiTotalFine" class="text-xs sm:text-sm font-black mt-0.5 leading-none">100.000</b>
-                  <span class="text-[7.5px] text-rose-200 font-medium">(đồng)</span>
+                  <b id="repKpiTotalFine" class="text-xs sm:text-[13px] font-black leading-none my-0.5">100.000</b>
+                  <span class="text-[7.5px] text-rose-200 font-medium leading-none">(đồng)</span>
                 </div>
               </div>
 
               <!-- Right Box: Đối chiếu ví TV -->
-              <div class="bg-purple-50/70 p-2.5 rounded-xl border border-purple-200 text-xs space-y-1 shadow-2xs">
-                <div class="flex items-center gap-1.5 text-purple-900 font-black text-[10px] pb-1 border-b border-purple-200">
+              <div class="bg-purple-50/70 p-2 rounded-lg border border-purple-200 text-xs space-y-0.5 shadow-2xs flex flex-col justify-center">
+                <div class="flex items-center gap-1 text-purple-900 font-black text-[9.5px] pb-0.5 border-b border-purple-200">
                   <span>💳</span>
                   <span>ĐỐI CHIẾU VÍ THÀNH VIÊN</span>
                 </div>
-                <div class="flex justify-between items-center text-slate-700 text-[11px]">
+                <div class="flex justify-between items-center text-slate-700 text-[10.5px]">
                   <span>Tổng đã trừ từ Ví:</span>
                   <b id="repWalletDeducted" class="font-black text-slate-900">1.800.000</b>
                 </div>
-                <div class="flex justify-between items-center text-slate-700 text-[11px]">
+                <div class="flex justify-between items-center text-slate-700 text-[10.5px]">
                   <span>Tổng còn phải thu:</span>
                   <b id="repWalletRemaining" class="font-black text-purple-700">4.950.000</b>
                 </div>
-                <div class="flex justify-between items-center text-slate-700 text-[11px] pt-1 border-t border-purple-200/60">
+                <div class="flex justify-between items-center text-slate-700 text-[10.5px] pt-0.5 border-t border-purple-200/60">
                   <span>Dư Ví cuối tháng:</span>
                   <b id="repWalletEndMonthBal" class="font-black text-emerald-700">0</b>
                 </div>
@@ -3798,9 +3794,9 @@
           </div>
 
           <!-- 6. BOTTOM TAGLINE & BADGE -->
-          <div class="mt-3.5 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 italic">
+          <div class="mt-2 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500 italic">
             <span>Cảm ơn tất cả các thành viên và khách giao lưu đã đồng hành cùng CLB!</span>
-            <div class="flex items-center gap-1 text-[#0a4d8c] font-black not-italic text-xs">
+            <div class="flex items-center gap-1 text-[#0a4d8c] font-black not-italic text-[10px]">
               <span>═══</span>
               <span>🏸</span>
               <span>═══</span>
