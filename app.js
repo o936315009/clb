@@ -222,12 +222,23 @@ function saveClubsRegistry(clubs) {
 
 function getClubIdFromUrl() {
   try {
+    // 1. Kiểm tra URL query string: ?club=slug hoặc ?clb=slug hoặc ?c=slug
     const urlParams = new URLSearchParams(window.location.search);
     const param = urlParams.get('club') || urlParams.get('clb') || urlParams.get('c');
     if (param) return param.trim();
 
+    // 2. Kiểm tra đường dẫn pathname: /g/slug hoặc /clb/slug hoặc /club/slug
+    if (window.location.pathname) {
+      const pathMatch = window.location.pathname.match(/\/(?:clb|g|club)\/([^/?#]+)/i);
+      if (pathMatch && pathMatch[1]) return decodeURIComponent(pathMatch[1]).trim();
+    }
+
+    // 3. Kiểm tra URL hash: #/g/slug, #/clb/slug, #club=slug, #clb=slug
     if (window.location.hash) {
       const hash = window.location.hash.substring(1);
+      const hashPathMatch = hash.match(/^(?:\/)?(?:clb|g|club)\/([^/?#]+)/i);
+      if (hashPathMatch && hashPathMatch[1]) return decodeURIComponent(hashPathMatch[1]).trim();
+
       const hashParams = new URLSearchParams(hash);
       const hashClub = hashParams.get('club') || hashParams.get('clb');
       if (hashClub) return hashClub.trim();
@@ -8485,6 +8496,29 @@ function handleSaveUserAccessSubmit(e) {
     AppState.auth.user.permissions = permissions;
   }
 
+  // Đồng bộ phân quyền thời gian thực lên Google Firebase (Memberships node)
+  if (firebaseDb) {
+    try {
+      const club = getActiveClub();
+      const cleanSlug = getCanonicalClubSlug(club?.accessSlug || club?.id || 'lap-tri');
+      const targetKey = member.firebaseUid || member.username || member.id;
+      const memPayload = {
+        role: role,
+        status: status,
+        permissions: permissions,
+        name: member.name,
+        username: member.username,
+        updatedAt: Date.now()
+      };
+      firebaseDb.ref('memberships/' + cleanSlug + '/' + targetKey).set(memPayload).catch(() => {});
+      if (member.firebaseUid && member.firebaseUid !== targetKey) {
+        firebaseDb.ref('memberships/' + cleanSlug + '/' + member.firebaseUid).set(memPayload).catch(() => {});
+      }
+    } catch (fbErr) {
+      console.warn('Lỗi ghi membership lên Firebase:', fbErr);
+    }
+  }
+
   saveData();
   closeModal('modalEditUserAccess');
   renderUserAccessTable();
@@ -8895,6 +8929,7 @@ function openCreateClubModal(skipGuard) {
   const logoInput = document.getElementById('newClubLogoIcon');
   const themeInput = document.getElementById('newClubThemeColor');
   const adminNameInput = document.getElementById('newClubAdminName');
+  const adminEmailInput = document.getElementById('newClubAdminEmail');
   const adminPhoneInput = document.getElementById('newClubAdminPhone');
   const adminUserInput = document.getElementById('newClubAdminUsername');
   const adminPassInput = document.getElementById('newClubAdminPassword');
@@ -8910,6 +8945,7 @@ function openCreateClubModal(skipGuard) {
   if (logoInput) logoInput.value = '🏸';
   if (themeInput) themeInput.value = 'emerald';
   if (adminNameInput) adminNameInput.value = '';
+  if (adminEmailInput) adminEmailInput.value = '';
   if (adminPhoneInput) adminPhoneInput.value = '';
   if (adminUserInput) adminUserInput.value = '';
   if (adminPassInput) adminPassInput.value = '123456';
@@ -8995,6 +9031,7 @@ function handleCreateNewClubSubmit(event) {
   const logoInput = document.getElementById('newClubLogoIcon');
   const themeInput = document.getElementById('newClubThemeColor');
   const adminNameInput = document.getElementById('newClubAdminName');
+  const adminEmailInput = document.getElementById('newClubAdminEmail');
   const adminPhoneInput = document.getElementById('newClubAdminPhone');
   const adminUserInput = document.getElementById('newClubAdminUsername');
   const adminPassInput = document.getElementById('newClubAdminPassword');
@@ -9010,6 +9047,7 @@ function handleCreateNewClubSubmit(event) {
   const logoIcon = logoInput?.value || '🏸';
   const themeColor = themeInput?.value || 'emerald';
   let adminName = adminNameInput?.value.trim() || '';
+  let adminEmail = adminEmailInput?.value.trim() || '';
   const adminPhone = adminPhoneInput?.value.trim() || '';
   let adminUsername = adminUserInput?.value.trim() || '';
   const adminPassword = adminPassInput?.value.trim() || '123456';
@@ -9067,6 +9105,10 @@ function handleCreateNewClubSubmit(event) {
     if (adminUserInput) adminUserInput.value = adminUsername;
   }
 
+  if (!adminEmail) {
+    adminEmail = `${adminUsername.toLowerCase()}@${accessSlug}.clb`;
+  }
+
   const modeRadios = document.getElementsByName('newClubInitMode');
   let initMode = 'FRESH';
   for (const r of modeRadios) {
@@ -9085,6 +9127,7 @@ function handleCreateNewClubSubmit(event) {
     name: adminName,
     chipName: adminChip,
     phone: adminPhone,
+    email: adminEmail,
     type: 'OFFICIAL',
     username: adminUsername,
     password: adminPassword,
@@ -9254,6 +9297,7 @@ function handleCreateNewClubSubmit(event) {
     createdAt: getFormattedCurrentDate(),
     storageKey: storageKey,
     adminName: adminName,
+    adminEmail: adminEmail,
     adminUsername: adminUsername,
     phone: adminPhone,
     isDeveloperSample: false
@@ -9267,6 +9311,63 @@ function handleCreateNewClubSubmit(event) {
     registry.push(newClubRecord);
   }
   saveClubsRegistry(registry);
+
+  // 3.5 Đồng bộ khởi tạo CLB mới và Phân quyền Admin lên Google Firebase (Multi-Tenant Node)
+  if (firebaseDb) {
+    try {
+      const safeMembers = membersList.map(m => {
+        const copy = { ...m };
+        delete copy.password;
+        return copy;
+      });
+      const cloudClubPayload = {
+        profile: {
+          id: clubId,
+          name: name,
+          shortName: shortName,
+          accessSlug: cleanSlug,
+          logoIcon: logoIcon,
+          themeColor: themeColor,
+          bankInfo: bankInfo,
+          createdAt: getFormattedCurrentDate()
+        },
+        config: newClubAppState.config,
+        members: safeMembers,
+        attendance: { activitySessions: [], attendanceRecords: [] },
+        wallets: { funds: newClubAppState.funds, closedMonths: [] },
+        transactions: transactionsList,
+        tournaments: [],
+        funds: newClubAppState.funds,
+        activitySessions: [],
+        attendanceRecords: [],
+        _lastModified: Date.now()
+      };
+      firebaseDb.ref('clubs/' + cleanSlug).set(cloudClubPayload).catch(() => {});
+
+      const adminMemPayload = {
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        permissions: getRoleDefaultPermissions('ADMIN'),
+        name: adminName,
+        email: adminEmail,
+        username: adminUsername,
+        createdAt: Date.now()
+      };
+      firebaseDb.ref('memberships/' + cleanSlug + '/' + adminUsername).set(adminMemPayload).catch(() => {});
+      if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+        firebaseDb.ref('memberships/' + cleanSlug + '/' + firebase.auth().currentUser.uid).set(adminMemPayload).catch(() => {});
+      }
+
+      firebaseDb.ref('system/settings/clubs/' + cleanSlug).set({
+        clubId: clubId,
+        accessSlug: cleanSlug,
+        name: name,
+        createdAt: Date.now()
+      }).catch(() => {});
+    } catch (fbErr) {
+      console.warn('Lỗi đồng bộ CLB mới lên Firebase:', fbErr);
+    }
+  }
 
   // 4. Tự động ẩn CLB demo của nhà phát triển để giao diện người dùng hoàn toàn sạch sẽ
   localStorage.setItem('CLB_HIDE_DEV_DEMO', 'true');
@@ -9301,6 +9402,11 @@ function handleCreateNewClubSubmit(event) {
   else if (currentTab === 'members') renderMemberManagementList();
   else if (currentTab === 'tournament') renderTournamentModule();
   else if (currentTab === 'settings') renderSettingsTab();
+
+  // 10. Chuyển kênh đồng bộ đám mây sang CLB mới
+  if (typeof subscribeToCloudClub === 'function') {
+    subscribeToCloudClub(cleanSlug);
+  }
 
   showToast(`🎉 Chúc mừng! Câu Lạc Bộ ${name} đã được khởi tạo thành công! Link riêng: ?club=${cleanSlug}`, 'success');
 }
@@ -13418,8 +13524,8 @@ function openLoginModal() {
   openModal('loginModal');
 }
 
-function handleLogin(e) {
-  e.preventDefault();
+async function handleLogin(e) {
+  if (e) e.preventDefault();
   const u = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value.trim();
 
@@ -13428,6 +13534,13 @@ function handleLogin(e) {
     const sessionToken = 'SES_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     localStorage.setItem(CLB_CURRENT_SESSION_KEY, sessionToken);
     loginAsDeveloperAdmin(u, p);
+
+    // Ghi nhận trạng thái Developer lên Firebase nếu có kết nối
+    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser && firebaseDb) {
+      const devUid = firebase.auth().currentUser.uid;
+      firebaseDb.ref('system/developers/' + devUid).set(true).catch(() => {});
+    }
+
     closeModal('loginModal');
     renderAttendanceRoleBanner();
     renderUserAccessTable();
@@ -13435,9 +13548,67 @@ function handleLogin(e) {
     return;
   }
 
-  // 2. Kiểm tra tài khoản Quản lý CLB hoặc Hội viên trong danh sách CLB hiện tại
-  const member = AppState.members.find(m => m.username && m.username.toLowerCase() === u.toLowerCase() && m.password === p);
-  if (member) {
+  // 2. Tìm thành viên trong CLB hiện tại
+  const cleanSlug = getCanonicalClubSlug(getActiveClub()?.accessSlug || getActiveClub()?.id || 'lap-tri');
+  const member = (AppState.members || []).find(m => 
+    (m.username && m.username.toLowerCase() === u.toLowerCase()) ||
+    (m.phone && m.phone === u) ||
+    (m.email && m.email.toLowerCase() === u.toLowerCase())
+  );
+
+  // 3. Đăng nhập an toàn qua Firebase Authentication (Email/Password)
+  const authEmail = u.includes('@') ? u : `${(member?.username || u).toLowerCase()}@${cleanSlug}.clb`;
+
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    try {
+      let fbUser = null;
+      try {
+        const cred = await firebase.auth().signInWithEmailAndPassword(authEmail, p);
+        fbUser = cred.user;
+      } catch (authErr) {
+        // Nếu tài khoản chưa tạo trên Firebase Auth nhưng đúng mật khẩu trong CLB -> Tự động khởi tạo
+        if ((authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') && member && member.password === p) {
+          try {
+            const newCred = await firebase.auth().createUserWithEmailAndPassword(authEmail, p);
+            fbUser = newCred.user;
+          } catch (createErr) {}
+        }
+      }
+
+      if (fbUser && firebaseDb) {
+        const uid = fbUser.uid;
+        if (member) member.firebaseUid = uid;
+
+        // Lưu hồ sơ người dùng users/{UID}
+        firebaseDb.ref('users/' + uid).update({
+          name: member?.name || u,
+          email: authEmail,
+          phone: member?.phone || '',
+          lastLogin: Date.now()
+        }).catch(() => {});
+
+        // Lưu vai trò & quyền hạn memberships/{clubId}/{UID}
+        const memRole = member?.role || 'MEMBER';
+        const memPerms = member?.permissions || getRoleDefaultPermissions(memRole);
+        firebaseDb.ref('memberships/' + cleanSlug + '/' + uid).set({
+          role: memRole,
+          status: member?.status || 'ACTIVE',
+          permissions: memPerms,
+          name: member?.name || u,
+          email: authEmail,
+          updatedAt: Date.now()
+        }).catch(() => {});
+
+        // Lắng nghe biến động phân quyền thời gian thực ngay lập tức
+        attachLiveMembershipListener(cleanSlug, uid);
+      }
+    } catch (err) {
+      console.log('Firebase Auth Notice:', err?.message || err);
+    }
+  }
+
+  // 4. Kiểm tra tài khoản Quản lý CLB hoặc Hội viên trong danh sách CLB hiện tại
+  if (member && (member.password === p || !member.password)) {
     if (member.status === 'LOCKED') {
       showToast(`⚠️ Tài khoản ${member.name} đang bị tạm khóa. Vui lòng liên hệ Ban quản trị!`, 'error');
       return;
@@ -13497,6 +13668,12 @@ function handleLogout() {
   try {
     localStorage.removeItem(DEV_ADMIN_SESSION_KEY);
     localStorage.removeItem(CLB_CURRENT_SESSION_KEY);
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      firebase.auth().signOut().catch(() => {});
+    }
+    if (currentMembershipRef) {
+      try { currentMembershipRef.off(); } catch (e) {}
+    }
   } catch (e) {}
   closeModal('modalFirstLoginChangePassword');
   AppState.auth = { isLoggedIn: false, user: null };
@@ -14759,13 +14936,11 @@ function initFirebaseCloudSync() {
     }
     firebaseDb = firebase.database();
 
-    // Tự động đăng nhập ẩn danh (Anonymous Auth) nếu có Auth để vượt qua Rules auth != null
+    // Tự động khởi tạo kết nối Firebase Auth & Lắng nghe phân quyền Multi-Tenant thời gian thực
+    const club = getActiveClub();
+    const clubSlug = club?.accessSlug || club?.id || 'lap-tri';
     if (firebase.auth) {
-      try {
-        firebase.auth().signInAnonymously().catch(authErr => {
-          console.log('Firebase Auth notice:', authErr?.message || authErr);
-        });
-      } catch (e) {}
+      setupFirebaseAuthAndMemberships(clubSlug);
     }
 
     // Theo dõi trạng thái kết nối mạng của Firebase
@@ -14793,8 +14968,6 @@ function initFirebaseCloudSync() {
     }
 
     // Bắt đầu lắng nghe thay đổi của CLB hiện tại
-    const club = getActiveClub();
-    const clubSlug = club?.accessSlug || club?.id || 'lap-tri';
     subscribeToCloudClub(clubSlug);
   } catch (err) {
     console.warn('Firebase không thể khởi tạo, tiếp tục chế độ bộ nhớ máy siêu tốc:', err);
@@ -14810,9 +14983,114 @@ function getCanonicalClubSlug(slugOrId) {
   return s || 'lap-tri';
 }
 
+// ==========================================
+// HỆ THỐNG QUẢN LÝ TÀI KHOẢN FIREBASE AUTH & PHÂN QUYỀN REAL-TIME (MEMBERSHIPS)
+// ==========================================
+let currentFirebaseUser = null;
+let currentMembershipRef = null;
+
+function setupFirebaseAuthAndMemberships(clubSlug) {
+  if (typeof firebase === 'undefined' || !firebase.auth) return;
+  const cleanSlug = getCanonicalClubSlug(clubSlug || getActiveClub()?.accessSlug || 'lap-tri');
+
+  firebase.auth().onAuthStateChanged(fbUser => {
+    currentFirebaseUser = fbUser;
+    if (fbUser) {
+      // 1. Kiểm tra tài khoản Nhà Phát Triển (Super Admin) trong system/developers
+      if (firebaseDb) {
+        firebaseDb.ref('system/developers/' + fbUser.uid).once('value', snap => {
+          if (snap.val() === true) {
+            if (!AppState.auth) AppState.auth = {};
+            AppState.auth.isLoggedIn = true;
+            AppState.auth.user = {
+              id: fbUser.uid,
+              username: 'developer',
+              role: 'DEV_ADMIN',
+              name: 'Admin Nhà Phát Triển (Super Admin)',
+              permissions: getRoleDefaultPermissions('DEV_ADMIN')
+            };
+            saveLocalDataOnly();
+            updateDevAdminUI();
+            renderAuthBadge();
+            updateNavigationUI();
+          }
+        });
+      }
+
+      // 2. Lắng nghe real-time quyền trong CLB hiện tại từ memberships/{clubId}/{UID}
+      attachLiveMembershipListener(cleanSlug, fbUser.uid);
+    } else {
+      // Tự động đăng nhập ẩn danh (Anonymous Auth) để đảm bảo luôn vượt qua Rules auth != null khi chưa đăng nhập
+      firebase.auth().signInAnonymously().catch(authErr => {
+        console.log('Firebase Auth anonymous notice:', authErr?.message || authErr);
+      });
+    }
+  });
+}
+
+function attachLiveMembershipListener(clubSlug, uidOrUsername) {
+  if (!firebaseDb || !uidOrUsername) return;
+  const cleanSlug = getCanonicalClubSlug(clubSlug);
+
+  if (currentMembershipRef) {
+    try { currentMembershipRef.off(); } catch (e) {}
+  }
+
+  currentMembershipRef = firebaseDb.ref('memberships/' + cleanSlug + '/' + uidOrUsername);
+  currentMembershipRef.on('value', snap => {
+    const memData = snap.val();
+    if (memData) {
+      applyLiveMembership(memData);
+    } else if (AppState.auth?.user?.username) {
+      firebaseDb.ref('memberships/' + cleanSlug + '/' + AppState.auth.user.username).once('value', s => {
+        if (s.val()) applyLiveMembership(s.val());
+      });
+    }
+  });
+}
+
+function applyLiveMembership(memData) {
+  if (!memData || !memData.role) return;
+  if (!AppState.auth) AppState.auth = { isLoggedIn: true, user: {} };
+
+  const oldRole = AppState.auth.user?.role;
+  const newRole = memData.role;
+  const newPerms = memData.permissions || getRoleDefaultPermissions(newRole);
+
+  AppState.auth.isLoggedIn = true;
+  if (!AppState.auth.user) AppState.auth.user = {};
+  AppState.auth.user.role = newRole;
+  AppState.auth.user.permissions = newPerms;
+  if (memData.name) AppState.auth.user.name = memData.name;
+
+  saveLocalDataOnly();
+  renderAuthBadge();
+  updateNavigationUI();
+  renderAttendanceRoleBanner();
+  renderSelfAttendanceBanner();
+  renderActivityMemberChips();
+
+  // Đẩy ra khỏi tab cấm nếu vừa bị tước quyền theo thời gian thực (Real-time Tab Eviction)
+  if (currentTab === 'finance' && !canPerformFinance()) {
+    switchTab('dashboard');
+    showToast('⚠️ Quyền hạn của bạn vừa được cập nhật: Bạn không có quyền truy cập tab Tài chính.', 'warning');
+  } else if (currentTab === 'settings' && !canConfigSystem()) {
+    switchTab('dashboard');
+    showToast('⚠️ Quyền hạn của bạn vừa được cập nhật: Bạn không có quyền truy cập Cấu hình hệ thống.', 'warning');
+  } else if (oldRole && oldRole !== newRole) {
+    const roleDef = ROLE_DEFINITIONS[newRole] || ROLE_DEFINITIONS.MEMBER;
+    showToast(`🔔 Vai trò của bạn đã được cập nhật: ${roleDef.icon} ${roleDef.label}!`, 'info');
+  }
+}
+
 function subscribeToCloudClub(clubSlug) {
   if (!firebaseDb) return;
   const cleanSlug = getCanonicalClubSlug(clubSlug);
+
+  // Gắn lại listener phân quyền membership cho CLB mới
+  if (currentFirebaseUser) {
+    attachLiveMembershipListener(cleanSlug, currentFirebaseUser.uid);
+  }
 
   // Hủy đăng ký CLB cũ nếu có
   if (currentCloudClubRef) {
@@ -14825,54 +15103,72 @@ function subscribeToCloudClub(clubSlug) {
   currentCloudClubRef.on('value', snapshot => {
     const cloudData = snapshot.val();
     if (!cloudData) {
-      // Nếu trên đám mây chưa có dữ liệu cho CLB này, tự động đẩy dữ liệu hiện tại lên
       if (AppState && AppState.members && AppState.members.length > 0 && !isSyncingToCloud) {
         pushDataToCloud();
       }
       return;
     }
 
-    // Bỏ qua phản hồi vọng lại từ chính lượt đẩy của thiết bị này
     const incomingJson = JSON.stringify(cloudData);
     if (lastPushedCloudJson && incomingJson === lastPushedCloudJson) {
       return;
     }
 
-    // BẢO VỆ AN TOÀN: Nếu đám mây trống hoặc ít hơn 3 thành viên trong khi máy cục bộ có >= 10 thành viên, không được ghi đè xóa sạch dữ liệu máy!
-    if (cloudData.members && cloudData.members.length < 3 && AppState.members && AppState.members.length >= 10) {
+    // BẢO VỆ AN TOÀN: Nếu đám mây trống hoặc ít hơn 3 thành viên trong khi máy cục bộ có >= 10 thành viên, không ghi đè xóa sạch
+    const rawMembers = cloudData.members || [];
+    if (rawMembers.length < 3 && AppState.members && AppState.members.length >= 10) {
       setTimeout(() => { pushDataToCloud(); }, 600);
       return;
     }
 
-    // Kiểm tra xem dữ liệu đám mây có thực sự khác với dữ liệu hiện tại (loại trừ phiên đăng nhập riêng của thiết bị)
+    // Trích xuất dữ liệu đa hình (Hỗ trợ cả cây cấu trúc mới và định dạng phẳng cũ)
+    let incomingConfig = cloudData.config || cloudData.profile || {};
+    let incomingMembers = cloudData.members || [];
+    let incomingSessions = cloudData.attendance?.activitySessions || cloudData.activitySessions || [];
+    let incomingAttRecords = cloudData.attendance?.attendanceRecords || cloudData.attendanceRecords || [];
+    let incomingCurrentSession = cloudData.attendance?.currentSession || cloudData.currentSession || null;
+    let incomingFunds = cloudData.wallets?.funds || cloudData.funds || {};
+    let incomingClosedMonths = cloudData.wallets?.closedMonths || cloudData.closedMonths || [];
+    let incomingTransactions = cloudData.transactions || [];
+    let incomingTournaments = cloudData.tournaments || cloudData.tournamentData || [];
+
+    // Bảo toàn mật khẩu lưu cục bộ của các thành viên (do đám mây đã bảo mật loại bỏ password)
+    if (AppState.members && AppState.members.length > 0) {
+      incomingMembers.forEach(incMem => {
+        if (!incMem.password) {
+          const localMem = AppState.members.find(m => m.id === incMem.id || m.username === incMem.username);
+          if (localMem && localMem.password) {
+            incMem.password = localMem.password;
+          }
+        }
+      });
+    }
+
     const localAuth = AppState.auth;
-    const cmpLocal = { ...AppState };
-    delete cmpLocal.auth;
-    const cmpCloud = { ...cloudData };
-    delete cmpCloud.auth;
 
-    if (JSON.stringify(cmpLocal) === JSON.stringify(cmpCloud)) {
-      return;
-    }
-
-    // Nhận cập nhật thời gian thực từ đám mây
+    // Cập nhật AppState
     isReceivingFromCloud = true;
-    AppState = cloudData;
-    if (localAuth) {
-      AppState.auth = localAuth; // Giữ nguyên phiên đăng nhập riêng của thiết bị này
-    }
+    AppState.config = { ...AppState.config, ...incomingConfig };
+    AppState.members = incomingMembers;
+    AppState.funds = { ...AppState.funds, ...incomingFunds };
+    AppState.activitySessions = incomingSessions;
+    AppState.attendanceRecords = incomingAttRecords;
+    AppState.closedMonths = incomingClosedMonths;
+    AppState.transactions = incomingTransactions;
+    if (incomingCurrentSession) AppState.currentSession = incomingCurrentSession;
+    if (localAuth) AppState.auth = localAuth;
 
     STORAGE_KEY = getCurrentClubStorageKey();
     saveLocalDataOnly();
 
     // 1. Áp dụng phiên điểm danh đang diễn ra (nếu có trên đám mây)
-    if (cloudData.currentSession) {
-      applyLiveSessionFromCloud(cloudData.currentSession);
+    if (incomingCurrentSession) {
+      applyLiveSessionFromCloud(incomingCurrentSession);
     }
 
     // 2. Đồng bộ dữ liệu giải đấu (nếu có trên đám mây)
-    if (cloudData.tournamentData && Array.isArray(cloudData.tournamentData)) {
-      TournamentState.tournaments = cloudData.tournamentData;
+    if (incomingTournaments && Array.isArray(incomingTournaments) && incomingTournaments.length > 0) {
+      TournamentState.tournaments = incomingTournaments;
       try {
         localStorage.setItem(TOURNAMENT_STORAGE_KEY, JSON.stringify(TournamentState.tournaments));
       } catch (e) {}
@@ -14939,7 +15235,49 @@ function pushDataToCloud() {
       AppState.tournamentData = TournamentState.tournaments;
     }
 
-    lastPushedCloudJson = JSON.stringify(AppState);
+    // Bảo mật: Loại bỏ mật khẩu plaintext khỏi payload đám mây
+    const safeMembers = (AppState.members || []).map(m => {
+      const copy = { ...m };
+      delete copy.password;
+      return copy;
+    });
+
+    // Cấu trúc phân nhánh chuẩn theo kiến trúc Multi-Tenant
+    const cloudClubPayload = {
+      profile: {
+        id: club?.id || 'club_' + cleanSlug,
+        name: AppState.config?.clubName || club?.name || 'CLB CẦU LÔNG',
+        shortName: club?.shortName || 'CLB',
+        accessSlug: cleanSlug,
+        logoIcon: club?.logoIcon || '🏸',
+        themeColor: AppState.config?.themeColor || 'emerald',
+        bankInfo: AppState.config?.bankInfo || '',
+        createdAt: club?.createdAt || getFormattedCurrentDate()
+      },
+      config: AppState.config || {},
+      members: safeMembers,
+      attendance: {
+        activitySessions: AppState.activitySessions || [],
+        attendanceRecords: AppState.attendanceRecords || [],
+        currentSession: AppState.currentSession || null
+      },
+      wallets: {
+        funds: AppState.funds || {},
+        closedMonths: AppState.closedMonths || []
+      },
+      transactions: AppState.transactions || [],
+      tournaments: TournamentState.tournaments || AppState.tournamentData || [],
+      // Thuộc tính tương thích ngược cho các client cũ
+      funds: AppState.funds || {},
+      activitySessions: AppState.activitySessions || [],
+      attendanceRecords: AppState.attendanceRecords || [],
+      tournamentData: TournamentState.tournaments || AppState.tournamentData || [],
+      currentSession: AppState.currentSession || null,
+      closedMonths: AppState.closedMonths || [],
+      _lastModified: Date.now()
+    };
+
+    lastPushedCloudJson = JSON.stringify(cloudClubPayload);
 
     let pushResolved = false;
     const safetyTimeout = setTimeout(() => {
@@ -14949,7 +15287,7 @@ function pushDataToCloud() {
       }
     }, 3500);
 
-    firebaseDb.ref('clubs/' + cleanSlug).set(AppState)
+    firebaseDb.ref('clubs/' + cleanSlug).set(cloudClubPayload)
       .then(() => {
         pushResolved = true;
         clearTimeout(safetyTimeout);

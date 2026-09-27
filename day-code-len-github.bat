@@ -18,7 +18,7 @@ git add .
 
 echo.
 echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Sua triet de dong bo thoi gian thuc Google Firebase hai chieu tren tat ca cac thiet bi"
+git commit -m "Nang cap he thong Da Cau Lac Bo (Multi-Club), Firebase Auth, Memberships va Real-time Permissions"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

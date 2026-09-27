@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "system": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('system/developers').child(auth.uid).val() === true"
+    },
+    "roles": {
+      ".read": true,
+      ".write": "auth != null && root.child('system/developers').child(auth.uid).val() === true"
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('system/developers').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('system/developers').child(auth.uid).val() === true)"
+      }
+    },
+    "memberships": {
+      "$clubId": {
+        ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || data.child(auth.uid).exists())",
+        "$uid": {
+          ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || auth.uid === $uid || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN')",
+          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN')"
+        }
+      }
+    },
+    "clubs": {
+      "$clubId": {
+        ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).exists() || !data.exists())",
+        ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || !data.exists())",
+        "attendance": {
+          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'VICE_ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'TREASURER')"
+        },
+        "tournaments": {
+          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'VICE_ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'REFEREE')"
+        },
+        "transactions": {
+          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'TREASURER')"
+        },
+        "wallets": {
+          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'TREASURER')"
+        }
+      }
+    }
+  }
+}
