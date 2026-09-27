@@ -18,7 +18,7 @@ git add .
 
 echo.
 echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Tu dong bo sung apiKey va databaseURL cho Firebase, toi uu dong bo dam may Lap Tri"
+git commit -m "Toi uu bieu tuong dam may da ket noi, an dong thong tin chi giu lai bieu tuong phat sang"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

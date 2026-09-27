@@ -14569,7 +14569,9 @@ function getStoredFirebaseConfig() {
 let cloudInitTimeout = null;
 
 function updateCloudSyncUI(status, message = '') {
+  const badge = document.getElementById('headerCloudSyncBadge');
   const dot = document.getElementById('cloudSyncDot');
+  const ping = document.getElementById('cloudSyncPing');
   const text = document.getElementById('cloudSyncText');
   const modalBadge = document.getElementById('modalCloudStatusBadge');
   const settingsBadge = document.getElementById('settingsCloudStatusBadge');
@@ -14583,28 +14585,44 @@ function updateCloudSyncUI(status, message = '') {
   let icon = '⚡';
   let title = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
   let desc = 'Dữ liệu được lưu trữ trực tiếp và tức thì trên trình duyệt máy này.';
+  let headerTitle = 'Đám mây: Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
+  let headerBadgeClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 shadow-2xs';
+  let showPing = false;
+  let pingColor = 'bg-emerald-400';
 
   if (status === 'CONNECTED') {
-    dotColor = 'bg-emerald-500 animate-pulse';
+    dotColor = 'bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse';
     badgeText = 'Đám mây: Đã kết nối';
     badgeClass = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
     icon = '🟢';
-    title = 'Đã kết nối đám mây trực tuyến';
-    desc = 'Tất cả thay đổi sẽ đồng bộ tức thì với Điện thoại & Máy tính khác.';
+    title = 'Đã kết nối Google Firebase (clblaptri)';
+    desc = 'Hệ thống đang kết nối trực tiếp đến Google Firebase clblaptri. Tất cả thay đổi sẽ đồng bộ tức thì.';
+    headerTitle = 'Đám mây: Đã kết nối (Dấu chấm xanh lá phát sáng): Hệ thống đang kết nối trực tiếp đến Google Firebase clblaptri';
+    headerBadgeClass = 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-300 shadow-2xs';
+    showPing = true;
+    pingColor = 'bg-emerald-400';
   } else if (status === 'SYNCING') {
     dotColor = 'bg-amber-500 animate-spin';
     badgeText = 'Đang lưu...';
     badgeClass = 'bg-amber-100 text-amber-800 border border-amber-300';
     icon = '🟡';
     title = 'Đang đẩy dữ liệu lên đám mây...';
-    desc = 'Đang cập nhật lên máy chủ Google Firebase.';
+    desc = 'Đang cập nhật lên máy chủ Google Firebase clblaptri.';
+    headerTitle = 'Đang đẩy dữ liệu lên Google Firebase clblaptri...';
+    headerBadgeClass = 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300 shadow-2xs';
+    showPing = true;
+    pingColor = 'bg-amber-400';
   } else if (status === 'CONNECTING') {
     dotColor = 'bg-sky-500 animate-pulse';
     badgeText = 'Đang kết nối...';
     badgeClass = 'bg-sky-100 text-sky-800 border border-sky-300';
     icon = '🔵';
     title = 'Đang kiểm tra đám mây...';
-    desc = 'Đang kết nối đám mây trong nền (Ứng dụng vẫn chạy siêu tốc).';
+    desc = 'Đang kết nối Google Firebase clblaptri trong nền.';
+    headerTitle = 'Đang kiểm tra kết nối Google Firebase clblaptri...';
+    headerBadgeClass = 'bg-sky-50 text-sky-800 hover:bg-sky-100 border-sky-300 shadow-2xs';
+    showPing = true;
+    pingColor = 'bg-sky-400';
   } else if (status === 'ERROR') {
     dotColor = 'bg-slate-400';
     badgeText = 'Ngoại tuyến (Bộ nhớ máy)';
@@ -14612,6 +14630,9 @@ function updateCloudSyncUI(status, message = '') {
     icon = '⚪';
     title = 'Chế độ cục bộ ngoại tuyến';
     desc = message || 'Đang sử dụng dữ liệu cục bộ an toàn trên máy này.';
+    headerTitle = 'Đám mây: Ngoại tuyến (Bộ nhớ máy)';
+    headerBadgeClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 shadow-2xs';
+    showPing = false;
   } else if (status === 'OFFLINE' || status === 'LOCAL_READY') {
     dotColor = 'bg-emerald-500';
     badgeText = 'Bộ nhớ máy (Siêu tốc)';
@@ -14619,13 +14640,25 @@ function updateCloudSyncUI(status, message = '') {
     icon = '⚡';
     title = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
     desc = 'Dữ liệu được lưu trữ trực tiếp và tức thì trên trình duyệt máy này.';
+    headerTitle = 'Bộ nhớ máy cục bộ (Sẵn sàng & Siêu tốc)';
+    headerBadgeClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 shadow-2xs';
+    showPing = false;
   }
 
+  // 1. Cập nhật Biểu tượng Header Badge (Ẩn dòng thông tin, chỉ để lại biểu tượng & chấm tròn phát sáng)
+  if (badge) {
+    badge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition cursor-pointer ${headerBadgeClass}`;
+    badge.title = headerTitle;
+  }
+  if (ping) {
+    ping.className = showPing ? `animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75` : 'hidden';
+  }
   if (dot) {
-    dot.className = `w-2.5 h-2.5 rounded-full ${dotColor}`;
+    dot.className = `relative inline-flex rounded-full h-2 w-2 ${dotColor}`;
   }
   if (text) {
-    text.textContent = status === 'CONNECTED' ? 'Đám mây: Đã kết nối' : (status === 'SYNCING' ? 'Đám mây: Đang lưu...' : (status === 'CONNECTING' ? 'Đám mây: Đang kết nối...' : 'Bộ nhớ máy'));
+    text.className = 'hidden'; // Luôn ẩn dòng chữ theo yêu cầu
+    text.textContent = badgeText;
   }
   if (modalBadge) {
     modalBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`;
@@ -14633,7 +14666,7 @@ function updateCloudSyncUI(status, message = '') {
   }
   if (settingsBadge) {
     settingsBadge.className = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeClass}`;
-    settingsBadge.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${title}</span>`;
+    settingsBadge.innerHTML = `<span class="relative flex h-2 w-2">${showPing ? `<span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75"></span>` : ''}<span class="relative inline-flex rounded-full h-2 w-2 ${dotColor}"></span></span><span>${title}</span>`;
   }
   if (bannerIcon) bannerIcon.textContent = icon;
   if (bannerTitle) bannerTitle.textContent = title;
