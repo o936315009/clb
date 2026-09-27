@@ -17,8 +17,7 @@ echo 2. Dang them tat ca cac thay doi moi (git add .) ...
 git add .
 
 echo.
-echo 3. Dang ghi nhan thay doi (git commit) ...
-git commit -m "Nang cap he thong Da Cau Lac Bo (Multi-Club), Firebase Auth, Memberships va Real-time Permissions"
+git commit -m "Cau hinh vercel.json SPA rewrites, toi uu Real-time Firebase RTDB va Bieu tuong Dam may"
 
 echo.
 echo 4. Dang day code len GitHub (git push) ...

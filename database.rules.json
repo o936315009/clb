@@ -16,17 +16,17 @@
     },
     "memberships": {
       "$clubId": {
-        ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || data.child(auth.uid).exists())",
+        ".read": true,
         "$uid": {
-          ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || auth.uid === $uid || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN')",
-          ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN')"
+          ".read": true,
+          ".write": "auth != null"
         }
       }
     },
     "clubs": {
       "$clubId": {
-        ".read": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).exists() || !data.exists())",
-        ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || !data.exists())",
+        ".read": true,
+        ".write": "auth != null",
         "attendance": {
           ".write": "auth != null && (root.child('system/developers').child(auth.uid).val() === true || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'VICE_ADMIN' || root.child('memberships').child($clubId).child(auth.uid).child('role').val() === 'TREASURER')"
         },

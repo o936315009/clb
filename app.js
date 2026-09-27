@@ -14922,12 +14922,11 @@ function initFirebaseCloudSync() {
   try {
     updateCloudSyncUI('CONNECTING');
 
-    // Hẹn giờ bảo vệ: Nếu sau 4 giây đám mây chưa phản hồi, tự động đưa về chế độ bộ nhớ máy siêu tốc không chặn người dùng
+    // Hẹn giờ bảo vệ: Nếu sau 4 giây đám mây chưa phản hồi, chuyển sang trạng thái ngắt kết nối
     clearTimeout(cloudInitTimeout);
     cloudInitTimeout = setTimeout(() => {
-      const dot = document.getElementById('cloudSyncDot');
-      if (dot && dot.className.includes('bg-sky-500')) {
-        updateCloudSyncUI('LOCAL_READY');
+      if (!isCloudActuallyConnected) {
+        updateCloudSyncUI('DISCONNECTED');
       }
     }, 4000);
 
@@ -14943,15 +14942,19 @@ function initFirebaseCloudSync() {
       setupFirebaseAuthAndMemberships(clubSlug);
     }
 
-    // Theo dõi trạng thái kết nối mạng của Firebase
+    // Theo dõi trạng thái kết nối mạng của Firebase thời gian thực
+    let hasEstablishedFirstConnection = false;
     firebaseDb.ref('.info/connected').on('value', snap => {
       const isConnected = snap.val() === true;
       isCloudActuallyConnected = isConnected;
       if (isConnected) {
+        hasEstablishedFirstConnection = true;
         clearTimeout(cloudInitTimeout);
         updateCloudSyncUI('CONNECTED');
       } else {
-        updateCloudSyncUI('DISCONNECTED');
+        if (hasEstablishedFirstConnection) {
+          updateCloudSyncUI('DISCONNECTED');
+        }
       }
     });
 
